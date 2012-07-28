@@ -17,6 +17,8 @@ signals:
 
 public slots:
 
+    void setBinary(const QString& binary);
+
 };
 
 #endif // SYMBOLSLISTWIDGET_H

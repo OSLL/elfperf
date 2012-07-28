@@ -2,10 +2,15 @@
 #define SYMBOLSDATAMODEL_H
 
 #include <QAbstractTableModel>
+#include "elffile.h"
 
 class SymbolsDataModel : public QAbstractTableModel
 {
     Q_OBJECT
+
+    ElfFile                     m_elf;
+    QVector<SymbolDescription>  m_data;
+
 public:
     explicit SymbolsDataModel(QObject *parent = 0);
 

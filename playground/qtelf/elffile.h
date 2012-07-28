@@ -36,6 +36,7 @@ public:
     explicit ElfFile(const QString& name, QObject *parent = 0);
 
     QString name() const;
+    QVector<SymbolDescription> getSymbols() const;
 
 protected:
 
@@ -45,6 +46,8 @@ protected:
 signals:
 
 public slots:
+
+    bool setFileName(const QString& name);
 
 };
 

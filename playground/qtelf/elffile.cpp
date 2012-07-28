@@ -6,18 +6,17 @@ ElfFile::ElfFile(const QString& name, QObject *parent) :
     QObject(parent), m_name(name), m_initialized(false)
 {
     bfd_init();
-    bfd_set_default_target("bfd_target_elf_flavour");
-    m_bfd = bfd_openr(m_name.toStdString().c_str(),NULL);
-
-    if ( bfd_check_format ( m_bfd, bfd_object ) )
-    {
-        readExports();
-    }
+    readExports();
 }
 
 QString ElfFile::name() const
 {
     return m_name;
+}
+
+QVector<SymbolDescription> ElfFile::getSymbols() const
+{
+    return m_symbols;
 }
 
 bool ElfFile::isInit()
@@ -31,6 +30,16 @@ bool ElfFile::readExports()
     asymbol **symbol_table;
     long number_of_symbols;
     long i;
+
+    m_symbols.clear();
+
+    bfd_set_default_target("bfd_target_elf_flavour");
+    m_bfd = bfd_openr(m_name.toStdString().c_str(),NULL);
+
+    if(!bfd_check_format(m_bfd,bfd_object))
+    {
+        return false;
+    }
 
     storage_needed = bfd_get_symtab_upper_bound(m_bfd);
     symbol_table = (asymbol **)malloc(storage_needed);
@@ -50,4 +59,10 @@ bool ElfFile::readExports()
     free(symbol_table);
     symbol_table = NULL;
     return true;
+}
+
+bool ElfFile::setFileName(const QString &name)
+{
+    m_name = name;
+    return readExports();
 }
