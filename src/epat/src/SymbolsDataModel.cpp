@@ -34,9 +34,9 @@
  *
  * PROJ: OSLL/epat
  * ---------------------------------------------------------------- */
-
 #include "SymbolsDataModel.h"
 #include <QApplication>
+#include <cxxabi.h>
 
 SymbolsDataModel::SymbolsDataModel(QObject *parent) :
     QAbstractTableModel(parent), m_elf(QSharedPointer<ElfFile>(new ElfFile(qApp->applicationFilePath())))
@@ -65,7 +65,14 @@ QVariant SymbolsDataModel::data(const QModelIndex& index, int role) const
 {
     if(role == Qt::DisplayRole)
     {
-        const SymbolDescription& sd=m_data[index.row()];
+        const SymbolDescription& sd = m_data[index.row()];
+
+        int status;
+        QString symbol(__cxxabiv1::__cxa_demangle(sd.symbol.toStdString().c_str(), 0, 0, &status));
+
+        if (status != 0) {
+            symbol = sd.symbol;
+        }
 
         switch(index.column())
         {
@@ -74,7 +81,8 @@ QVariant SymbolsDataModel::data(const QModelIndex& index, int role) const
         case 1: // section
             return sd.section;
         case 2: // symbol
-            return sd.symbol;
+            //return sd.symbol;
+            return symbol;
         case 3: // flags
             return sd.flags;
         case 4: // section
