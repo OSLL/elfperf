@@ -82,17 +82,41 @@ QVariant SymbolsDataModel::data(const QModelIndex& index, int role) const
         case 1: // section
             return sd.section;
         case 2: // symbol
-            //return sd.symbol;
             return symbol;
         case 3: // flags
             return sd.flags;
-        case 4: // section
+        case 4: // value
             return sd.value;
         }
 
         return "!";
     }
     return QVariant();
+}
+
+QVariant SymbolsDataModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
+    if (role != Qt::DisplayRole)
+             return QVariant();
+
+     if (orientation == Qt::Horizontal) {
+         switch (section)
+         {
+         case 0: // number
+             return "Number";
+         case 1: // section
+             return "Section";
+         case 2: // symbol
+             return "Symbol";
+         case 3: // flags
+             return "Flags";
+         case 4: // value
+             return "Value";
+         default:
+            return QVariant();
+         }
+     }
+     return QVariant();
 }
 
 void SymbolsDataModel::importData()
