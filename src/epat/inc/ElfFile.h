@@ -43,6 +43,7 @@
 #include <QObject>
 #include <bfd.h>
 #include <QVector>
+#include <QMap>
 #include <QSharedPointer>
 
 struct SymbolDescription
@@ -60,21 +61,26 @@ struct SymbolDescription
         section(_section), symbol(_symbol), flags(_flags), value(_value) {}
 };
 
+typedef QVector<SymbolDescription> Symbols;
+typedef QMap<QString, QSharedPointer<Symbols> > SymbolsMap;
+
 class ElfFile : public QObject
 {
     Q_OBJECT
 
 
-    QString                         m_name;
-    bool                            m_initialized;
-    QSharedPointer<bfd>             m_bfd;
-    QVector<SymbolDescription>      m_symbols;
+    QString                     m_name;
+    bool                        m_initialized;
+    QSharedPointer<bfd>         m_bfd;
+    //QSharedPointer<Symbols>      m_symbols;
+    QSharedPointer<SymbolsMap>  m_symbols;
 
 public:
     explicit ElfFile(const QString& name, QObject* parent = 0);
 
     QString name() const;
-    QVector<SymbolDescription> getSymbols() const;
+    //QSharedPointer<Symbols> getSymbols() const;
+    QSharedPointer<SymbolsMap> getSymbols() const;
 
 protected:
 

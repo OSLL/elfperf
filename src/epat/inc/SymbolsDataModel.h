@@ -45,8 +45,8 @@ class SymbolsDataModel : public QAbstractTableModel
 {
     Q_OBJECT
 
-    QSharedPointer<ElfFile>     m_elf;
-    QVector<SymbolDescription>  m_data;
+    QSharedPointer<ElfFile>  m_elf;
+    QSharedPointer<Symbols>  m_data;
 
 public:
     explicit SymbolsDataModel(QObject* parent = 0);
@@ -56,6 +56,9 @@ public:
     int rowCount(const QModelIndex& parent) const;
     int columnCount(const QModelIndex& parent) const;
     QVariant data(const QModelIndex& index, int role) const;
+
+private:
+    void importData();
 
 signals:
 

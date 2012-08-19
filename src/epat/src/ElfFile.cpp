@@ -40,7 +40,8 @@
 #include "ElfFile.h"
 
 ElfFile::ElfFile(const QString& name, QObject* parent) :
-    QObject(parent), m_name(name), m_initialized(false)
+    QObject(parent), m_name(name), m_initialized(false),
+    m_symbols(QSharedPointer<SymbolsMap>(new SymbolsMap()))
 {
     bfd_init();
     readExports();
@@ -51,10 +52,15 @@ QString ElfFile::name() const
     return m_name;
 }
 
-QVector<SymbolDescription> ElfFile::getSymbols() const
+QSharedPointer<SymbolsMap> ElfFile::getSymbols() const
 {
     return m_symbols;
 }
+
+/*QSharedPointer<SymbolsMap> ElfFile::getSymbolsMap() const
+{
+    return m_symbolsMap;
+}*/
 
 bool ElfFile::isInit()
 {
@@ -68,7 +74,7 @@ bool ElfFile::readExports()
     long number_of_symbols;
     long i;
 
-    m_symbols.clear();
+    m_symbols->clear();
 
     bfd_set_default_target("bfd_target_elf_flavour");
     m_bfd = QSharedPointer<bfd>(bfd_openr(m_name.toStdString().c_str(),NULL));
@@ -86,12 +92,23 @@ bool ElfFile::readExports()
 
     for(i = 0; i < number_of_symbols; i++)
     {
-        m_symbols << SymbolDescription(
-                         symbol_table[i]->section->name,
-                         symbol_table[i]->name,
-                         symbol_table[i]->flags,
-                         symbol_table[i]->value);
-        //qDebug() << "found " << symbol_table[i]->name;
+        QString symbolName = symbol_table[i]->section->name;
+        SymbolDescription symbol(
+                    symbol_table[i]->section->name,
+                    symbol_table[i]->name,
+                    symbol_table[i]->flags,
+                    symbol_table[i]->value);
+        if (!m_symbols->contains(symbolName)) {
+            m_symbols->insert(symbolName, QSharedPointer<Symbols>(new Symbols()));
+        }
+        m_symbols->value(symbolName)->append(symbol);
+        //qDebug() << m_symbols->value(symbolName) << " : " << symbol;
+        /*m_symbols->append(SymbolDescription(
+                              symbol_table[i]->section->name,
+                              symbol_table[i]->name,
+                              symbol_table[i]->flags,
+                              symbol_table[i]->value));
+        //qDebug() << "found " << symbol_table[i]->name;*/
     }
     free(symbol_table);
     symbol_table = NULL;

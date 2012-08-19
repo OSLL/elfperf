@@ -36,24 +36,25 @@
  * ---------------------------------------------------------------- */
 #include "SymbolsDataModel.h"
 #include <QApplication>
+#include <QDebug>
 #include <cxxabi.h>
 
 SymbolsDataModel::SymbolsDataModel(QObject *parent) :
     QAbstractTableModel(parent), m_elf(QSharedPointer<ElfFile>(new ElfFile(qApp->applicationFilePath())))
 {
-    m_data = m_elf->getSymbols();
+    importData();
 }
 
 void SymbolsDataModel::setBinary(const QString& name)
 {
     m_elf = QSharedPointer<ElfFile>(new ElfFile(name));
-    m_data = m_elf->getSymbols();
+    importData();
     emit layoutChanged();
 }
 
 int SymbolsDataModel::rowCount(const QModelIndex& parent) const
 {
-    return m_data.size();
+    return m_data->size();
 }
 
 int SymbolsDataModel::columnCount(const QModelIndex& parent) const
@@ -65,7 +66,7 @@ QVariant SymbolsDataModel::data(const QModelIndex& index, int role) const
 {
     if(role == Qt::DisplayRole)
     {
-        const SymbolDescription& sd = m_data[index.row()];
+        const SymbolDescription& sd = m_data->at(index.row());
 
         int status;
         QString symbol(__cxxabiv1::__cxa_demangle(sd.symbol.toStdString().c_str(), 0, 0, &status));
@@ -92,4 +93,16 @@ QVariant SymbolsDataModel::data(const QModelIndex& index, int role) const
         return "!";
     }
     return QVariant();
+}
+
+void SymbolsDataModel::importData()
+{
+    QList<QSharedPointer<Symbols> > groups = m_elf->getSymbols()->values();
+    m_data = QSharedPointer<Symbols>(new Symbols());
+    for (int i = 0; i < groups.size(); i++) {
+        *m_data += *groups[i];
+        /*for (int j = 0; j < groups[i]->size(); j++) {
+            qDebug() << groups[i]->at(j).section << endl;
+        }*/
+    }
 }
