@@ -72,14 +72,12 @@ class ElfFile : public QObject
     QString                     m_name;
     bool                        m_initialized;
     QSharedPointer<bfd>         m_bfd;
-    //QSharedPointer<Symbols>      m_symbols;
     QSharedPointer<SymbolsMap>  m_symbols;
 
 public:
     explicit ElfFile(const QString& name, QObject* parent = 0);
 
     QString name() const;
-    //QSharedPointer<Symbols> getSymbols() const;
     QSharedPointer<SymbolsMap> getSymbols() const;
 
 protected:

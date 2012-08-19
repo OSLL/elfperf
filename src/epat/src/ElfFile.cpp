@@ -57,11 +57,6 @@ QSharedPointer<SymbolsMap> ElfFile::getSymbols() const
     return m_symbols;
 }
 
-/*QSharedPointer<SymbolsMap> ElfFile::getSymbolsMap() const
-{
-    return m_symbolsMap;
-}*/
-
 bool ElfFile::isInit()
 {
     return m_initialized;
@@ -102,13 +97,6 @@ bool ElfFile::readExports()
             m_symbols->insert(symbolName, QSharedPointer<Symbols>(new Symbols()));
         }
         m_symbols->value(symbolName)->append(symbol);
-        //qDebug() << m_symbols->value(symbolName) << " : " << symbol;
-        /*m_symbols->append(SymbolDescription(
-                              symbol_table[i]->section->name,
-                              symbol_table[i]->name,
-                              symbol_table[i]->flags,
-                              symbol_table[i]->value));
-        //qDebug() << "found " << symbol_table[i]->name;*/
     }
     free(symbol_table);
     symbol_table = NULL;

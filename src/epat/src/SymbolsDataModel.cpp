@@ -125,8 +125,5 @@ void SymbolsDataModel::importData()
     m_data = QSharedPointer<Symbols>(new Symbols());
     for (int i = 0; i < groups.size(); i++) {
         *m_data += *groups[i];
-        /*for (int j = 0; j < groups[i]->size(); j++) {
-            qDebug() << groups[i]->at(j).section << endl;
-        }*/
     }
 }
