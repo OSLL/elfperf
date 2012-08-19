@@ -29,38 +29,39 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file SymbolsDataModel.h
- * \brief SymbolsDataModel declaration
+ * \file MainWindow.cpp
+ * \brief MainWindow implementation
  *
  * PROJ: OSLL/epat
  * ---------------------------------------------------------------- */
 
-#ifndef SYMBOLSDATAMODEL_H
-#define SYMBOLSDATAMODEL_H
+#include "MainWindow.h"
+#include "QFileDialog"
 
-#include <QAbstractTableModel>
-#include "ElfFile.h"
+#include <QApplication>
 
-class SymbolsDataModel : public QAbstractTableModel
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent), m_binary(qApp->applicationFilePath()),
+    m_slw(QSharedPointer<SymbolsListWidget>(new SymbolsListWidget()))
 {
-    Q_OBJECT
+    initMenuBar();
+    setCentralWidget(m_slw.data());
+}
 
-    QSharedPointer<ElfFile>     m_elf;
-    QVector<SymbolDescription>  m_data;
+void MainWindow::initMenuBar()
+{
+    QAction* actOpen = new QAction(0);
+    actOpen->setText("&Open");
+    connect(actOpen, SIGNAL(triggered()), SLOT(slotOpenFile()));
 
-public:
-    explicit SymbolsDataModel(QObject* parent = 0);
+    QMenu* menuFile = new QMenu("&File");
+    menuFile->addAction(actOpen);
 
-    void setBinary(const QString& name);
+    menuBar()->addMenu(menuFile);
+}
 
-    int rowCount(const QModelIndex& parent) const;
-    int columnCount(const QModelIndex& parent) const;
-    QVariant data(const QModelIndex& index, int role) const;
-
-signals:
-
-public slots:
-
-};
-
-#endif // SYMBOLSDATAMODEL_H
+void MainWindow::slotOpenFile()
+{
+    m_binary = QFileDialog::getOpenFileName(0, "Open file", "", "");
+    m_slw->setBinary(m_binary);
+}

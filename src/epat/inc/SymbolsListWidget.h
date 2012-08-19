@@ -39,16 +39,17 @@
 #define SYMBOLSLISTWIDGET_H
 
 #include <QTableView>
+#include <QSharedPointer>
 #include "SymbolsDataModel.h"
 
 class SymbolsListWidget : public QTableView
 {
     Q_OBJECT
 
-    SymbolsDataModel *m_model;
+    QSharedPointer<SymbolsDataModel> m_model;
 
 public:
-    explicit SymbolsListWidget(QWidget *parent = 0);
+    explicit SymbolsListWidget(QWidget* parent = 0);
 
 signals:
 

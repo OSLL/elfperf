@@ -43,6 +43,7 @@
 #include <QObject>
 #include <bfd.h>
 #include <QVector>
+#include <QSharedPointer>
 
 struct SymbolDescription
 {
@@ -66,11 +67,11 @@ class ElfFile : public QObject
 
     QString                         m_name;
     bool                            m_initialized;
-    bfd*                            m_bfd;
+    QSharedPointer<bfd>             m_bfd;
     QVector<SymbolDescription>      m_symbols;
 
 public:
-    explicit ElfFile(const QString& name, QObject *parent = 0);
+    explicit ElfFile(const QString& name, QObject* parent = 0);
 
     QString name() const;
     QVector<SymbolDescription> getSymbols() const;

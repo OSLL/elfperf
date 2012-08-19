@@ -36,15 +36,14 @@
 
 #include <QApplication>
 #include <QDebug>
-#include "ElfFile.h"
-#include "SymbolsListWidget.h"
+#include "MainWindow.h"
 
 int main(int c, char **v)
 {
     QApplication app(c,v);
 
-    SymbolsListWidget slw;
-    slw.show();
+    MainWindow mw;
+    mw.show();
 
     return app.exec();
 }

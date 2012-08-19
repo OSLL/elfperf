@@ -29,38 +29,36 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file SymbolsDataModel.h
- * \brief SymbolsDataModel declaration
+ * \file MainWindow.h
+ * \brief MainWindow declaration
  *
  * PROJ: OSLL/epat
  * ---------------------------------------------------------------- */
 
-#ifndef SYMBOLSDATAMODEL_H
-#define SYMBOLSDATAMODEL_H
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
 
-#include <QAbstractTableModel>
-#include "ElfFile.h"
+#include <QMainWindow>
+#include <QMenuBar>
 
-class SymbolsDataModel : public QAbstractTableModel
+#include "SymbolsListWidget.h"
+
+
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
-    QSharedPointer<ElfFile>     m_elf;
-    QVector<SymbolDescription>  m_data;
+    QSharedPointer<SymbolsListWidget>  m_slw;
+    QString                            m_binary;
 
 public:
-    explicit SymbolsDataModel(QObject* parent = 0);
+    explicit MainWindow(QWidget* parent = 0);
 
-    void setBinary(const QString& name);
-
-    int rowCount(const QModelIndex& parent) const;
-    int columnCount(const QModelIndex& parent) const;
-    QVariant data(const QModelIndex& index, int role) const;
-
-signals:
+private:
+    void initMenuBar();
 
 public slots:
-
+    void slotOpenFile();
 };
 
-#endif // SYMBOLSDATAMODEL_H
+#endif // MAINWINDOW_H

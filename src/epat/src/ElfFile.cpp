@@ -39,7 +39,7 @@
 
 #include "ElfFile.h"
 
-ElfFile::ElfFile(const QString& name, QObject *parent) :
+ElfFile::ElfFile(const QString& name, QObject* parent) :
     QObject(parent), m_name(name), m_initialized(false)
 {
     bfd_init();
@@ -71,16 +71,16 @@ bool ElfFile::readExports()
     m_symbols.clear();
 
     bfd_set_default_target("bfd_target_elf_flavour");
-    m_bfd = bfd_openr(m_name.toStdString().c_str(),NULL);
+    m_bfd = QSharedPointer<bfd>(bfd_openr(m_name.toStdString().c_str(),NULL));
 
-    if(!bfd_check_format(m_bfd,bfd_object))
+    if(!bfd_check_format(m_bfd.data(), bfd_object))
     {
         return false;
     }
 
-    storage_needed = bfd_get_symtab_upper_bound(m_bfd);
+    storage_needed = bfd_get_symtab_upper_bound(m_bfd.data());
     symbol_table = (asymbol **)malloc(storage_needed);
-    number_of_symbols = bfd_canonicalize_symtab(m_bfd, symbol_table);
+    number_of_symbols = bfd_canonicalize_symtab(m_bfd.data(), symbol_table);
 
     qDebug() << "Number of symbols " << number_of_symbols;
 
@@ -98,7 +98,7 @@ bool ElfFile::readExports()
     return true;
 }
 
-bool ElfFile::setFileName(const QString &name)
+bool ElfFile::setFileName(const QString& name)
 {
     m_name = name;
     return readExports();

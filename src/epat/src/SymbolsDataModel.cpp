@@ -39,28 +39,29 @@
 #include <QApplication>
 
 SymbolsDataModel::SymbolsDataModel(QObject *parent) :
-    QAbstractTableModel(parent), m_elf(qApp->applicationFilePath())
+    QAbstractTableModel(parent), m_elf(QSharedPointer<ElfFile>(new ElfFile(qApp->applicationFilePath())))
 {
-    m_data = m_elf.getSymbols();
+    m_data = m_elf->getSymbols();
 }
 
-void SymbolsDataModel::setBinary(const QString &name)
+void SymbolsDataModel::setBinary(const QString& name)
 {
-    m_data = m_elf.getSymbols();
+    m_elf = QSharedPointer<ElfFile>(new ElfFile(name));
+    m_data = m_elf->getSymbols();
     emit layoutChanged();
 }
 
-int SymbolsDataModel::rowCount(const QModelIndex &parent) const
+int SymbolsDataModel::rowCount(const QModelIndex& parent) const
 {
     return m_data.size();
 }
 
-int SymbolsDataModel::columnCount(const QModelIndex &parent) const
+int SymbolsDataModel::columnCount(const QModelIndex& parent) const
 {
     return 5;
 }
 
-QVariant SymbolsDataModel::data(const QModelIndex &index, int role) const
+QVariant SymbolsDataModel::data(const QModelIndex& index, int role) const
 {
     if(role == Qt::DisplayRole)
     {
