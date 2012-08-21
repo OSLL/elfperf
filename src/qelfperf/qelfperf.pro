@@ -1,4 +1,4 @@
-TARGET = epat
+TARGET = elfperf
 
 INCLUDEPATH += inc
 
