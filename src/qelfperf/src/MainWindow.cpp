@@ -32,7 +32,7 @@
  * \file MainWindow.cpp
  * \brief MainWindow implementation
  *
- * PROJ: OSLL/epat
+ * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
 #include "MainWindow.h"
@@ -41,8 +41,10 @@
 #include <QApplication>
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), m_binary(qApp->applicationFilePath()),
-    m_slw(QSharedPointer<SymbolsListWidget>(new SymbolsListWidget()))
+    QMainWindow(parent),
+    m_slw(QSharedPointer<SymbolsListWidget>(new SymbolsListWidget())),
+    m_binary(qApp->applicationFilePath())
+
 {
     initMenuBar();
     setCentralWidget(m_slw.data());

@@ -32,7 +32,7 @@
  * \file ElfFile.h
  * \brief ElFile declaration
  *
- * PROJ: OSLL/epat
+ * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
 #ifndef ELFFILE_H

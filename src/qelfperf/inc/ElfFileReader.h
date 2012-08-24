@@ -29,42 +29,32 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file SymbolsDataModel.h
- * \brief SymbolsDataModel declaration
+ * \file ElfFileReader.h
+ * \brief ElFileReader declaration
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef SYMBOLSDATAMODEL_H
-#define SYMBOLSDATAMODEL_H
+#ifndef ELFFILEREADER_H
+#define ELFFILEREADER_H
 
-#include <QAbstractTableModel>
-#include "ElfFile.h"
+#include <QString>
+#include <QStringList>
+#include <QSharedPointer>
 
-class SymbolsDataModel : public QAbstractTableModel
+class ElfFileReader
 {
-    Q_OBJECT
-
-    QSharedPointer<ElfFile>  m_elf;
-    QSharedPointer<Symbols>  m_data;
+    QString  m_filename;
 
 public:
-    explicit SymbolsDataModel(QObject* parent = 0);
+    explicit ElfFileReader(const char* filename);
+    explicit ElfFileReader(const QString& filename);
 
-    void setBinary(const QString& name);
+    QString getFilename() const;
+    void setFilename(const QString& filename);
 
-    int rowCount(const QModelIndex& parent) const;
-    int columnCount(const QModelIndex& parent) const;
-    QVariant data(const QModelIndex& index, int role) const;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const;
-
-private:
-    void importData();
-
-signals:
-
-public slots:
+    QSharedPointer<QStringList> getImports() const;
 
 };
 
-#endif // SYMBOLSDATAMODEL_H
+#endif // ELFFILEREADER_H

@@ -29,42 +29,39 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file SymbolsDataModel.h
- * \brief SymbolsDataModel declaration
+ * \file DataParser.cpp
+ * \brief DataParser implementation
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef SYMBOLSDATAMODEL_H
-#define SYMBOLSDATAMODEL_H
+#include "DataParser.h"
 
-#include <QAbstractTableModel>
-#include "ElfFile.h"
-
-class SymbolsDataModel : public QAbstractTableModel
+DataParser::DataParser(const QSharedPointer<QStringList> &data)
+    : m_data(data), m_answer(QSharedPointer<QStringList>(0))
 {
-    Q_OBJECT
+}
 
-    QSharedPointer<ElfFile>  m_elf;
-    QSharedPointer<Symbols>  m_data;
+QSharedPointer<QStringList> DataParser::getData() const
+{
+    return m_data;
+}
 
-public:
-    explicit SymbolsDataModel(QObject* parent = 0);
+void DataParser::setData(const QSharedPointer<QStringList> &data)
+{
+    m_data = data;
+}
 
-    void setBinary(const QString& name);
+QSharedPointer<QStringList> DataParser::getAnswer() const
+{
+    return m_answer;
+}
 
-    int rowCount(const QModelIndex& parent) const;
-    int columnCount(const QModelIndex& parent) const;
-    QVariant data(const QModelIndex& index, int role) const;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+void DataParser::setAnswer(const QSharedPointer<QStringList> &answer)
+{
+    m_answer = answer;
+}
 
-private:
-    void importData();
-
-signals:
-
-public slots:
-
-};
-
-#endif // SYMBOLSDATAMODEL_H
+DataParser::~DataParser()
+{
+}

@@ -29,42 +29,49 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file SymbolsDataModel.h
- * \brief SymbolsDataModel declaration
+ * \file ElfFileReader.cpp
+ * \brief ElFileReader implementation
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef SYMBOLSDATAMODEL_H
-#define SYMBOLSDATAMODEL_H
+#include "ElfFileReader.h"
+#include "CommandExecutor.h"
+#include "DynSymTableParser.h"
 
-#include <QAbstractTableModel>
-#include "ElfFile.h"
+#include <QDebug>
 
-class SymbolsDataModel : public QAbstractTableModel
+ElfFileReader::ElfFileReader(const char* filename) :
+    m_filename(QString(filename))
 {
-    Q_OBJECT
+}
 
-    QSharedPointer<ElfFile>  m_elf;
-    QSharedPointer<Symbols>  m_data;
+ElfFileReader::ElfFileReader(const QString &filename) :
+    m_filename(filename)
+{
+}
 
-public:
-    explicit SymbolsDataModel(QObject* parent = 0);
+QString ElfFileReader::getFilename() const
+{
+    return m_filename;
+}
 
-    void setBinary(const QString& name);
+void ElfFileReader::setFilename(const QString &filename)
+{
+    m_filename = filename;
+}
 
-    int rowCount(const QModelIndex& parent) const;
-    int columnCount(const QModelIndex& parent) const;
-    QVariant data(const QModelIndex& index, int role) const;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+QSharedPointer<QStringList> ElfFileReader::getImports() const
+{
+    QString command = "objdump -T " + QString(m_filename) + " | grep \"\\*UND\\*\" | c++filt";
+    CommandExecutor e(command);
+    int status = e.exec();
 
-private:
-    void importData();
-
-signals:
-
-public slots:
-
-};
-
-#endif // SYMBOLSDATAMODEL_H
+    if (status != 0) {
+        return QSharedPointer<QStringList>(0);
+    } else {
+        DynSymTableParser parser(e.getOutput());
+        parser.parse();
+        return parser.getAnswer();
+    }
+}

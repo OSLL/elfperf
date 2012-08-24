@@ -29,42 +29,66 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file SymbolsDataModel.h
- * \brief SymbolsDataModel declaration
+ * \file CommandExecutor.cpp
+ * \brief CommandExecutor implementation
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef SYMBOLSDATAMODEL_H
-#define SYMBOLSDATAMODEL_H
+#include "CommandExecutor.h"
+#include <QDebug>
+#include <stdio.h>
 
-#include <QAbstractTableModel>
-#include "ElfFile.h"
-
-class SymbolsDataModel : public QAbstractTableModel
+CommandExecutor::CommandExecutor(const QString &cmdName) :
+    m_cmdName(cmdName), m_cmdOutput(QSharedPointer<QStringList>(NULL))
 {
-    Q_OBJECT
+}
 
-    QSharedPointer<ElfFile>  m_elf;
-    QSharedPointer<Symbols>  m_data;
+QString CommandExecutor::getCmdName() const
+{
+    return m_cmdName;
+}
 
-public:
-    explicit SymbolsDataModel(QObject* parent = 0);
+void CommandExecutor::setCmdName(const QString &cmdName)
+{
+    m_cmdName = cmdName;
+}
 
-    void setBinary(const QString& name);
+QSharedPointer<QStringList> CommandExecutor::getOutput() const
+{
+    return m_cmdOutput;
+}
 
-    int rowCount(const QModelIndex& parent) const;
-    int columnCount(const QModelIndex& parent) const;
-    QVariant data(const QModelIndex& index, int role) const;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+int CommandExecutor::exec()
+{
+    FILE* stream = popen(m_cmdName.toStdString().c_str(), "r");
+    m_cmdOutput.clear();
+    if (stream != NULL) {
+        m_cmdOutput = QSharedPointer<QStringList>(new QStringList());
+        QString line;
 
-private:
-    void importData();
+        char buffer[BUFSIZ + 1];
+        long rSize = 1;
+        do {
+            memset(buffer, '\0', sizeof(buffer));
+            rSize = fread(buffer, sizeof(char), BUFSIZ, stream);
+            for (int i = 0; i < rSize; i++) {
+                line += buffer[i];
+                if (buffer[i] == '\n') {
+                    *m_cmdOutput << line;
+                    line.clear();
+                }
+            }
+        }
+        while(rSize != 0);
 
-signals:
+        if (!line.isEmpty()) {
+           *m_cmdOutput << line;
+        }
 
-public slots:
-
-};
-
-#endif // SYMBOLSDATAMODEL_H
+        return 0;
+    } else {
+        pclose(stream);
+        return 1;
+    }
+}

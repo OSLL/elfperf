@@ -29,42 +29,29 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file SymbolsDataModel.h
- * \brief SymbolsDataModel declaration
+ * \file DynSymTableParser.h
+ * \brief DynSymTableParser declaration
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef SYMBOLSDATAMODEL_H
-#define SYMBOLSDATAMODEL_H
+#ifndef DYNSYMTABLEPARSER_H
+#define DYNSYMTABLEPARSER_H
 
-#include <QAbstractTableModel>
-#include "ElfFile.h"
+#include <QStringList>
+#include <QSharedPointer>
 
-class SymbolsDataModel : public QAbstractTableModel
+#include "DataParser.h"
+
+class DynSymTableParser : public DataParser
 {
-    Q_OBJECT
-
-    QSharedPointer<ElfFile>  m_elf;
-    QSharedPointer<Symbols>  m_data;
 
 public:
-    explicit SymbolsDataModel(QObject* parent = 0);
+    explicit DynSymTableParser(const QSharedPointer<QStringList>& data);
 
-    void setBinary(const QString& name);
+    void parse();
 
-    int rowCount(const QModelIndex& parent) const;
-    int columnCount(const QModelIndex& parent) const;
-    QVariant data(const QModelIndex& index, int role) const;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const;
-
-private:
-    void importData();
-
-signals:
-
-public slots:
-
+    virtual ~DynSymTableParser();
 };
 
-#endif // SYMBOLSDATAMODEL_H
+#endif // DYNSYMTABLEPARSER_H

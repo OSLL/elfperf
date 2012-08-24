@@ -31,19 +31,89 @@
 /*! ---------------------------------------------------------------
  * \file main.cpp
  *
- * PROJ: OSLL/epat
+ * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
 #include <QApplication>
 #include <QDebug>
+#include <QString>
+#include <stdio.h>
+#include <getopt.h>
 #include "MainWindow.h"
+#include "ElfFileReader.h"
+#include "CommandExecutor.h"
 
-int main(int c, char **v)
+const char* programName;
+
+void printUsage(FILE* stream, int exitCode)
 {
-    QApplication app(c,v);
+    fprintf(stream, "Usage: %s options [ inputfile ... ]\n", programName);
+    fprintf(stream,
+            "  -h, --help                 Display usage information.\n"
+            "  -i, --imports filename     Process getting imports from ELF file with filename.\n"
+            "  -g, --gui                  Launch GUI.\n");
+    exit(exitCode);
+}
+
+int launchGui(int argc, char **argv)
+{
+    QApplication app(argc, argv);
 
     MainWindow mw;
     mw.show();
 
     return app.exec();
+}
+
+void readImports(const char* filename)
+{
+    ElfFileReader reader(filename);
+    QSharedPointer<QStringList> imports = reader.getImports();
+    if (imports.isNull()) {
+        fprintf(stderr, "Error while getting imports from the file\n");
+        return;
+    }
+
+    for (int i = 0; i < imports->size(); i++) {
+        printf(imports->at(i).toStdString().c_str());
+    }
+
+}
+
+void printNoArgsMsg(FILE* stream) {
+    fprintf(stream, "%s: missing file arguments\n", programName);
+    fprintf(stream, "Try '%s --help' for more information.\n", programName);
+}
+
+int main(int argc, char **argv)
+{
+    programName = argv[0];
+    const struct option long_options[] = {
+        { "help", 1, NULL, 'h' },
+        { "imports", 1, NULL, 'i' },
+        { "gui",     0, NULL, 'g' },
+        { NULL,      0, NULL, 0   }
+    };
+    const char* const short_options = "hi:g";
+
+    int next_option = getopt_long(argc, argv, short_options, long_options, NULL);
+    switch (next_option)
+    {
+    case 'h':
+        printUsage(stdout, 0);
+    case 'i':
+        readImports(optarg);
+        break;
+    case 'g':
+        return launchGui(argc, argv);
+    case '?':
+        printUsage(stderr, 1);
+        break;
+    case '-1':
+        break;
+    default:
+        printNoArgsMsg(stdout);
+    }
+
+    return 0;
 }

@@ -29,42 +29,41 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file SymbolsDataModel.h
- * \brief SymbolsDataModel declaration
+ * \file DynSymTableParser.cpp
+ * \brief DynSymTableParser implementation
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef SYMBOLSDATAMODEL_H
-#define SYMBOLSDATAMODEL_H
+#include "DynSymTableParser.h"
+#include <QDebug>
+#include <iostream>
 
-#include <QAbstractTableModel>
-#include "ElfFile.h"
-
-class SymbolsDataModel : public QAbstractTableModel
+DynSymTableParser::DynSymTableParser(const QSharedPointer<QStringList> &data)
+    : DataParser(data)
 {
-    Q_OBJECT
+}
 
-    QSharedPointer<ElfFile>  m_elf;
-    QSharedPointer<Symbols>  m_data;
+void DynSymTableParser::parse()
+{
+    if (!getData().isNull()) {
+        QSharedPointer<QStringList> answer(new QStringList());
+        QSharedPointer<QStringList> data = getData();
+        for (int i = 0; i < getData()->size(); i++) {
+            QString line = data->at(i);
+            int cutoffSize = 0;
+            int keyPos = line.indexOf("*UND*");
+            if (keyPos == -1)
+                continue;
 
-public:
-    explicit SymbolsDataModel(QObject* parent = 0);
+            cutoffSize = line.size() - keyPos - 22;
+            *answer << line.right(cutoffSize);
 
-    void setBinary(const QString& name);
+        }
+        setAnswer(answer);
+    }
+}
 
-    int rowCount(const QModelIndex& parent) const;
-    int columnCount(const QModelIndex& parent) const;
-    QVariant data(const QModelIndex& index, int role) const;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const;
-
-private:
-    void importData();
-
-signals:
-
-public slots:
-
-};
-
-#endif // SYMBOLSDATAMODEL_H
+DynSymTableParser::~DynSymTableParser()
+{
+}

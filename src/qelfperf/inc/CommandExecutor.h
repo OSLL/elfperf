@@ -29,42 +29,33 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file SymbolsDataModel.h
- * \brief SymbolsDataModel declaration
+ * \file CommandExecutor.h
+ * \brief CommandExecutor declaration
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef SYMBOLSDATAMODEL_H
-#define SYMBOLSDATAMODEL_H
+#ifndef COMMANDEXECUTOR_H
+#define COMMANDEXECUTOR_H
 
-#include <QAbstractTableModel>
-#include "ElfFile.h"
+#include <QString>
+#include <QStringList>
+#include <QSharedPointer>
 
-class SymbolsDataModel : public QAbstractTableModel
+class CommandExecutor
 {
-    Q_OBJECT
-
-    QSharedPointer<ElfFile>  m_elf;
-    QSharedPointer<Symbols>  m_data;
+    QString                      m_cmdName;
+    QSharedPointer<QStringList>  m_cmdOutput;
 
 public:
-    explicit SymbolsDataModel(QObject* parent = 0);
+    explicit CommandExecutor(const QString& cmdName);
 
-    void setBinary(const QString& name);
+    QString getCmdName() const;
+    void setCmdName(const QString& cmdName);
 
-    int rowCount(const QModelIndex& parent) const;
-    int columnCount(const QModelIndex& parent) const;
-    QVariant data(const QModelIndex& index, int role) const;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+    QSharedPointer<QStringList> getOutput() const;
 
-private:
-    void importData();
-
-signals:
-
-public slots:
-
+    int exec();
 };
 
-#endif // SYMBOLSDATAMODEL_H
+#endif // COMMANDEXECUTOR_H

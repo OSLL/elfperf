@@ -32,7 +32,7 @@
  * \file SymbolsListWidget.h
  * \brief SymbolsListWidget declaration
  *
- * PROJ: OSLL/epat
+ * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
 #ifndef SYMBOLSLISTWIDGET_H

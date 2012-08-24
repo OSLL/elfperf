@@ -32,7 +32,7 @@
  * \file MainWindow.h
  * \brief MainWindow declaration
  *
- * PROJ: OSLL/epat
+ * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
 #ifndef MAINWINDOW_H

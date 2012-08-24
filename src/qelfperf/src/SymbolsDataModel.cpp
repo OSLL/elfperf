@@ -32,7 +32,7 @@
  * \file SymbolsDataModel.cpp
  * \brief SymbolsDataModel implementation
  *
- * PROJ: OSLL/epat
+ * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 #include "SymbolsDataModel.h"
 #include <QApplication>

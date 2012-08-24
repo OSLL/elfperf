@@ -32,7 +32,7 @@
  * \file SymbolsListWidget.cpp
  * \brief SymbolsListWidget implementation
  *
- * PROJ: OSLL/epat
+ * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
 #include "SymbolsListWidget.h"

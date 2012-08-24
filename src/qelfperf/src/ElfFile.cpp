@@ -32,7 +32,7 @@
  * \file ElfFile.cpp
  * \brief ElFile implementation
  *
- * PROJ: OSLL/epat
+ * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
 #include <QDebug>
