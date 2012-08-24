@@ -1,4 +1,4 @@
-epat
+elperf
 ====
 
 ELF performance analysis tool
