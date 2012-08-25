@@ -42,9 +42,13 @@
 
 class DynSymTableParser : public DataParser
 {
+    string  m_section;
 
 public:
-    explicit DynSymTableParser(list<string>* data);
+    explicit DynSymTableParser(list<string>* data, const string& section = "*UND");
+
+    void setSection(const string& section);
+    string getSection() const;
 
     void parse();
 

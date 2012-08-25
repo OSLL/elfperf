@@ -40,7 +40,10 @@
 
 #include <string>
 #include <list>
+#include <map>
 using namespace std;
+
+typedef map<string, list<string>*> ImportsMap;
 
 class ElfFileReader
 {
@@ -53,7 +56,7 @@ public:
     string getFilename() const;
     void setFilename(const string& filename);
 
-    list<string>* getImports() const;
+    ImportsMap* getImports() const;
 
 };
 

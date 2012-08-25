@@ -29,54 +29,49 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file DynSymTableParser.cpp
- * \brief DynSymTableParser implementation
+ * \file SharedLibsParser.cpp
+ * \brief SharedLibsParser implementation
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#include "DynSymTableParser.h"
+#include "SharedLibsParser.h"
+#include <stdio.h>
 
-DynSymTableParser::DynSymTableParser(list<string> *data, const string &section) :
-    DataParser(data), m_section(section)
+SharedLibsParser::SharedLibsParser(list<string> *data) :
+    DataParser(data)
 {
 }
 
-void DynSymTableParser::setSection(const string &section)
-{
-    m_section = section;
-}
-
-string DynSymTableParser::getSection() const
-{
-    return m_section;
-}
-
-void DynSymTableParser::parse()
+void SharedLibsParser::parse()
 {
     if (getData() != 0) {
-        if (getAnswer() != 0)
-            delete(getAnswer());
         list<string>* answer = new list<string>();
         list<string>* data = getData();
         list<string>::iterator i;
         for (i = data->begin(); i != data->end(); i++) {
             string line = *i;
-            int cutoffPos = 0;
-            int keyPos = line.find(m_section);
-            if (keyPos == -1)
+            int leftBound = line.find("=>");
+            int rightBound = line.find("(");
+            if (leftBound == -1)
+                leftBound = 1;
+            else
+                leftBound += 2;
+            if (rightBound == -1 || leftBound > rightBound)
                 continue;
-
-            cutoffPos = keyPos + 22;
-            while (line[cutoffPos] == ' ') {
-                cutoffPos++;
+            else
+                rightBound -= 1;
+            while (line[leftBound] == ' ' && leftBound < rightBound ) {
+                leftBound++;
             }
-            answer->push_back(line.substr(cutoffPos, line.length() - cutoffPos - 1));
+            if (leftBound == rightBound)
+                continue;
+            answer->push_back(line.substr(leftBound , rightBound - leftBound));
         }
         setAnswer(answer);
     }
 }
 
-DynSymTableParser::~DynSymTableParser()
+SharedLibsParser::~SharedLibsParser()
 {
 }

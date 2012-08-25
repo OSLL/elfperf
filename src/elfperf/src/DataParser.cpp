@@ -64,4 +64,6 @@ void DataParser::setAnswer(list<string>* answer)
 
 DataParser::~DataParser()
 {
+    if (m_answer != 0)
+        delete(m_answer);
 }

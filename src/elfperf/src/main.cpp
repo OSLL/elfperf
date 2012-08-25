@@ -54,15 +54,21 @@ void printUsage(FILE* stream, int exitCode)
 void readImports(const char* filename)
 {
     ElfFileReader reader(filename);
-    list<string>* imports = reader.getImports();
+    ImportsMap* imports = reader.getImports();
     if (imports == 0) {
         fprintf(stderr, "Error while getting imports from the file\n");
         return;
     }
 
-    list<string>::iterator i;
+    ImportsMap::iterator i;
+    list<string>::iterator j;
     for (i = imports->begin(); i != imports->end(); i++) {
-        printf((*i).c_str());
+        printf("\n===== %s =====\n", i->first.c_str());
+        list<string>* functions = i->second;
+        for (j = functions->begin(); j != functions->end(); j++) {
+            printf("%s\n", (*j).c_str());
+        }
+        delete(functions);
     }
 
     delete(imports);
@@ -81,7 +87,7 @@ int main(int argc, char **argv)
         { "imports", 1, NULL, 'i' },
         { NULL,      0, NULL, 0   }
     };
-    const char* const short_options = "hi:g";
+    const char* const short_options = "hi:";
 
     int next_option = getopt_long(argc, argv, short_options, long_options, NULL);
     switch (next_option)
