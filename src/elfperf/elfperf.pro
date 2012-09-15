@@ -1,19 +1,20 @@
 TARGET = elfperf
 
-INCLUDEPATH += inc
+INCLUDEPATH += inc \
+    ../common/inc
 
 SOURCES += \
+    ../common/src/CommandExecutor.cpp \
+    ../common/src/DataParser.cpp \
     src/main.cpp \
-    src/CommandExecutor.cpp \
     src/ElfFileReader.cpp \
     src/DynSymTableParser.cpp \
-    src/DataParser.cpp \
     src/SharedLibsParser.cpp
 
 HEADERS += \
-    inc/CommandExecutor.h \
+    ../common/inc/CommandExecutor.h \
+    ../common/inc/DataParser.h \
     inc/ElfFileReader.h \
-    inc/DataParser.h \
     inc/DynSymTableParser.h \
     inc/SharedLibsParser.h
 
