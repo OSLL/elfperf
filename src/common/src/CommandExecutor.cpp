@@ -60,9 +60,9 @@ list<string>* CommandExecutor::getOutput() const
     return m_cmdOutput;
 }
 
-int CommandExecutor::exec()
+int CommandExecutor::exec(const char* mode)
 {
-    FILE* stream = popen(m_cmdName.c_str(), "r");
+    FILE* stream = popen(m_cmdName.c_str(), mode);
     if (stream != NULL) {
         string line = "";
         if (m_cmdOutput == 0)
@@ -88,6 +88,8 @@ int CommandExecutor::exec()
         if (!line.empty()) {
            m_cmdOutput->push_back(line);
         }
+
+        pclose(stream);
 
         return 0;
     } else {

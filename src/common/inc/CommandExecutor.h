@@ -56,7 +56,7 @@ public:
 
     list<string>* getOutput() const;
 
-    int exec();
+    int exec(const char* mode = "r");
 
     ~CommandExecutor();
 };

@@ -46,14 +46,15 @@ void printUsage(FILE* stream, int exitCode)
 {
     fprintf(stream, "Usage: %s options [ inputfile ... ]\n", programName);
     fprintf(stream,
-            "  -h, --help              Display usage information.\n"
-            "  -t, --time filename     Get program execution time.\n");
+            "  -h, --help                       Display usage information.\n"
+            "  -r, --runtime filename           Get program execution time.\n"
+            "  -p, --calls-profile filename     Get profile of functions calls while program execution.\n");
     exit(exitCode);
 }
 
-void getExecutionTime(const char* filename)
+void getRuntime(const char* filename)
 {
-    string command = "perf stat -e task-clock -x , " + string(filename) + " 0> /tmp/ep_runtime ";
+    string command = "perf stat -e task-clock -x , " + string(filename) + " 0> /tmp/elperf_runtime ";
     CommandExecutor e(command);
     int status = e.exec();
     if (status != 0) {
@@ -74,13 +75,55 @@ void getExecutionTime(const char* filename)
 
     answer = answer.substr(0, answer.length() - keyPos - 4);
     cout << "Execution time of " << filename << " = " << answer << " ms" << endl;
+}
 
-    command = "rm -f /tmp/ep_runtime ";
+void getCallsProfile(const char* filename)
+{
+    string command = "perf record " + string(filename) + " 2>/tmp/elfperf_calls_profile";
+    CommandExecutor e(command);
+    int status = e.exec("w");
+    if (status != 0) {
+        return;
+    }
+
+    command = "perf report -t , --sort=symbol | cat";
     e.setCmdName(command);
     status = e.exec();
     if (status != 0) {
         return;
     }
+
+    list<string>* answer = e.getOutput();
+    list<string>::iterator i = answer->begin();
+
+    bool found = false;
+
+    while (!found) {
+        string line = *i;
+        if (line.find("# Overhead,Symbol") != string::npos) {
+            found = true;
+        }
+        i++;
+    }
+
+    if (!found || i == answer->end()) {
+        return;
+    }
+
+
+    cout << "Profile of functions calls for \"" << filename << "\":" << endl;
+    cout << "Overhead" << "\t" << "Symbol" << endl;
+
+    while (i != answer->end() && *i != "\n") {
+        string line = *i;
+
+        int keyPos = line.find(',');
+        if (keyPos == -1)
+            continue;
+        cout << line.substr(0, keyPos) << "%\t\t" << line.substr(keyPos + 1, line.length() - keyPos);
+        i++;
+    }
+
 }
 
 void printNoArgsMsg(FILE* stream) {
@@ -93,18 +136,22 @@ int main(int argc, char **argv)
     programName = argv[0];
     const struct option long_options[] = {
         { "help", 1, NULL, 'h' },
-        { "time", 1, NULL, 't' },
+        { "runtime", 1, NULL, 'r' },
+        { "calls-profile", 1, NULL, 'p' },
         { NULL,      0, NULL, 0   }
     };
-    const char* const short_options = "ht:";
+    const char* const short_options = "hr:p:";
 
     int next_option = getopt_long(argc, argv, short_options, long_options, NULL);
     switch (next_option)
     {
     case 'h':
         printUsage(stdout, 0);
-    case 't':
-        getExecutionTime(optarg);
+    case 'r':
+        getRuntime(optarg);
+        break;
+    case 'p':
+        getCallsProfile(optarg);
         break;
     case '?':
         printUsage(stderr, 1);

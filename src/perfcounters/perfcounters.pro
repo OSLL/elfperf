@@ -13,6 +13,5 @@ HEADERS += \
     ../common/inc/DataParser.h
 
 CONFIG -= qt
-CONFIG += debug
 
 
