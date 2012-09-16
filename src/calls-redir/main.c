@@ -63,7 +63,7 @@ int main()
 	// Return if lib address not found
 
 	if (!libaddr){
-		putc("Library address not found!");
+		puts("Library address not found!");
 		return 1;
 	}
 
@@ -81,7 +81,7 @@ int main()
 	original1 = elf_hook(LIB_PATH, libaddr, "malloc", original1);
 	original2 = elf_hook(LIB_PATH, libaddr, "free", original2);
 
-	puts ("\n");
+	puts("\n");
 
 	testCallRedirSample();
 
