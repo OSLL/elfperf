@@ -11,6 +11,9 @@
 // This variable will store addr of libcall_redir_sample.so in process memory
 void * libaddr = NULL;
 
+
+
+// Callback for dl_iterate_phdr
 static int
 callback(struct dl_phdr_info *info, size_t size, void *data)
 {
@@ -56,6 +59,14 @@ int main()
 
 	// Getting addres of our shared lib
 	dl_iterate_phdr(callback, NULL);
+
+	// Return if lib address not found
+
+	if (!libaddr){
+		putc("Library address not found!");
+		return 1;
+	}
+
 
 	testCallRedirSample();
 	puts("\n");
