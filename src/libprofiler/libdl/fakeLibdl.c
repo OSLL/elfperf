@@ -18,6 +18,6 @@ void *dlsym (void *__restrict __handle,
                     __const char *__restrict __name)
 {
       	puts("Hello from fake libdl");
-	return _dlsym(__handle, __name);
+	return d1sym(__handle, __name);
 }
 
