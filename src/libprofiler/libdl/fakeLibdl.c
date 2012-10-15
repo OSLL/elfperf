@@ -3,65 +3,66 @@
 #include <unistd.h>
 #include <execinfo.h>
 #include <string.h>
-//#include "origLibdl.h"
-//#include "true_libdl.h"
+#include <dlfcn.h>
+#include "../../common/tools.h"
 
-void* getReturnAddress(){ 
-	void * returnAddr = NULL;
-        int j, nptrs;
-        #define SIZE 100
-        void *buffer[100];
-        char **strings;
+char SIGN[]= {0x83, 0xEC, 0x3C, 0x89, 0x5C, 0x24, 0x2C, 0x8B, 0x54, 0x24, 0x40, 0xE8};
+void* (*real_dlsym)(void*,const char*);
 
-        nptrs = backtrace(buffer, SIZE);
-        //printf("backtrace() returned %d addresses\n", nptrs);
 
-       //          The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
-       //              would produce similar output to the following: 
 
-        strings = backtrace_symbols(buffer, nptrs);
-        if (strings == NULL) {
-            perror("backtrace_symbols");
-	    return returnAddr; 
-        }
-
-	char * addr;
-
-	printf("%s\n", strings[2]);
-	addr =  strchr ( strings[2], '[' ); 	
-	unsigned int addr_i;
-	sscanf(addr,"[0x%x]",&addr_i);
-
-	printf("addr = \"%s\", return addr = %#x, points to = %p\n", addr, addr_i, (void*)addr_i);
-	//returnAddr = (void*)0x804873a;
-	returnAddr = (void*)addr_i;
-	printf("pointer = %p\n", returnAddr);
-	
-        free(strings);
-	return returnAddr;
+static void redirector()
+{
+  printf("calling redirector\n");
 }
 
-void *dlsym (void *__restrict _handle,
-                    __const char *__restrict _name)
+
+void *getAddress(void* handle,const char *name)
 {
-      	printf("Hello from fake dlsym(%p,%s)",_handle,_name);
-//	void * callerPointer = __builtin_return_address (0); 
-//	unsigned int caller = &callerPointer;
-//	printf("Caller = %x, this = %x\n", caller, &dlsym );
-	void * caller = getReturnAddress();
-	void * result = NULL; 
-	asm volatile(
-		"movl %1,%%eax;"
-		"movl %2,%%edx;"
-		"movl %3,%%ecx;"
-		"call _dl_sym;"
-		: "=r"(result)
-		: "r"(_handle),"r"(_name),"r"(caller)
-		: "eax", "edx", "ecx"
-	);
-	printf("after _dl_sym call = %p", result);
-	//void * result = (void *)_dl_sym(__handle, __name, caller);
-//	void * result = (void *)_dl_sym(_handle, _name, caller);
-	return result;
+	
+}
+
+
+void init_dlsym() {
+  int i;
+  char *base = (char*)dlopen(0,RTLD_LAZY);
+ 
+
+	while(base < (char*)init_dlsym)
+	{
+	  i = 0;
+    base = memchr(base,SIGN[0],(unsigned char*)init_dlsym-(unsigned char *)base);
+		print_dump(base);
+		while(SIGN[i]==base[i] && i<sizeof(SIGN))
+		{
+			i++;
+		}
+		if(i==sizeof(SIGN)-1)
+		{
+			printf("found dlsym at %p\n",base);
+			real_dlsym = (void* (*)(void*, const char*))base;
+			return;
+		}
+	}
+	printf("dlsym not found\n");
+}
+
+void *dlsym (void *__restrict _handle, __const char *__restrict _name)
+{
+  static int initialized = 0;
+
+	if(!initialized)
+	{
+		init_dlsym();
+		initialized = 1;
+	}
+
+
+  printf("dlsym\n");
+
+  
+
+
+   return NULL;//lsym(_handle,_name);
 }
 

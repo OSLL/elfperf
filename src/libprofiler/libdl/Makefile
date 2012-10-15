@@ -1,4 +1,9 @@
-lib:
-	gcc -m32 -shared -o libfakedl.so fakeLibdl.c -lc
+
+find: clean find.c
+	gcc find.c -g3 -L. -static -ldl -Wl,--wrap=dlsym -shared  -o find.so
+
 clean: 
-	rm libfakedl.so*
+	-rm libfakedl.so*
+	-rm find
+	-rm *.o
+
