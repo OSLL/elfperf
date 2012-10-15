@@ -1,4 +1,4 @@
-libdl1 {
+libfakedl {
   global: dlsym;
   local: *;
 };

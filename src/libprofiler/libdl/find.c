@@ -3,14 +3,13 @@
 //#include "../common/tools.h"
 
 
-#define DLOPEN_IMAGE  "../test/libs/libtest_lib.so"
 
-int (*testFunction1)(int arg1, int arg2);
+//int (*testFunction1)(int arg1, int arg2);
 
-void * dlsym(void * handle, char* name)
+void * dlsym(void *__restrict handle,__const char*__restrict name)
 {
 		puts("__wrap_dlsym");
-		return dvsym(handle, name);
+		return (void *)dvsym(handle, name);
 }
 
 /*void * dlsym(void * handle, char* name)

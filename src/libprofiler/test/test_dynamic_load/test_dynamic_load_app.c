@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <execinfo.h>
 #include <dlfcn.h>
-#include "../../common/tools.h"
+//#include "../../common/tools.h"
 #define LIBTEST_LIB_PATH "libs/libtest_lib.so"
 
 
@@ -11,7 +11,7 @@ int (*testFunction1) (int, int);
 
 
 int main(){
-  print_base_address();
+//  print_base_address();
 
 	void * handle = dlopen(LIBTEST_LIB_PATH, RTLD_LAZY); 
 	
@@ -24,7 +24,7 @@ int main(){
 
 	printf("Calling testFunction1(): %d\n", testFunction1(1,1));
 
-	print_dump(testFunction1);
+//	print_dump(testFunction1);
 
 	dlclose(handle);	
 	return 0;

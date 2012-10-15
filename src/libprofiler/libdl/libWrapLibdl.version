@@ -1,4 +1,0 @@
-libWrapLibdl{
-  global: _dlsym;
-  local:*;
-};
