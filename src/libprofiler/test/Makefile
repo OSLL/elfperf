@@ -16,5 +16,8 @@ test_dynamic_link_app:
 
 bin: test_dynamic_link_app test_dynamic_load_app
 
+run: 
+	bash -c "LD_PRELOAD=../libdl/libfakedl.so ./test_dynamic_load_app"
+
 clean:
 	rm -f libs/*.so test_dynamic_load_app test_dynamic_link_app
