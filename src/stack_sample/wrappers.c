@@ -29,62 +29,39 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file main.c
- *
+ * \file wrappers.c
+ * \brief Implementation of functions for wrapping any other functions
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#include <stdio.h>
 #include "wrappers.h"
+#include <stdarg.h>
+#include <stdio.h>
 
-int foo1(int arg1)
+int wrap(void* fn, int count, ...)
 {
-    printf("Foo1: This is an example function with 2 params: %d.\n", arg1);
-    return 1;
-}
+    printf("Wrapper: Calling of function with %d params.\n", count);
 
-int foo2(int arg1, int arg2, int arg3, int arg4, int arg5)
-{
-    printf("Foo2: This is an example function with 2 params: %d, %d.\n", arg1, arg2);
-    return 2;
-}
+    int i;
+    asm("movl %ebp, %edx");
+    asm("addl $16, %edx");
+    for (i = 0; i < count; i++) {
+        asm("addl $4, %edx");
+    }
 
-int foo3(int arg1, int arg2, int arg3)
-{
-    printf("Foo3: This is an example function with 3 params: %d, %d, %d.\n", arg1, arg2, arg3);
-    return 3;
-}
+    for (i = 0; i < count; i++) {
+        asm("pushl -4(%edx)");
+        asm("subl $4, %edx");
+        //asm("pushl %0" : :"r"(i) : );
+    }
 
-int foo4(int arg1, int arg2, int arg3, int arg4)
-{
-    printf("Foo4: This is an example function with 4 params: %d, %d, %d, %d.\n", arg1, arg2, arg3, arg4);
-    return 4;
-}
+    asm("call %0" : :"r"(fn) : );
 
-int foo5(int arg1, int arg2, int arg3, int arg4, int arg5)
-{
-    printf("Foo5: This is an example function with 5 params: %d, %d, %d, %d, %d.\n", arg1, arg2, arg3, arg4, arg5);
-    return 5;
-}
+    for (i = 0; i < count; i++) {
+        asm("popl %edx");
+    }
 
-
-int main(int argc, char **argv)
-{
-    int r;
-    r = wrapped_fn(foo1, 0);
-    printf("Returned value = %d.\n", r);
-
-    r = wrapped_fn(foo2, 0, 1);
-    printf("Returned value = %d.\n", r);
-
-    r = wrapped_fn(foo3, 0, 1, 2);
-    printf("Returned value = %d.\n", r);
-
-    r = wrapped_fn(foo4, 0, 1, 2, 3);
-    printf("Returned value = %d.\n", r);
-
-    r = wrapped_fn(foo5, 0, 1, 2, 3, 4);
-    printf("Returned value = %d.\n", r);
-
-    return 0;
+    int result;
+    asm("movl %%eax, %0" :"=r"(result): : );
+    return result;
 }

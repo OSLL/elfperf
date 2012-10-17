@@ -29,62 +29,22 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file main.c
+ * \file wrappers.h
+ * \brief Declarations of functions for wrapping any other functions
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#include <stdio.h>
-#include "wrappers.h"
+#ifndef WRAPPERS_H
+#define WRAPPERS_H
 
-int foo1(int arg1)
-{
-    printf("Foo1: This is an example function with 2 params: %d.\n", arg1);
-    return 1;
-}
+#define COUNT_PARMS2(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _, ...) _
+#define COUNT_PARMS(...)\
+    COUNT_PARMS2(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 
-int foo2(int arg1, int arg2, int arg3, int arg4, int arg5)
-{
-    printf("Foo2: This is an example function with 2 params: %d, %d.\n", arg1, arg2);
-    return 2;
-}
+#define wrapped_fn(_, ...)\
+    wrap(_, COUNT_PARMS(__VA_ARGS__), __VA_ARGS__)
 
-int foo3(int arg1, int arg2, int arg3)
-{
-    printf("Foo3: This is an example function with 3 params: %d, %d, %d.\n", arg1, arg2, arg3);
-    return 3;
-}
+int wrap(void* fn, int count, ...);
 
-int foo4(int arg1, int arg2, int arg3, int arg4)
-{
-    printf("Foo4: This is an example function with 4 params: %d, %d, %d, %d.\n", arg1, arg2, arg3, arg4);
-    return 4;
-}
-
-int foo5(int arg1, int arg2, int arg3, int arg4, int arg5)
-{
-    printf("Foo5: This is an example function with 5 params: %d, %d, %d, %d, %d.\n", arg1, arg2, arg3, arg4, arg5);
-    return 5;
-}
-
-
-int main(int argc, char **argv)
-{
-    int r;
-    r = wrapped_fn(foo1, 0);
-    printf("Returned value = %d.\n", r);
-
-    r = wrapped_fn(foo2, 0, 1);
-    printf("Returned value = %d.\n", r);
-
-    r = wrapped_fn(foo3, 0, 1, 2);
-    printf("Returned value = %d.\n", r);
-
-    r = wrapped_fn(foo4, 0, 1, 2, 3);
-    printf("Returned value = %d.\n", r);
-
-    r = wrapped_fn(foo5, 0, 1, 2, 3, 4);
-    printf("Returned value = %d.\n", r);
-
-    return 0;
-}
+#endif // WRAPPERS_H
