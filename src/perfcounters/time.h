@@ -29,31 +29,19 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file time.cpp
- * \brief Implementation of functions for accurate time measuring
+ * \file time.h
+ * \brief Declarations of functions for accurate time measuring
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#include "time.h"
+#ifndef ELFPERF_TIME_H
+#define ELFPERF_TIME_H
 
-timespec getCurrentTimeWithSuperPrecise()
-{
-    timespec time;
-    clockid_t clockType = CLOCK_MONOTONIC;
-    clock_gettime(clockType, &time);
-    return time;
-}
+#include <stdlib.h>
+#include <time.h>
 
-timespec diff(timespec start, timespec end)
-{
-    timespec res;
-    if ((end.tv_nsec - start.tv_nsec) < 0) {
-        res.tv_sec = end.tv_sec - start.tv_sec - 1;
-        res.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
-    } else {
-        res.tv_sec = end.tv_sec - start.tv_sec;
-        res.tv_nsec = end.tv_nsec - start.tv_nsec;
-    }
-    return res;
-}
+struct timespec get_accurate_time();
+struct timespec diff(struct timespec start, struct timespec end);
+
+#endif // ELFPERF_TIME_H

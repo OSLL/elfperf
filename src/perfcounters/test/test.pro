@@ -4,13 +4,11 @@ INCLUDEPATH += \
     ../inc
 
 SOURCES += \
-    test.cpp \
-    ../src/time_cntrs.cpp
-
+    test.c \
+    ../time.c
 
 HEADERS += \
-    ../inc/time_cntrs.h
-
+    ../time.h
 
 CONFIG -= qt
 
