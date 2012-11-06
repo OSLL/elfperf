@@ -25,7 +25,7 @@
 #include <ldsodefs.h>
 
 #include "prof/cdecl_wrapper.h"
-#include "prof/time.h" 
+//#include "prof/time.h" 
 //#include "prof/wrappers.h"
 
 //#############################################
@@ -92,11 +92,88 @@ static struct WrappingContext contextArray[CONTEXT_PREALLOCATED_NUMBER];
 static int freeContextNumber = 0 ;
 //static pthread_mutex_t freeContextNumberLock = PTHREAD_MUTEX_INITIALIZER;
 
+#include <sched.h>
+#include <time.h>
+#include <stdint.h>
+
+#define TIMING_WITH_HPET
+
+struct FunctionStatistic
+{
+    struct timespec totalDiffTime; // Total time of function calls
+    void* realFuncAddr;            // Address of the function
+};
+
+#define NANOSECONDS_IN_SEC 1000000000
+static double s_ticksPerNanoSec;
+
+// Assembly code for reading number of CPU ticks from TSC (Time Stamp Counter) register
+static inline uint64_t rdtsc()
+{
+    unsigned int high, low;
+    asm volatile("rdtsc" : "=a" (low), "=d" (high));
+    return ((uint64_t)high << 32) | low;
+}
+
+// Calculate difference between two timespecs
+struct timespec diffTimeSpec(struct timespec start, struct timespec end)
+{
+    struct timespec res;
+    if ((end.tv_nsec - start.tv_nsec) < 0) {
+        res.tv_sec = end.tv_sec - start.tv_sec - 1;
+        res.tv_nsec = NANOSECONDS_IN_SEC + end.tv_nsec - start.tv_nsec;
+    } else {
+        res.tv_sec = end.tv_sec - start.tv_sec;
+        res.tv_nsec = end.tv_nsec - start.tv_nsec;
+    }
+    return res;
+}
+
+// This function is used for calibrating the number of CPU cycles per nanosecond
+void calibrateTicks()
+{
+    struct timespec start_ts, end_ts;
+    uint64_t start = 0, end = 0;
+    clock_gettime(CLOCK_MONOTONIC, &start_ts);
+    start = rdtsc();
+    uint64_t i;
+    for (i = 0; i < 1000000; i++);
+    end = rdtsc();
+    clock_gettime(CLOCK_MONOTONIC, &end_ts);
+    struct timespec elapsed_ts = diffTimeSpec(start_ts, end_ts);
+    uint64_t elapsed_nsec = elapsed_ts.tv_sec * 1000000000LL + elapsed_ts.tv_nsec;
+    s_ticksPerNanoSec = (double)(end - start) / (double)elapsed_nsec;
+}
+
+// This function should be called before using rdtsc(),
+// has side effect of binding to CPU0.
+void initRdtsc()
+{
+    size_t cpuMask = 1;
+    sched_setaffinity(0, sizeof(cpuMask), &cpuMask);
+    calibrateTicks();
+}
+
+
+
+// Get elapsed time in timespecs for given time in nanoseconds
+void getTimeSpec(struct timespec *ts, uint64_t nsecs)
+{
+    ts->tv_sec = nsecs / NANOSECONDS_IN_SEC;
+    ts->tv_nsec = nsecs % NANOSECONDS_IN_SEC;
+}
+
+// Get elapsed time in timespecs using time converted from TSC reading
+void getRdtscTime(struct timespec* ts)
+{
+    getTimeSpec(ts, rdtsc()/s_ticksPerNanoSec);
+}
+
 struct timespec get_accurate_time()
 {
     struct timespec time;
     clockid_t clockType = CLOCK_MONOTONIC;
-//    clock_gettime(clockType, &time);
+    clock_gettime(clockType, &time);
     return time;
 }
 
@@ -112,19 +189,107 @@ struct timespec diff(struct timespec start, struct timespec end)
     }
     return res;
 }
+#include <stdlib.h>
+#include <stdio.h>
 
-void record_start_time(void * context){
-	struct WrappingContext * cont = (struct WrappingContext *)context;
-	cont->startTime = get_accurate_time();
+#define STATS_LIMIT 100000
+// Global array of functions statistics
+static struct FunctionStatistic* s_stats[STATS_LIMIT];
+// Number of statistics
+static int s_statsCount = 0;
+
+// Record function start time into context->startTime
+void record_start_time(void * context)
+{
+    struct WrappingContext * cont = (struct WrappingContext *)context;
+
+#ifdef TIMING_WITH_HPET
+    printf("LOG: get start time with HPET\n");
+    cont->startTime = get_accurate_time();
+#endif
+
+#ifdef TIMING_WITH_RDTSC
+    printf("LOG: get start time with RDTSC\n");
+    initRdtsc();
+    getRdtscTime(&cont->startTime);
+#endif
+
+}
+
+// Record function end time into context->endTime and
+// print the duration of function execution
+void record_end_time(void * context)
+{
+    struct WrappingContext * cont = (struct WrappingContext *)context;
+
+#ifdef TIMING_WITH_HPET
+    printf("LOG: get end time with HPET\n");
+    cont->endTime = get_accurate_time();
+#endif
+
+#ifdef TIMING_WITH_RDTSC
+    printf("LOG: get end time with RDTSC\n");
+    getRdtscTime(&cont->endTime);
+#endif
+
+    struct timespec duration = diff(cont->startTime, cont->endTime);
+    printf("Function(%p) duration = %ds %dns\n", cont->functionPointer, duration.tv_sec, duration.tv_nsec);
+
+    // Updating statistic for function
+    updateStat(cont->functionPointer - 3, duration);
+}
+
+// Get statistic for given function
+struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
+{
+    int i;
+    for (i = 0; i < s_statsCount; i++) {
+        if (s_stats[i]->realFuncAddr == realFuncAddr)
+            return s_stats[i];
+    }
+
+    return NULL;
 }
 
 
+struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
+{
+    if (s_statsCount == STATS_LIMIT){
+        printf("Statistics buffer is full! Exiting\n");
+        exit(1);
+    }
 
-void record_end_time(void * context){
-	struct WrappingContext * cont = (struct WrappingContext *)context;
-	cont->endTime = get_accurate_time();
-	struct timespec duration = diff(cont->startTime, cont->endTime);
-	printf("Function duration = %ds %dns\n", duration.tv_sec, duration.tv_nsec);	
+    s_statsCount += 1;
+    struct FunctionStatistic* stat = (struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
+
+    stat->realFuncAddr = funcAddr;
+    stat->totalDiffTime.tv_sec = diffTime.tv_sec;
+    stat->totalDiffTime.tv_nsec = diffTime.tv_nsec;
+    s_stats[s_statsCount - 1] = stat;
+
+    return stat;
+}
+
+void updateStat(void* funcAddr, struct timespec diffTime)
+{
+    struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
+    if (stat != NULL) {
+        __time_t result_sec = stat->totalDiffTime.tv_sec;
+        long int result_nsec = stat->totalDiffTime.tv_nsec;
+
+        result_sec += diffTime.tv_sec;
+        result_nsec += diffTime.tv_nsec;
+
+        if (result_nsec >= 1000000000) {
+            result_sec += 1;
+            result_nsec = result_nsec - 1000000000;
+        }
+
+        stat->totalDiffTime.tv_sec = result_sec;
+        stat->totalDiffTime.tv_nsec = (long int)result_nsec;
+    } else {
+        addNewStat(funcAddr, diffTime);
+    }
 }
 
 // This function returns address of currently free context
@@ -261,19 +426,27 @@ void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr)
 	s_wrapperAddress = wrapperAddr;
 
 	// Memory allocation
-	s_redirectors = (void *)malloc(sizeof(void*)*REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
+	size_t allocSize = sizeof(void*)*REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1;
+	
+	s_redirectors = (void *)malloc(allocSize);
 	// Aligning by page border
 	printf("Before aligment %x, %x\n", s_redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
 	s_redirectors = (void *)(((int) s_redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
 	printf("After aligment %x\n", s_redirectors);
 	
-	if (mprotect(s_redirectors, 1024, PROT_READ | PROT_WRITE | PROT_EXEC)) {
-        	perror("Couldn't mprotect");
-        	exit(errno);
-    	}
+        int pagesNum = allocSize/PAGESIZE + 1;
+        printf("Number of memory pages %d\n", pagesNum);
+
+        unsigned int i = 0;
+        for (i = 0; i < pagesNum; i++) {
+           if (mprotect(s_redirectors + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
+               perror("Couldn't mprotect");
+               exit(errno);
+           }
+        }
+
 	// Set 0 into each redirector first byte
 	// This will allow to determine wich one is inited
-	unsigned int i = 0;
 	for (i = 0 ; i < sizeof(void*)*REDIRECTOR_WORDS_SIZE*count ; i+=REDIRECTOR_SIZE){
 		*((unsigned int*)(s_redirectors+i)) = 0;
 	}
