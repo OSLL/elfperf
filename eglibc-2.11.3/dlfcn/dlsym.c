@@ -141,10 +141,10 @@ static void * s_wrapperAddress;
 // and write them to @destination@
 void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
 //	 unsigned char* redirector[REDIRECTOR_WORDS_SIZE*sizeof(void*)];
-	// mov $number, %%eax
+	// mov $number, %%edx
 	// ret = 0xc3
 	unsigned int functionPointer = (unsigned int )(fcnPtr)+3;
-	redirector[0]=0xb8;
+	redirector[0]=0xba;//0xb8;
 	// reversing byte order
 	redirector[4] = (functionPointer >> 24) & 0xFF;
 	redirector[3] = (functionPointer >> 16) & 0xFF;
@@ -275,24 +275,30 @@ dlsym_doit (void *a)
 
 // Wrapper code. 
 // We doesnt touch stack and variables, just print something and jmp to wrapped function.
+// Schema 
+// 1. Programm recieve redirector address from dlsym(....)
+// 2. Programm push params to stack and perform call of redirector addres
+// 3. Redirector stores function jump address (= real_function_address+3) into %edx
+// 4. Redirector jumps into wrapper
+
 void wrapper(){
 	/*
 	*/
 	asm volatile(				
-		// by the start eax contains address of the wrapped function
-		"pushl %eax\n"				//storing wrappedFunction_addr into stack
-		"movl (%ebp), %ebx\n"			// Start of the moved area 
+		// By the start of wrapper edx contains jump addres of function, which is wrapped
+		"pushl %edx\n"				// Storing wrappedFunction_addr into stack
+		"movl (%ebp), %ebx\n"			// ebx = old_ebp 
 		"subl $0x4, %ebx\n"			// ebx = old_ebp - 4
 		"movl (%ebx), %edx\n"			// edx = -4(%old_ebp) = (%ebp)
-		// Storing context pointer into freed space
+		// Storing context pointer into freed space (-4(%old_ebp))
 		"call getNewContext\n"			// eax = getNewContext() 
-		"movl %eax, (%ebx)\n" 		// -4(%old_ebp) = eax
+		"movl %eax, (%ebx)\n" 			// -4(%old_ebp) = eax 
 		"movl %eax, %ebx\n"			// %ebx = &context
-		"movl %edx, 4(%ebx)\n"		//context->oldEbpLocVar = edx
+		"movl %edx, 4(%ebx)\n"			//context->oldEbpLocVar = edx
 		// Extracting wrappedFunction_addr from stack and placing it to context
 		"popl 20(%ebx)\n"			// context->functionPointer = wrappedFunction_addr 
 		// Changing return address to wrapper_return_point 
-		"movl 4(%ebp), %ecx\n"		// Storing real return_addres
+		"movl 4(%ebp), %ecx\n"			// Storing real return_addres
 		"movl %ecx, (%ebx) \n"
 //		"movl %ebp, %ecx\n"                	// Storing ebp for this frame 
 //                "movl %ecx, 4(%ebx) \n"		// needed for backshofting stackframe after $wrapper_return_point$
@@ -301,23 +307,27 @@ void wrapper(){
 		 
 	);
 
-	puts("WRAPPED!");
+	elfperf_log("WRAPPED!");
 
 	// memorize old return addres and change it for returning in wrapper()
 	// stack variables will be damaged, so i use global variable
 
 	asm volatile(	// Calculate address of WrappingContext
-		"movl (%ebp), %ecx\n"			//  old_ebp -> %ecx
-		"movl -4(%ecx), %ebx\n"		//  %ebx = context address 
+		"movl (%ebp), %ecx\n"			//  %ecx = old_ebp
+		"movl -4(%ecx), %ebx\n"			//  %ebx = context address 
 		// WrapperContext struct layout
 		/*
 			(%ebx)		realReturnAddress 
 			4(%ebx)	oldEbpLocVar // -4(%old_ebp)
 			8(%ebx)	eax
+			12(%ebx) floatFunctionReturnValue
 			
 		*/
-		"pushl %ebx\n"				// start recodring function time using record_start_time	
-		"call record_start_time\n"
+		// Start time recording
+		// record_start_time(%ebx)
+		"pushl %ebx\n"				// pushing parameter(context address into stack)	
+		"call record_start_time\n"		// 
+		"add $4, %esp\n"			// cleaning stack
 		// Going to wrapped function (context->functionPointer)
 		"jmp 20(%ebx)\n"	
 		//: : :
@@ -333,10 +343,12 @@ void wrapper(){
 		// Calculating address of WrappingContext and memorizing return values
 		"wrapper_return_point: movl -4(%ebp), %ebx\n"	// %ebx = & context  
 		"movl %eax, 8(%ebx)\n"			// context->eax = %eax
-		"fstpl 0xc(%ebx)\n"				// context->doubleResult = ST0
-		"pushl %ebx\n"
-		"call record_end_time\n"
-		//	: : :				// push &context
+		"fstpl 0xc(%ebx)\n"			// context->doubleResult = ST0
+		// Measuring time of function execution
+		"pushl %ebx\n"				// pushing context address to stack
+		"call record_end_time\n"		// calling record_end_time
+		"add $4, %esp\n"			// cleaning allocated memory
+		//	: : :				
 	);
 
 
@@ -345,7 +357,7 @@ void wrapper(){
 		"movl %eax, %1 ": "=r"(context_), "=r"(context_->eax):"r"(context_->oldEbp):"%eax");*/
 
 	// Change this call to any needed routine
-	puts("back to wrapper!");	
+	elfperf_log("back to wrapper!");	
 
 	// restoring real return_address and eax and return
 /*	asm(	"movl %1, %eax\n"
@@ -375,11 +387,11 @@ void *
 __dlsym (void *handle, const char *name DL_CALLER_DECL)
 {
   static int initialized = 0;
-  char *names[]={"hello","hello","hello"};
+  char *names[]={"hello"};
 
   if(0==initialized)
   {
-	initWrapperRedirectors(names,3,wrapper);
+	initWrapperRedirectors(names, 1 ,wrapper);
 	initialized = 1;
   }
 
