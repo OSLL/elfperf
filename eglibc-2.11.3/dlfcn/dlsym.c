@@ -300,14 +300,12 @@ void wrapper(){
 		// Changing return address to wrapper_return_point 
 		"movl 4(%ebp), %ecx\n"			// Storing real return_addres
 		"movl %ecx, (%ebx) \n"
-//		"movl %ebp, %ecx\n"                	// Storing ebp for this frame 
-//                "movl %ecx, 4(%ebx) \n"		// needed for backshofting stackframe after $wrapper_return_point$
 		"movl $wrapper_return_point, 4(%ebp)\n" // changing return address for $wrapper_return_point
 		//: : :		// (%ebx) = %eax
 		 
 	);
 
-	elfperf_log("WRAPPED!");
+	//elfperf_log("WRAPPED!");
 
 	// memorize old return addres and change it for returning in wrapper()
 	// stack variables will be damaged, so i use global variable
@@ -357,7 +355,7 @@ void wrapper(){
 		"movl %eax, %1 ": "=r"(context_), "=r"(context_->eax):"r"(context_->oldEbp):"%eax");*/
 
 	// Change this call to any needed routine
-	elfperf_log("back to wrapper!");	
+	//elfperf_log("back to wrapper!");	
 
 	// restoring real return_address and eax and return
 /*	asm(	"movl %1, %eax\n"
