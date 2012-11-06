@@ -32,8 +32,46 @@
 //### Begin ELFPERF
 //#############################################
 
-
 const int MAX_SLOTS = 3;
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+
+#define ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE "ELFPERF_PROFILE_FUNCTION"
+
+// Return list of function names separted by ":" passed from @env_name@ envoironment variable
+// storing number of them into @count@
+char** get_fn_list(const char* env_name, int* count)
+{
+    char* env_value = getenv(env_name);
+
+    if (env_value == NULL) {
+        *count = 0;
+        return NULL;
+    }
+
+    char** result = NULL;
+    int word_count = 0;
+
+    int i;
+    int k = 0;
+    for (i = 0; i < strlen(env_value); i++) {
+        char c = env_value[i + 1];
+        if (c == ':' || c == '\0') {
+            word_count++;
+            result = (char**)realloc(result, sizeof(*result) * word_count);
+            char* str = strndup(env_value + k, i - k + 1);
+            k = i+2;
+            result[word_count - 1] = str;
+        }
+    }
+
+    *count = word_count;
+    return result;
+}
+
 
 
 #include <limits.h>    /* for PAGESIZE */
@@ -126,11 +164,7 @@ static char** s_names;
 static int s_count;
 static void * s_wrapperAddress;
 
-
-/*void * getFunctionPointer(unsigned int number){
-	if (number < s_count) return s_functionPointers[number];
-	return NULL;
-}*/
+#define REDIRECTOR_SIZE 16
 
 // Create set of machine instructions
 /*
@@ -190,8 +224,15 @@ static unsigned int getFunctionIndex(char* name){
 		if ( !strcmp(name, s_names[i]) )
 			return i;
 	}
-	return 0;
+	return s_count+1;
 }
+
+// Return true, if function name exists into s_names array
+static bool isFunctionInFunctionList(char* name){
+	return getFunctionIndex(name) != s_count+1;
+}
+
+
 
 // Return redirector address for function with name @name@
 void* getRedirectorAddressForName(char* name){
@@ -201,6 +242,14 @@ void* getRedirectorAddressForName(char* name){
 	return s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
 }
 
+// Return true, if redirector for function with name = @name@ is already registered 
+static bool isFunctionRedirectorRegistered(char* name){
+	// Gets first byte of redirector
+	// check is it 0xba or not
+	// 0xba - code for the first byte of each registerred redirector
+	void * redirectorAddress = getRedirectorAddressForName(name);
+	return (*((unsigned int *)redirectorAddress) != 0);
+}
 
 // Add new function to the list of redirectors
 void addNewFunction(char* name, void * functionAddr){
@@ -222,9 +271,15 @@ void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr)
         	perror("Couldn't mprotect");
         	exit(errno);
     	}
+	// Set 0 into each redirector first byte
+	// This will allow to determine wich one is inited
+	unsigned int i = 0;
+	for (i = 0 ; i < sizeof(void*)*REDIRECTOR_WORDS_SIZE*count ; i+=REDIRECTOR_SIZE){
+		*((unsigned int*)(s_redirectors+i)) = 0;
+	}
 
 	// Dealing with function names
-	unsigned int sumSize = 0, i = 0;
+	unsigned int sumSize = 0;
 	s_count = count;
 	for (i = 0 ; i < count ; i++){
 		sumSize += strlen(names[i])+1;
@@ -385,11 +440,14 @@ void *
 __dlsym (void *handle, const char *name DL_CALLER_DECL)
 {
   static int initialized = 0;
-  char *names[]={"hello"};
 
   if(0==initialized)
   {
-	initWrapperRedirectors(names, 1 ,wrapper);
+  	char **names;
+  	int count;
+
+	names=get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+	initWrapperRedirectors(names, count, wrapper);
 	initialized = 1;
   }
 
@@ -419,9 +477,14 @@ __dlsym (void *handle, const char *name DL_CALLER_DECL)
 
   elfperf_log(name);
 
-  addNewFunction(name,result);
+  // Check if function is in list for profiling
+  if (isFunctionInFunctionList(name) ){
+    // Add redirector for function into s_redirectors
+    if ( !isFunctionRedirectorRegistered(name)) addNewFunction(name,result);
 
-  return getRedirectorAddressForName(name);
+    return getRedirectorAddressForName(name);
+  }
+  return result;
 }
 # ifdef SHARED
 strong_alias (__dlsym, dlsym)

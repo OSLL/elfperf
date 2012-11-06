@@ -10,7 +10,7 @@ int i=0;
 	void *f = dlsym(p,"hello");
 	printf("f=%p\n",f);
 
-for(i=0;i<1000;i++)
+for(i=0;i<5;i++)
 {
    char buf[100];
    sprintf(buf, "caller %d", i );	
