@@ -92,6 +92,7 @@ static struct WrappingContext contextArray[CONTEXT_PREALLOCATED_NUMBER];
 static int freeContextNumber = 0 ;
 //static pthread_mutex_t freeContextNumberLock = PTHREAD_MUTEX_INITIALIZER;
 
+
 #include <sched.h>
 #include <time.h>
 #include <stdint.h>
@@ -235,10 +236,11 @@ void record_end_time(void * context)
 #endif
 
     struct timespec duration = diff(cont->startTime, cont->endTime);
-    printf("Function(%p) duration = %ds %dns\n", cont->functionPointer, duration.tv_sec, duration.tv_nsec);
-
+    printf("Function(%p) duration = %ds %dns\n", cont->functionPointer-3, duration.tv_sec, duration.tv_nsec);
+    
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
+    printFunctionStatistics();
 }
 
 // Get statistic for given function
@@ -261,26 +263,40 @@ struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
         exit(1);
     }
 
-    s_statsCount += 1;
+    // atomicly increment s_statsCount
+  //  unsigned int number = __sync_fetch_and_add(&s_statsCount, 1);
+
     struct FunctionStatistic* stat = (struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
 
     stat->realFuncAddr = funcAddr;
     stat->totalCallsNumber = 1;
     stat->totalDiffTime.tv_sec = diffTime.tv_sec;
     stat->totalDiffTime.tv_nsec = diffTime.tv_nsec;
-    s_stats[s_statsCount - 1] = stat;
+    s_stats[__sync_fetch_and_add(&s_statsCount, 1)] = stat;
 
     return stat;
 }
+
+// Spinlock for updateStat
+int updateStatSpinlock=0;
 
 void updateStat(void* funcAddr, struct timespec diffTime)
 {
     struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
     if (stat != NULL) {
+
+	
+	__sync_fetch_and_add(&(stat->totalCallsNumber), 1);
+
+	// Try to lock 
+	while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
+
         __time_t result_sec = stat->totalDiffTime.tv_sec;
         long int result_nsec = stat->totalDiffTime.tv_nsec;
 
-        result_sec += diffTime.tv_sec;
+	// Atomicly add diffTime.tv_sec to stat->totalDiffTime.tv_sec
+	//__sync_fetch_and_add(&(stat->totalDiffTime.tv_sec), diffTime.tv_sec);
+	result_sec += diffTime.tv_sec;
         result_nsec += diffTime.tv_nsec;
 
         if (result_nsec >= 1000000000) {
@@ -288,9 +304,13 @@ void updateStat(void* funcAddr, struct timespec diffTime)
             result_nsec = result_nsec - 1000000000;
         }
 
-	stat->totalCallsNumber++;
-        stat->totalDiffTime.tv_sec = result_sec;
-        stat->totalDiffTime.tv_nsec = (long int)result_nsec;
+	// Atomicly increment the stat->totalCallsNumber
+	stat->totalDiffTime.tv_nsec += result_nsec;
+	stat->totalDiffTime.tv_sec += result_sec;
+
+	// Unlock
+	updateStatSpinlock = 0;
+
     } else {
         addNewStat(funcAddr, diffTime);
     }
@@ -317,8 +337,12 @@ struct WrappingContext * getNewContext(){
 
 	//pthread_mutex_lock(&freeContextNumberLock);
 	// Check freeContextNumber
-	if (freeContextNumber < CONTEXT_PREALLOCATED_NUMBER){
-		context = &contextArray[freeContextNumber++];
+	// atomicly increment the freeContextNumber
+	// check if it is greater than CONTEXT_PREALLOCATED_NUMBER
+ 
+	unsigned int number = __sync_fetch_and_add(&freeContextNumber, 1);
+	if (number < CONTEXT_PREALLOCATED_NUMBER){
+		context = &contextArray[number];
 	} else {
 		printf("Context buffer is full!!! Exiting\n");
 		exit(1);
