@@ -101,6 +101,7 @@ static int freeContextNumber = 0 ;
 struct FunctionStatistic
 {
     struct timespec totalDiffTime; // Total time of function calls
+    unsigned long long int totalCallsNumber; 
     void* realFuncAddr;            // Address of the function
 };
 
@@ -264,6 +265,7 @@ struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
     struct FunctionStatistic* stat = (struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
 
     stat->realFuncAddr = funcAddr;
+    stat->totalCallsNumber = 1;
     stat->totalDiffTime.tv_sec = diffTime.tv_sec;
     stat->totalDiffTime.tv_nsec = diffTime.tv_nsec;
     s_stats[s_statsCount - 1] = stat;
@@ -286,12 +288,26 @@ void updateStat(void* funcAddr, struct timespec diffTime)
             result_nsec = result_nsec - 1000000000;
         }
 
+	stat->totalCallsNumber++;
         stat->totalDiffTime.tv_sec = result_sec;
         stat->totalDiffTime.tv_nsec = (long int)result_nsec;
     } else {
         addNewStat(funcAddr, diffTime);
     }
 }
+
+// Print stats for all functions
+void printFunctionStatistics(){
+	int i; 
+	for (i = 0; i < s_statsCount; i++){
+		struct FunctionStatistic *stat = s_stats[i];
+		printf("Statistic for function = %p, total time = %ds %dns, number of calls = %lld\n", 
+			stat->realFuncAddr, stat->totalDiffTime.tv_sec,
+			stat->totalDiffTime.tv_nsec, 
+			stat->totalCallsNumber);
+	}
+}
+
 
 // This function returns address of currently free context
 struct WrappingContext * getNewContext(){

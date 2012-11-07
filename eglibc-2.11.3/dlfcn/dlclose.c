@@ -40,6 +40,7 @@ dlclose_doit (void *handle)
 int
 __dlclose (void *handle)
 {
+printFunctionStatistics();
 # ifdef SHARED
   if (__builtin_expect (_dlfcn_hook != NULL, 0))
     return _dlfcn_hook->dlclose (handle);
