@@ -96,7 +96,7 @@ static int freeContextNumber = 0 ;
 #include <time.h>
 #include <stdint.h>
 
-#define TIMING_WITH_HPET
+#define TIMING_WITH_RDTSC
 
 struct FunctionStatistic
 {
@@ -105,7 +105,8 @@ struct FunctionStatistic
 };
 
 #define NANOSECONDS_IN_SEC 1000000000
-static double s_ticksPerNanoSec;
+// Calculated ticksPerNanoSec = 10^-9 * F(Hz) = F(GHz)
+static double s_ticksPerNanoSec = 2;
 
 // Assembly code for reading number of CPU ticks from TSC (Time Stamp Counter) register
 static inline uint64_t rdtsc()
@@ -132,7 +133,7 @@ struct timespec diffTimeSpec(struct timespec start, struct timespec end)
 // This function is used for calibrating the number of CPU cycles per nanosecond
 void calibrateTicks()
 {
-    struct timespec start_ts, end_ts;
+    /*struct timespec start_ts, end_ts;
     uint64_t start = 0, end = 0;
     clock_gettime(CLOCK_MONOTONIC, &start_ts);
     start = rdtsc();
@@ -142,7 +143,7 @@ void calibrateTicks()
     clock_gettime(CLOCK_MONOTONIC, &end_ts);
     struct timespec elapsed_ts = diffTimeSpec(start_ts, end_ts);
     uint64_t elapsed_nsec = elapsed_ts.tv_sec * 1000000000LL + elapsed_ts.tv_nsec;
-    s_ticksPerNanoSec = (double)(end - start) / (double)elapsed_nsec;
+    s_ticksPerNanoSec = (double)(end - start) / (double)elapsed_nsec;*/
 }
 
 // This function should be called before using rdtsc(),
@@ -167,15 +168,15 @@ void getTimeSpec(struct timespec *ts, uint64_t nsecs)
 void getRdtscTime(struct timespec* ts)
 {
     getTimeSpec(ts, rdtsc()/s_ticksPerNanoSec);
-}
+} 
 
-struct timespec get_accurate_time()
+/*struct timespec get_accurate_time()
 {
     struct timespec time;
     clockid_t clockType = CLOCK_MONOTONIC;
     clock_gettime(clockType, &time);
     return time;
-}
+}*/
 
 struct timespec diff(struct timespec start, struct timespec end)
 {
