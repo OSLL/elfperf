@@ -5,7 +5,7 @@ bin:
 
 
 cdecl_wrapper:
-	gcc -m32 -o cdecl_wrapp cdecl_wrapper_test.c cdecl_wrapper.c
+	gcc -m32 -g3 -O0 -o cdecl_wrapp cdecl_wrapper_test.c cdecl_wrapper.c
 
 clean:
 	rm -f sample cdecl_wrapp

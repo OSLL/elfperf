@@ -35,7 +35,9 @@ void setFunctionPointer(void * pointer){
 // We doesnt touch stack and variables, just print something and jmp to wrapped function.
 void wrapper(){
 	puts("WRAPPED!");	
-
+	
+//	asm(	"addl $0x18, %%esp\n" 
+//		"jmp %0" : :"r"(functionPointer+3) : );
 	asm("jmp %0" : :"r"(getFunctionJmpAddress()) : );
 }
 
