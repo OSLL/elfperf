@@ -55,13 +55,13 @@ int wrap(void* fn, int count, ...)
         //asm("pushl %0" : :"r"(i) : );
     }
 
-    asm("call %0" : :"r"(fn) : );
+    asm("call %0" : :"r"(fn));
 
     for (i = 0; i < count; i++) {
         asm("popl %edx");
     }
 
     int result;
-    asm("movl %%eax, %0" :"=r"(result): : );
+    asm("movl %%eax, %0" :"=r"(result));
     return result;
 }

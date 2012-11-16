@@ -152,7 +152,7 @@ int main(){
 	// Calling wrapper instead of testFunction7
 	printf("\ncalling wrapper for testFunction7, hidden_param = %x\n", &workaroundVar);
 //	asm("pushl %0" : :"m"(workaroundVar):);
-	asm("pushl %0" : :"r"(&workaroundVar):);
+	asm("pushl %0" : :"r"(&workaroundVar));
 	wrapper();
 	// Getting function return value pointer to
 	asm("movl %%eax, %0" :"=m"(structResult));

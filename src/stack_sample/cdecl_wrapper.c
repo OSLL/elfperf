@@ -48,7 +48,7 @@ void wrapper(){
 		"movl $wrapper_return_point, 4(%%ebp)":"=r"(realReturnAddr));	
 
 	// going to wrapped function
-	asm("jmp %0" : :"r"(getFunctionJmpAddress()) : );
+	asm("jmp %0" : :"r"(getFunctionJmpAddress()));
 
 	// returning back into wrapper()
 	// memorizing eax value
