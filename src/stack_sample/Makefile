@@ -11,4 +11,4 @@ asm_shift_test:
 	gcc -m32 -g3 -O0 -o asm_shift_test test_shift.c
 
 clean:
-	rm -f sample cdecl_wrapp
+	rm -f sample cdecl_wrapp asm_shift_test

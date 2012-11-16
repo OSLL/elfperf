@@ -16,7 +16,7 @@ int main(){
 
 	int end = testArray+(SIZE);
 	int start = testArray+1;
-	printf("%d %d\n", start, end);
+	printf("\nChecking shift below\n");
 	// Move array for one word (4bytes) below ( high adresses -> low addreses)
 	asm volatile(	"movl %0, %%ecx\n" 		// End of the moved area - bottom addr
 		"movl %1, %%ebx\n"			// Start of the moved area - highest addr
@@ -29,10 +29,25 @@ int main(){
 		 
 	);
 
+	// Check 
+	// Valid sequence is 1 2 3 4 5 6 7 8 9 9
+        for (i=0; i<SIZE-1; i++){
+                if ( testArray[i]!= i+1 ) {
+			printf("Test of shift_below failed\n");
+			break;
+		}
+        }
+	if (testArray[ SIZE-1] !=  SIZE-1){
+		printf("Test of shift_below failed\n");
+	}
+	////////
+
 	for (i=0; i<SIZE; i++){
                 printf("%d ", testArray[i]);            
         }
-	printf("\n");
+	printf("\nChecking shift_above\n");
+
+
 
 	end = testArray+SIZE-1;
 	start = testArray;
@@ -50,5 +65,21 @@ int main(){
 	for (i=0; i<SIZE; i++){
                 printf("%d ", testArray[i]);            
         }
+
+	// Check 
+	// Valid sequence is 1 1 2 3 4 5 6 7 8 9
+        for (i=1; i<SIZE; i++){
+                if ( testArray[i]!= i  ) {
+			printf("Test of shift_above failed");
+			break;
+		}
+        }
+	if (testArray[0] != 1){
+		printf("Test of shift_above failed\n");
+	}
+	///////
+	
+
+
 	return 0;
 }
