@@ -10,8 +10,8 @@
 struct WrappingContext{
 	// real return address
 	void * realReturnAddr; 	// 4bytes
-	// ebp register value -  border of moved area
-	void * ebp; 		// 4bytes
+	// content of -4(%%old_ebp)
+	void * oldEbpLocVar; 		// 4bytes
 	// function return value
 	void * eax;		// 4bytes
 	double doubleResult;	// 8bytes 
@@ -62,23 +62,16 @@ void setFunctionPointer(void * pointer){
 // We doesnt touch stack and variables, just print something and jmp to wrapped function.
 void wrapper(){
 	/*
-		Stack shifted to the bottom for one word(4 bytes) \/
-		Shifting stareted from the end to start
-		Address of fried space is a -4(old_ebp) 
 	*/
-	asm volatile(	"movl %%ebp, %%ecx\n"		// End of moved area 	ecx = ebp	
+	asm volatile(				
 		"movl (%%ebp), %%ebx\n"			// Start of the moved area 
 		"subl $0x4, %%ebx\n"			// ebx = old_ebp - 4
-		"shift_act: movl (%%ecx), %%eax\n" 	// Loop:
-			"movl %%eax, -4(%%ecx)\n" 		// -4(%%ecx) = (%%ecx)
-			"addl $0x4, %%ecx\n" 			// %%ecx += 4
-			"cmp %%ecx, %%ebx\n" 			// if (%%ecx == %%ebx)
-			"jne shift_act\n"			// goto loop_act
-		"subl $0x4, %%esp\n"			// %%esp -= 4
-		"subl $0x4, %%ebp\n"			// %%ebp -= 4
+		"movl (%%ebx), %%edx\n"			// edx = -4(%%old_ebp) = (%%ebp)
 		// Storing context pointer into freed space
 		"call getNewContext\n"			// eax = getNewContext() 
-		"movl %%eax, (%%ebx)\n" : : :		// (%%ebx) = %%eax
+		"movl %%eax, (%%ebx)\n" 
+		"movl %%edx, 4(%%eax)\n"		//context->oldEbpLocVar = edx
+		: : :		// (%%ebx) = %%eax
 		 
 	);
 
@@ -93,7 +86,7 @@ void wrapper(){
 		// WrapperContext struct layout
 		/*
 			(%ebx)		realReturnAddress 
-			4(%%ebx)	ebp
+			4(%%ebx)	oldEbpLocVar // -4(%%old_ebp)
 			8(%%ebx)	eax
 			
 		*/
@@ -113,23 +106,10 @@ void wrapper(){
 	// 	memorizing eax value
 	asm volatile(
 		// Calculating address of WrappingContext and memorizing return values
-		"wrapper_return_point: movl -4(%%ebp), %%ebx\n"	// 
+		"wrapper_return_point: movl -4(%%ebp), %%ebx\n"	// %%ebx = & context  
 		"movl %%eax, 8(%%ebx)\n"			// context->eax = %%eax
 		"fstpl 0xc(%%ebx)\n"				// context->doubleResult = ST0
-		// Context pointer saving to %%edx
-		"movl %%ebx, %%edx\n"				// %%edx =  &context
-		// Backshift of stack frame
-		"movl 4(%%ebx), %%ecx\n" 			// %%ebx = ebp
-		"movl %%ecx, %%ebx\n"
-		"movl %%ebp, %%ecx\n"				// %%ecx = old_ebp-4
-		"subl $0x4, %%ecx\n"
-		"backshift_act: movl (%%ecx), %%eax\n"
-			"movl %%eax, 4(%%ecx)\n"
-			"subl $0x4, %%ecx\n"
-			"cmp %%ecx, %%ebx\n"
-			"jng backshift_act\n"
-		"addl 0x4, %%esp\n"				// esp += 4
-		"pushl %%edx\n"	: : :				// push &context
+			: : :				// push &context
 	);
 
 
@@ -148,10 +128,12 @@ void wrapper(){
 	// restoring value of eax and st0
 	// returning to caller
 	asm volatile(
-		"popl %%ebx\n"			// get context address
-		"movl 0xa(%%ebx), %%eax\n"	// restoring eax
+		"movl -4(%%ebp), %%ebx\n"	// get context address
+		"movl 4(%%ebx), %%edx\n"	// restoring -4(old_ebp)
+		"movl %%edx, -4(%%ebp)\n"	// edx = context->oldEbpLocVar ; -4(%%ebp) = edx
+		"movl 8(%%ebx), %%eax\n"	// restoring eax
 		"fldl 0xc(%%ebx)\n"		// restoring ST0
-		"pushl (%%ebx)\n"			// returning to caller
+		"pushl (%%ebx)\n"		// returning to caller - pushing return address to stack
 		"ret\n" : : :
 	);
 
