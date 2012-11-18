@@ -1,10 +1,13 @@
 #include <stdio.h>
+#include <pthread.h>
 
 /**
  * This file contains of wrapper for cdecl functions
  * it use getFunctionPointer() function for obtainting address of a wrapped function
  *  
  */
+// Number of contexts will be allocated
+#define CONTEXT_PREALLOCATED_NUMBER 1000
 
 // FIXME doesnt support recoursive calls  because of global stack variables usage
 struct WrappingContext{
@@ -22,12 +25,35 @@ struct WrappingContext{
 static void * functionPointer = NULL;
 
 // Workaround - storing context in global variable
-static struct WrappingContext context;
+//static struct WrappingContext context;
 
-// This function returns address 
+// preallocated array of contexts 
+static struct WrappingContext contextArray[CONTEXT_PREALLOCATED_NUMBER];
+// number of first not used context
+static int freeContextNumber = 0 ;
+static pthread_mutex_t freeContextNumberLock;
+
+
+// Function for wrapper intialization - mutexes initializations, allocations
+void initWrapper(){
+	pthread_mutex_init(&freeContextNumberLock, NULL);
+}
+
+// This function returns address of currently free context
 static struct WrappingContext * getNewContext(){
-	// STUB 
-	return &context;
+	
+	struct WrappingContext * context;
+	pthread_mutex_lock(&freeContextNumberLock);
+	// Check freeContextNumber
+	if (freeContextNumber < CONTEXT_PREALLOCATED_NUMBER){
+		context = &contextArray[freeContextNumber++];
+	} else {
+		printf("Context buffer is full!!! Exiting\n");
+		exit(1);
+	}
+	
+	pthread_mutex_unlock(&freeContextNumberLock);
+	return context;
 }
 
 

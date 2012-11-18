@@ -76,6 +76,7 @@ int main(){
 	double doubleResult=0.;
 
 	struct testStruct * structResult=NULL;
+	initWrapper();	
 
 	// Workaround for test
 	// Each function which return object with size >8byte should have one hidden parameter
