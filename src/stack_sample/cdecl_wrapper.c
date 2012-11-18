@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include "cdecl_wrapper.h"
 #include "../perfcounters/time.h" 
+
 /**
  * This file contains of wrapper for cdecl functions
  * it use getFunctionPointer() function for obtainting address of a wrapped function
@@ -11,6 +12,7 @@
 // Global function pointer - stub for us, until we will get better way to 
 // understand which function should be wrapped
 static void * functionPointer = NULL;
+static pthread_mutex_t functionPointerLock = PTHREAD_MUTEX_INITIALIZER;
 
 // Workaround - storing context in global variable
 //static struct WrappingContext context;
@@ -19,18 +21,15 @@ static void * functionPointer = NULL;
 static struct WrappingContext contextArray[CONTEXT_PREALLOCATED_NUMBER];
 // number of first not used context
 static int freeContextNumber = 0 ;
-static pthread_mutex_t freeContextNumberLock;
+static pthread_mutex_t freeContextNumberLock = PTHREAD_MUTEX_INITIALIZER;
 
-
-// Function for wrapper intialization - mutexes initializations, allocations
-void initWrapper(){
-	pthread_mutex_init(&freeContextNumberLock, NULL);
-}
 
 // This function returns address of currently free context
 static struct WrappingContext * getNewContext(){
 	
 	struct WrappingContext * context;
+	
+
 	pthread_mutex_lock(&freeContextNumberLock);
 	// Check freeContextNumber
 	if (freeContextNumber < CONTEXT_PREALLOCATED_NUMBER){
@@ -62,12 +61,18 @@ static void * getFunctionJmpAddress(){
 
 	This code is changing stack (we dont want to) so we need to skip it.
 	*/
-	return functionPointer+3;
+	int ptr = functionPointer;
+	pthread_mutex_unlock(&functionPointerLock);
+	return ptr+3;
 }
 
 // Set an pointer to wrapped function
 void setFunctionPointer(void * pointer){
+
+	pthread_mutex_lock(&functionPointerLock);
+
 	functionPointer = pointer;
+
 }
 
 
@@ -83,8 +88,18 @@ void wrapper(){
 		"movl (%%ebx), %%edx\n"			// edx = -4(%%old_ebp) = (%%ebp)
 		// Storing context pointer into freed space
 		"call getNewContext\n"			// eax = getNewContext() 
-		"movl %%eax, (%%ebx)\n" 
-		"movl %%edx, 4(%%eax)\n"		//context->oldEbpLocVar = edx
+		"movl %%eax, (%%ebx)\n" 		// -4(%%old_ebp) = eax
+		"movl %%eax, %%ebx\n"			// %ebx = &context
+		"movl %%edx, 4(%%ebx)\n"		//context->oldEbpLocVar = edx
+		// Storing FunctionJmpAddress at context->functionPointer
+		"call getFunctionJmpAddress\n"
+		"movl %%eax, 20(%%ebx)\n"		// context->functionPointer = getFunctionJmpAddress() 
+		// Changing return address to wrapper_return_point 
+		"movl 4(%%ebp), %%ecx\n"		// Storing real return_addres
+		"movl %%ecx, (%%ebx) \n"
+//		"movl %%ebp, %%ecx\n"                	// Storing ebp for this frame 
+//                "movl %%ecx, 4(%%ebx) \n"		// needed for backshofting stackframe after $wrapper_return_point$
+		"movl $wrapper_return_point, 4(%%ebp)\n" // changing return address for $wrapper_return_point
 		: : :		// (%%ebx) = %%eax
 		 
 	);
@@ -104,20 +119,16 @@ void wrapper(){
 			8(%%ebx)	eax
 			
 		*/
-		"movl 4(%%ebp), %%ecx\n"		// Storing real return_addres
-		"movl %%ecx, (%%ebx) \n"
-		"movl %%ebp, %%ecx\n"                	// Storing ebp for this frame 
-                "movl %%ecx, 4(%%ebx) \n"		// needed for backshofting stackframe after $wrapper_return_point$
-		// changing return address for $wrapper_return_point
-		"movl $wrapper_return_point, 4(%%ebp)\n" 
 		"pushl %%ebx\n"				// start recodring function time using record_start_time	
 		"call record_start_time\n"
+		// Going to wrapped function (context->functionPointer)
+		"jmp 20(%%ebx)\n"	
 		: : :
 	);	
 
 
 	// going to wrapped function
-	asm("jmp %0" : :"r"(getFunctionJmpAddress()));
+//	asm("jmp %0" : :"r"(getFunctionJmpAddress()));
 
 	// returning back into wrapper()
 	// 	memorizing eax value

@@ -13,11 +13,11 @@ struct WrappingContext{
 	// function return value
 	void * eax;			// 4bytes
 	double doubleResult;		// 8bytes 
+	void * functionPointer;		// 4bytes
 	struct timespec startTime; 	// function starting time
 	struct timespec endTime;	// function ending time
 };
 
-void initWrapper();
 
 void setFunctionPointer(void * pointer);
 
