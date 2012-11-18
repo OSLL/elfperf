@@ -57,3 +57,13 @@ struct timespec diff(struct timespec start, struct timespec end)
     }
     return res;
 }
+
+void record_start_time(struct WrappingContext * context){
+	context->startTime = get_accurate_time();
+}
+
+void record_end_time(struct WrappingContext * context){
+	context->endTime = get_accurate_time();
+	struct timespec duration = diff(context->startTime, context->endTime);
+	printf("Function duration = %ds %dns\n", duration.tv_sec, duration.tv_nsec);	
+}

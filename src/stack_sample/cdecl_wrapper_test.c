@@ -1,5 +1,5 @@
 #include <stdio.h>
-
+#include "cdecl_wrapper.h"
 
 // This tests check how wrapper work
 // For all test functions wrapper is setted up for their pointers,

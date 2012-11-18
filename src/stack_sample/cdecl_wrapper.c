@@ -1,24 +1,12 @@
 #include <stdio.h>
 #include <pthread.h>
-
+#include "cdecl_wrapper.h"
+#include "../perfcounters/time.h" 
 /**
  * This file contains of wrapper for cdecl functions
  * it use getFunctionPointer() function for obtainting address of a wrapped function
  *  
  */
-// Number of contexts will be allocated
-#define CONTEXT_PREALLOCATED_NUMBER 1000
-
-// FIXME doesnt support recoursive calls  because of global stack variables usage
-struct WrappingContext{
-	// real return address
-	void * realReturnAddr; 	// 4bytes
-	// content of -4(%%old_ebp)
-	void * oldEbpLocVar; 		// 4bytes
-	// function return value
-	void * eax;		// 4bytes
-	double doubleResult;	// 8bytes 
-};
 
 // Global function pointer - stub for us, until we will get better way to 
 // understand which function should be wrapped
@@ -62,12 +50,12 @@ static struct WrappingContext * getNewContext(){
 //static void * realReturnAddr = NULL;
 //static void * eax = NULL;
 
-void * getFunctionPointer(){
+static void * getFunctionPointer(){
 	return functionPointer;
 }
 
 // Return actual address for jmp
-void * getFunctionJmpAddress(){
+static void * getFunctionJmpAddress(){
 	/* Adding 3 to addr because each cdecl function contains such code at the start:
 	55 	push   %ebp
 	89 e5	mov    %esp,%ebp
@@ -121,7 +109,10 @@ void wrapper(){
 		"movl %%ebp, %%ecx\n"                	// Storing ebp for this frame 
                 "movl %%ecx, 4(%%ebx) \n"		// needed for backshofting stackframe after $wrapper_return_point$
 		// changing return address for $wrapper_return_point
-		"movl $wrapper_return_point, 4(%%ebp)\n" : : :
+		"movl $wrapper_return_point, 4(%%ebp)\n" 
+		"pushl %%ebx\n"				// start recodring function time using record_start_time	
+		"call record_start_time\n"
+		: : :
 	);	
 
 
@@ -135,6 +126,8 @@ void wrapper(){
 		"wrapper_return_point: movl -4(%%ebp), %%ebx\n"	// %%ebx = & context  
 		"movl %%eax, 8(%%ebx)\n"			// context->eax = %%eax
 		"fstpl 0xc(%%ebx)\n"				// context->doubleResult = ST0
+		"pushl %%ebx\n"
+		"call record_end_time\n"
 			: : :				// push &context
 	);
 

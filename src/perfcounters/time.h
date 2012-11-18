@@ -40,8 +40,15 @@
 
 #include <stdlib.h>
 #include <time.h>
+#include "cdecl_wrapper.h"
 
 struct timespec get_accurate_time();
 struct timespec diff(struct timespec start, struct timespec end);
+
+// Record function start time into context->startTime
+void record_start_time(struct WrappingContext * context);
+// Record function end time into context->endTime and
+// print the duration of function execution
+void record_end_time(struct WrappingContext * context);
 
 #endif // ELFPERF_TIME_H
