@@ -88,9 +88,9 @@ int main(){
 	unsigned int testInt = 0xabcd1234;
 	unsigned char * testCharArray[4];
 	// valid reordering is 0x3412cdab
-	reorderBytes(testInt,testCharArray);
-	printf("Reordering test %x, valid result = 3412cdab, result gotten = %x\n", 
-		testInt, (unsigned int )testCharArray[0]); 
+//	reorderBytes(testInt,testCharArray);
+//	printf("Reordering test %x, valid result = 3412cdab, result gotten = %x\n", 
+//		testInt, (unsigned int )testCharArray[0]); 
 
 	initWrapperRedirectors(testFuncNames, 7);
 	unsigned int i = 0;

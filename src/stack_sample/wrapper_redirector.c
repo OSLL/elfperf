@@ -26,13 +26,6 @@ static char** s_names;
 static int s_count;
 
 
-void reorderBytes(unsigned int number, unsigned char* destination){
-	destination[0] = (number >> 24) & 0xFF;
-	destination[1] = (number >> 16) & 0xFF;
-	destination[2] = (number >>  8) & 0xFF;
-	destination[3] =  number        & 0xFF;
-	printf ("Reversed %x -> %x\n", number, (unsigned int)destination[0]);
-}
 
 // Create set of machine instructions
 /*
@@ -46,12 +39,19 @@ void writeRedirectionCode(void * destination, void * functionAddr, void * wrappe
 	// ret = 0xc3
 	redirector[0]=0xb8;
 	// reversing byte order
-	reorderBytes(number, redirector+1);
+	redirector[4] = (number >> 24) & 0xFF;
+	redirector[3] = (number >> 16) & 0xFF;
+	redirector[2] = (number >>  8) & 0xFF;
+	redirector[1] =  number        & 0xFF;
+	//memcpy(redirector+1, &number, 4);
 	
 	// mov $wrapper, %ebx
 	unsigned int wrapper = (unsigned int)wrapperAddr;
 	redirector[5]=0xbb;
-	reorderBytes(wrapper, redirector+6);
+	redirector[9] = (wrapper >> 24) & 0xFF;
+	redirector[8] = (wrapper >> 16) & 0xFF;
+	redirector[7] = (wrapper >>  8) & 0xFF;
+	redirector[6] =  wrapper        & 0xFF;
 
 	// jmp *(%ebx)
 	redirector[10] = 0x67;
@@ -63,13 +63,13 @@ void writeRedirectionCode(void * destination, void * functionAddr, void * wrappe
 	redirector[14] = 0x90;
 	redirector[15] = 0x90;
 
-	memcpy(destination, (void*)redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
+	memcpy(destination, redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
 	printf("Written gateaway to %x, size %d\n", (unsigned int)destination, REDIRECTOR_WORDS_SIZE*sizeof(void*));
 	unsigned int i = 0;
 	for (i = 0; i<16 ; i++){
 		printf("%02hhx ", redirector[i]);
 	}
-	printf("\nwrapper = %x , number = %x\n", wrapper, number);
+	printf("\nwrapper = %x , number = %x, %08x %08x\n", wrapper, number, redirector[1], redirector[6]);
 }
 
 
@@ -88,7 +88,8 @@ static unsigned int getFunctionIndex(char* name){
 // Return redirector address for function with name @name@
 void* getRedirectorAddressForName(char* name){
 	int functionIndex = getFunctionIndex(name);
-	return &s_redirectors[REDIRECTOR_WORDS_SIZE*functionIndex];
+	void * result = s_redirectors +  functionIndex;
+	return s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
 }
 
 
