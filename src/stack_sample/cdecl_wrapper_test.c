@@ -77,6 +77,14 @@ int main(){
 
 	struct testStruct * structResult=NULL;
 
+	// Testing ByteReordering
+	unsigned int testInt = 0xabcd1234;
+	unsigned char * testCharArray[4];
+	// valid reordering is 0x3412cdab
+	reorderBytes(testInt,testCharArray);
+	printf("Reordering test %x, valid result = 3412cdab, result gotten = %x\n", 
+		testInt, (unsigned int )testCharArray[0]); 
+
 	// Workaround for test
 	// Each function which return object with size >8byte should have one hidden parameter
 	// address  where memory is allocated

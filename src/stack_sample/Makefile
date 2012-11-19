@@ -5,7 +5,7 @@ bin:
 
 
 cdecl_wrapper:
-	gcc -m32 -g3 -O0 -o cdecl_wrapp cdecl_wrapper_test.c cdecl_wrapper.c cdecl_wrapper.h ../perfcounters/time.h ../perfcounters/time.c -I. -lrt
+	gcc -m32 -g3 -O0 -o cdecl_wrapp cdecl_wrapper_test.c cdecl_wrapper.c cdecl_wrapper.h ../perfcounters/time.h ../perfcounters/time.c wrapper_redirector.c -I. -lrt
 
 asm_shift_test:
 	gcc -m32 -g3 -O0 -o asm_shift_test test_shift.c
