@@ -84,13 +84,6 @@ int main(){
 
 	struct testStruct * structResult=NULL;
 
-	// Testing ByteReordering
-	unsigned int testInt = 0xabcd1234;
-	unsigned char * testCharArray[4];
-	// valid reordering is 0x3412cdab
-//	reorderBytes(testInt,testCharArray);
-//	printf("Reordering test %x, valid result = 3412cdab, result gotten = %x\n", 
-//		testInt, (unsigned int )testCharArray[0]); 
 
 	initWrapperRedirectors(testFuncNames, 7, (void *)wrapper);
 	unsigned int i = 0;
@@ -121,9 +114,6 @@ int main(){
 	//setFunctionPointer(testFunction2);
 	printf("\ncalling wrapper for testFunction2\n");
 	void (*func2)(int,int) = getRedirectorAddressForName("testFunction2");
-	// Pushing arguments
-	//asm("pushl $1");
-	//asm("pushl $2");
 	// Calling wrapper instead of testFunction2
 	(*func2)(1,2);
 	//wrapper();
@@ -137,64 +127,51 @@ int main(){
 	printf("\ncalling wrapper for testFunction3\n");
 	func *func3 = getRedirectorAddressForName("testFunction3");
 	(*func3)();
-	//wrapper();
 	// Getting function return value from eax
 	asm("movl %%eax, %0" :"=r"(intResult) );
 	printf("wrapper called for testFunction3, result = %d, expected_result = %d\n", intResult, FUNCTION_3_RESULT );
 
 
 	////////////////////////////////////////////
-	//setFunctionPointer(testFunction4);
 	printf("\ncalling wrapper for testFunction4\n");
 	int (*func4)(int, int) = getRedirectorAddressForName("testFunction4");
 	// Pushing arguments
-	//asm("pushl $1");
-	//asm("pushl $2");
 	// Calling wrapper instead of testFunction4
 	(*func4)(1, 2);
-	//wrapper();	
 	// Getting function return value from eax
 	asm("movl %%eax, %0" :"=r"(intResult) );
 	printf("wrapper called for testFunction4, result = %d, expected_result = %d\n", intResult, FUNCTION_4_RESULT );
 
 
 	/////////////////////////////////////////////
-	//setFunctionPointer(testFunction5);
 	// Calling wrapper instead of testFunction5
 	printf("\ncalling wrapper for testFunction5\n");
 	func *func5 = getRedirectorAddressForName("testFunction5");
+	// Calling wrapper
 	(*func5)();
-	//wrapper();
 	// Getting function return value from eax
 	asm("mov %%eax, %0" :"=m"(floatResult));
 	printf("wrapper called for testFunction5, result = %f, expected_result = %f\n", floatResult, FUNCTION_5_RESULT );
 
 
 	/////////////////////////////////////////////
-	//setFunctionPointer(testFunction6);
 	// Calling wrapper instead of testFunction6
 	printf("\ncalling wrapper for testFunction6\n");
 	func *func6 = getRedirectorAddressForName("testFunction6");
+	// Calling wrapper
 	(*func6)();
-	//wrapper();
 	// Getting function return value from st0
 	asm("fstpl %0" :"=m"(doubleResult));
 	printf("wrapper called for testFunction6, result = %f, expected_result = %f\n", doubleResult, FUNCTION_6_RESULT );
 
 	/////////////////////////////////////////////
-	//setFunctionPointer(testFunction7);
 	// Calling wrapper instead of testFunction7
 	printf("\ncalling wrapper for testFunction7, hidden_param = %x\n", &workaroundVar);
 	struct testStruct (*func7)() = getRedirectorAddressForName("testFunction7");
-//	asm("pushl %0" : :"m"(workaroundVar):);
-	//asm(	"pushl %0\n" 
-	//	"call %1\n": :"r"(&workaroundVar),"m"(func7));
+	// calling wrapper and storing return value
 	workaroundVar =  ((*func7)());
 	structResult = &workaroundVar;
-//	(*func7)();
-	//wrapper();
-	// Getting function return value pointer to
-	//asm("movl %%eax, %0" :"=m"(structResult));
+
 	printf("wrapper called for testFunction7, result = (%d,%d,%d), expected_result = (%d,%d,%d)\n", structResult->a, 
 		structResult->b, structResult->c, STRUCT_A_VALUE, STRUCT_B_VALUE, STRUCT_C_VALUE);
 

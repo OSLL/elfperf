@@ -35,8 +35,9 @@ static void * s_wrapperAddress;
 
 // Create set of machine instructions
 /*
-        pushl <function_addr+3>
-        jmp *<wrapper_addr>
+        mov fcnPtr+3, %eax
+	mov wrapper_addr, %ebx
+        jmp *(%ebx)
 */
 // and write them to @destination@
 void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
