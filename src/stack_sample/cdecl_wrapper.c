@@ -83,6 +83,8 @@ void wrapper(){
 	/*
 	*/
 	asm volatile(				
+		// by the start eax contains address of the wrapped function
+		"pushl %%eax\n"			// %ecx = %eax = wrappedFunction = getFunctionJmpAddress
 		"movl (%%ebp), %%ebx\n"			// Start of the moved area 
 		"subl $0x4, %%ebx\n"			// ebx = old_ebp - 4
 		"movl (%%ebx), %%edx\n"			// edx = -4(%%old_ebp) = (%%ebp)
@@ -92,8 +94,8 @@ void wrapper(){
 		"movl %%eax, %%ebx\n"			// %ebx = &context
 		"movl %%edx, 4(%%ebx)\n"		//context->oldEbpLocVar = edx
 		// Storing FunctionJmpAddress at context->functionPointer
-		"call getFunctionJmpAddress\n"
-		"movl %%eax, 20(%%ebx)\n"		// context->functionPointer = getFunctionJmpAddress() 
+		//"call getFunctionJmpAddress\n"
+		"popl 20(%%ebx)\n"		// context->functionPointer = getFunctionJmpAddress() 
 		// Changing return address to wrapper_return_point 
 		"movl 4(%%ebp), %%ecx\n"		// Storing real return_addres
 		"movl %%ecx, (%%ebx) \n"
