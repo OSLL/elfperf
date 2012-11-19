@@ -33,8 +33,8 @@ static int s_count;
         jmp *<wrapper_addr>
 */
 // and write them to @destination@
-void writeRedirectionCode(void * destination, void * functionAddr, void * wrapperAddr, unsigned int number){
-	 unsigned char* redirector[REDIRECTOR_WORDS_SIZE*sizeof(void*)];
+void writeRedirectionCode(unsigned char * redirector, void * functionAddr, void * wrapperAddr, unsigned int number){
+//	 unsigned char* redirector[REDIRECTOR_WORDS_SIZE*sizeof(void*)];
 	// mov $number, %%eax
 	// ret = 0xc3
 	redirector[0]=0xb8;
@@ -63,13 +63,13 @@ void writeRedirectionCode(void * destination, void * functionAddr, void * wrappe
 	redirector[14] = 0x90;
 	redirector[15] = 0x90;
 
-	memcpy(destination, redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
-	printf("Written gateaway to %x, size %d\n", (unsigned int)destination, REDIRECTOR_WORDS_SIZE*sizeof(void*));
+//	memcpy(destination, redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
+	//printf("Written gateaway to %x, size %d\n", redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
 	unsigned int i = 0;
-	for (i = 0; i<16 ; i++){
+	for (i = 0; i<REDIRECTOR_WORDS_SIZE*sizeof(void*) ; i++){
 		printf("%02hhx ", redirector[i]);
 	}
-	printf("\nwrapper = %x , number = %x, %08x %08x\n", wrapper, number, redirector[1], redirector[6]);
+	printf("\nwrapper = %x , number = %x,\n", wrapper, number);
 }
 
 

@@ -104,8 +104,9 @@ int main(){
 	struct testStruct workaroundVar ;//= (struct testStruct*)malloc(sizeof(struct testStruct));
 
 	printf("Type sizes: sizeof(int) = %d, sizepof(double) = %d, sizeof(float) = %d," 
-			"sizeof(longlong) = %d, sizeof(testStruct) = %d, sizeof(void*) = %d \n", 
-			sizeof(int), sizeof(double), sizeof(float), sizeof(long long), sizeof(struct testStruct), sizeof(void*));
+			"sizeof(longlong) = %d, sizeof(testStruct) = %d, sizeof(void*) = %d, sizeof(unsigned int) = %d\n", 
+			sizeof(int), sizeof(double), sizeof(float), sizeof(long long), sizeof(struct testStruct), sizeof(void*),
+			sizeof(unsigned int));
 
 	// Setting up wrapper for testFunction1		
 	setFunctionPointer(testFunction1);
