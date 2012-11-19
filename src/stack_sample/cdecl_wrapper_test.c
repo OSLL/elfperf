@@ -19,6 +19,7 @@
 #define STRUCT_B_VALUE 2
 #define STRUCT_C_VALUE 3
 
+typedef void (func)();
 
 // Test structure, with size > 8byte
 struct testStruct{
@@ -70,6 +71,12 @@ struct testStruct testFunction7(){
 }
 
 
+char * testFuncNames [7]= {"testFunction1","testFunction2","testFunction3","testFunction4",
+	"testFunction5","testFunction6","testFunction7"}; 
+
+void * funcPointers[7] = {testFunction1, testFunction2, testFunction3, testFunction4, 
+	testFunction5, testFunction6,testFunction7};
+
 int main(){
 	int intResult = 0;
 	float floatResult=0.;
@@ -85,6 +92,12 @@ int main(){
 	printf("Reordering test %x, valid result = 3412cdab, result gotten = %x\n", 
 		testInt, (unsigned int )testCharArray[0]); 
 
+	initWrapperRedirectors(testFuncNames, 7);
+	unsigned int i = 0;
+	for (i = 0; i < 7 ; i++){
+		addNewFunction(testFuncNames[i], funcPointers[i], (void *)wrapper);
+	}
+
 	// Workaround for test
 	// Each function which return object with size >8byte should have one hidden parameter
 	// address  where memory is allocated
@@ -98,7 +111,9 @@ int main(){
 	setFunctionPointer(testFunction1);
 	// Calling wrapper instead of testFunction1
 	printf("calling wrapper for testFunction1\n");
-	wrapper();
+	func *func1 = getRedirectorAddressForName("testFunction1");
+	(*func1)();
+//	wrapper();
 	printf("wrapper called for testFunction1\n");
 
 	/////////////////////////////////////////////

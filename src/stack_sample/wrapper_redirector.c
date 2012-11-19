@@ -31,6 +31,7 @@ void reorderBytes(unsigned int number, unsigned char* destination){
 	destination[1] = (number >> 16) & 0xFF;
 	destination[2] = (number >>  8) & 0xFF;
 	destination[3] =  number        & 0xFF;
+	printf ("Reversed %x -> %x\n", number, (unsigned int)destination[0]);
 }
 
 // Create set of machine instructions
@@ -42,22 +43,15 @@ void reorderBytes(unsigned int number, unsigned char* destination){
 void writeRedirectionCode(void * destination, void * functionAddr, void * wrapperAddr, unsigned int number){
 	 unsigned char* redirector[REDIRECTOR_WORDS_SIZE*sizeof(void*)];
 	// mov $number, %%eax
+	// ret = 0xc3
 	redirector[0]=0xb8;
 	// reversing byte order
 	reorderBytes(number, redirector+1);
-/*	redirector[1] = (number >> 24) & 0xFF;
-	redirector[2] = (number >> 16) & 0xFF;
-	redirector[3] = (number >>  8) & 0xFF;
-	redirector[4] =  number        & 0xFF;*/
 	
 	// mov $wrapper, %ebx
 	unsigned int wrapper = (unsigned int)wrapperAddr;
 	redirector[5]=0xbb;
 	reorderBytes(wrapper, redirector+6);
-/*	redirector[6] = (number >> 24) & 0xFF;
-        redirector[7] = (number >> 16) & 0xFF;
-        redirector[8] = (number >>  8) & 0xFF;
-        redirector[9] =  number        & 0xFF;*/
 
 	// jmp *(%ebx)
 	redirector[10] = 0x67;
@@ -70,7 +64,12 @@ void writeRedirectionCode(void * destination, void * functionAddr, void * wrappe
 	redirector[15] = 0x90;
 
 	memcpy(destination, (void*)redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
-
+	printf("Written gateaway to %x, size %d\n", (unsigned int)destination, REDIRECTOR_WORDS_SIZE*sizeof(void*));
+	unsigned int i = 0;
+	for (i = 0; i<16 ; i++){
+		printf("%02hhx ", redirector[i]);
+	}
+	printf("\nwrapper = %x , number = %x\n", wrapper, number);
 }
 
 
@@ -78,10 +77,12 @@ void writeRedirectionCode(void * destination, void * functionAddr, void * wrappe
 static unsigned int getFunctionIndex(char* name){
 	unsigned int i;
 	for (i=0; i<s_count; i++){
+
+//		printf("%s, %s\n", s_names[i], name);
 		if ( !strcmp(name, s_names[i]) )
 			return i;
 	}
-	return -1;
+	return 0;
 }
 
 // Return redirector address for function with name @name@
@@ -99,10 +100,12 @@ void addNewFunction(char* name, void * functionAddr, void * wrapperAddr){
 // Initialize s_redirectors and s_names
 void initWrapperRedirectors(char** names,unsigned int count){
 	// Memory allocation
-	s_redirectors = (void *)malloc(sizeof(void*) * REDIRECTOR_WORDS_SIZE + PAGESIZE-1);
+	s_redirectors = (void *)malloc(sizeof(void*)*REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
 	// Aligning by page border
+	printf("Before aligment %x, %x\n", s_redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
 	s_redirectors = (void *)(((int) s_redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
-
+	printf("After aligment %x\n", s_redirectors);
+	
 	if (mprotect(s_redirectors, 1024, PROT_READ | PROT_WRITE | PROT_EXEC)) {
         	perror("Couldn't mprotect");
         	exit(errno);
@@ -115,10 +118,11 @@ void initWrapperRedirectors(char** names,unsigned int count){
 		sumSize += strlen(names[i])+1;
 	}
 
-	s_names = (char**) malloc(sizeof(char*)*sumSize);
+	s_names = (char**) malloc(sizeof(char*)*count);
 	for (i = 0 ; i < count ; i++){
 		s_names[i] = (char*)malloc(sizeof(char)*(strlen(names[i])+1));
 		memcpy(s_names[i], names[i], sizeof(char)*(strlen(names[i])+1));
+		printf("%s, %s\n",s_names[i], names[i]);
 	}
 
 }
