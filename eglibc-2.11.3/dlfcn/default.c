@@ -14,6 +14,8 @@ main (int argc, char *argv[])
   void *p;
   int result = 0;
   Dl_info info;
+
+  printf("ELFPERF patch\n");
   
   dladdr(main, &info);
   if (info.dli_fname == NULL)

@@ -1002,7 +1002,7 @@ dl_main (const ElfW(Phdr) *phdr,
 	 Grant the user some education.  */
       if (_dl_argc < 2)
 	_dl_fatal_printf ("\
-Usage: ld.so [OPTION]... EXECUTABLE-FILE [ARGS-FOR-PROGRAM...]\n\
+[ELFPERF] Usage: ld.so [OPTION]... EXECUTABLE-FILE [ARGS-FOR-PROGRAM...]\n\
 You have invoked `ld.so', the helper program for shared library executables.\n\
 This program usually lives in the file `/lib/ld.so', and special directives\n\
 in executable files using ELF shared libraries tell the system's program\n\
