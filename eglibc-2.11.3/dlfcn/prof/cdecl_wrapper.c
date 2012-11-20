@@ -1,43 +1,7 @@
-/* Look up a symbol in a shared object loaded by `dlopen'.
-   Copyright (C) 1995-2000, 2004 Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, write to the Free
-   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307 USA.  */
-
-#include <dlfcn.h>
-#include <stddef.h>
 #include <stdio.h>
-
-#include <ldsodefs.h>
-
-#include "prof/cdecl_wrapper.h"
-#include "prof/time.h" 
-//#include "prof/wrappers.h"
-
-//#############################################
-//### Begin ELFPERF
-//#############################################
-
-static void elfperf_log(const char *msg) 
-{
-	static int c=0;
-	printf("[ELFPERF:%d]%s\n",c++,msg);
-}
-
-
+#include <pthread.h>
+#include "cdecl_wrapper.h"
+#include "../perfcounters/time.h" 
 
 /**
  * This file contains of wrapper for cdecl functions
@@ -105,7 +69,7 @@ static void * getFunctionJmpAddress(){
 // Set an pointer to wrapped function
 void setFunctionPointer(void * pointer){
 
-	//kkv:pthread_mutex_lock(&functionPointerLock);
+	pthread_mutex_lock(&functionPointerLock);
 
 	functionPointer = pointer;
 
@@ -116,7 +80,6 @@ void setFunctionPointer(void * pointer){
 // Wrapper code. 
 // We doesnt touch stack and variables, just print something and jmp to wrapped function.
 void wrapper(){
-#if 0
 	/*
 	*/
 	asm volatile(				
@@ -135,9 +98,9 @@ void wrapper(){
 		"movl 4(%%ebp), %%ecx\n"		// Storing real return_addres
 		"movl %%ecx, (%%ebx) \n"
 //		"movl %%ebp, %%ecx\n"                	// Storing ebp for this frame 
-//              "movl %%ecx, 4(%%ebx) \n"		// needed for backshofting stackframe after $wrapper_return_point$
+//                "movl %%ecx, 4(%%ebx) \n"		// needed for backshofting stackframe after $wrapper_return_point$
 		"movl $wrapper_return_point, 4(%%ebp)\n" // changing return address for $wrapper_return_point
-	//kkv:&&&	: : :		// (%%ebx) = %%eax
+		: : :		// (%%ebx) = %%eax
 		 
 	);
 
@@ -160,7 +123,7 @@ void wrapper(){
 		"call record_start_time\n"
 		// Going to wrapped function (context->functionPointer)
 		"jmp 20(%%ebx)\n"	
-		//kkv: : :
+		: : :
 	);	
 
 
@@ -176,7 +139,7 @@ void wrapper(){
 		"fstpl 0xc(%%ebx)\n"				// context->doubleResult = ST0
 		"pushl %%ebx\n"
 		"call record_end_time\n"
-	//kkv		: : :				// push &context
+			: : :				// push &context
 	);
 
 
@@ -201,100 +164,8 @@ void wrapper(){
 		"movl 8(%%ebx), %%eax\n"	// restoring eax
 		"fldl 0xc(%%ebx)\n"		// restoring ST0
 		"pushl (%%ebx)\n"		// returning to caller - pushing return address to stack
-		"ret\n"// : : :
+		"ret\n" : : :
 	);
-#endif //0
+
 }
 
-int wrap(void* fn, int count, ...)
-{
-    printf("Wrapper: Calling of function with %d params.\n", count);
-
-    int i;
-    asm("movl %ebp, %edx");
-    asm("addl $16, %edx");
-    for (i = 0; i < count; i++) {
-        asm("addl $4, %edx");
-    }
-
-    for (i = 0; i < count; i++) {
-        asm("pushl -4(%edx)");
-        asm("subl $4, %edx");
-        //asm("pushl %0" : :"r"(i) : );
-    }
-
-    asm("call %0" : :"r"(fn));
-
-    for (i = 0; i < count; i++) {
-        asm("popl %edx");
-    }
-
-    int result;
-    asm("movl %%eax, %0" :"=r"(result));
-
-    elfperf_log("wrap");
-
-    return result;
-}
-//#################################################
-
-#if !defined SHARED && defined IS_IN_libdl
-
-
-void *
-dlsym (void *handle, const char *name)
-{
-  elfperf_log("dlsym");
-  return __dlsym (handle, name, RETURN_ADDRESS (0));
-}
-
-#else
-
-struct dlsym_args
-{
-  /* The arguments to dlsym_doit.  */
-  void *handle;
-  const char *name;
-  void *who;
-
-  /* The return value of dlsym_doit.  */
-  void *sym;
-};
-
-static void
-dlsym_doit (void *a)
-{
-  struct dlsym_args *args = (struct dlsym_args *) a;
-
-  args->sym = _dl_sym (args->handle, args->name, args->who);
-}
-
-
-void *
-__dlsym (void *handle, const char *name DL_CALLER_DECL)
-{
-# ifdef SHARED
-	elfperf_log("__dlsym ehter");
-  if (__builtin_expect (_dlfcn_hook != NULL, 0))
-    return _dlfcn_hook->dlsym (handle, name, DL_CALLER);
-# endif
-
-  struct dlsym_args args;
-  args.who = DL_CALLER;
-  args.handle = handle;
-  args.name = name;
-
-  /* Protect against concurrent loads and unloads.  */
-  __rtld_lock_lock_recursive (GL(dl_load_lock));
-
-  void *result = (_dlerror_run (dlsym_doit, &args) ? NULL : args.sym);
-
-  __rtld_lock_unlock_recursive (GL(dl_load_lock));
-
-  elfperf_log("returning result");
-  return wrap(result,0);
-}
-# ifdef SHARED
-strong_alias (__dlsym, dlsym)
-# endif
-#endif
