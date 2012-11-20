@@ -402,16 +402,22 @@ dlsym_doit (void *a)
 }
 
 
+void some_func()
+{
+	elfperf_log("some function");
+}
+
 void *
 __dlsym (void *handle, const char *name DL_CALLER_DECL)
 {
   static int initialized = 0;
-  char *names[]={"a","hello","c"};
+  char *names[]={"hello","hello","hello"};
 
   if(0==initialized)
   {
 	initWrapperRedirectors(names,3);
 	initialized = 1;
+	addNewFunction("hello",some_func,wrapper);
   }
 
 
@@ -436,7 +442,7 @@ __dlsym (void *handle, const char *name DL_CALLER_DECL)
 
   elfperf_log("returning result");
 
-  addNewFunction(name,result,(void*)wrapper);
+
 
   elfperf_log(name);
 
