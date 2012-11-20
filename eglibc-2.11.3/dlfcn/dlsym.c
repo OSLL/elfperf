@@ -20,6 +20,7 @@
 #include <dlfcn.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <time.h>
 
 #include <ldsodefs.h>
 
@@ -40,6 +41,75 @@ const int MAX_SLOTS = 3;
 #define PAGESIZE 4096
 #endif
 #define REDIRECTOR_WORDS_SIZE 4
+
+static void * functionPointer = NULL;
+//static pthread_mutex_t functionPointerLock = PTHREAD_MUTEX_INITIALIZER;
+
+// Workaround - storing context in global variable
+//static struct WrappingContext context;
+
+// preallocated array of contexts 
+static struct WrappingContext contextArray[CONTEXT_PREALLOCATED_NUMBER];
+// number of first not used context
+static int freeContextNumber = 0 ;
+//static pthread_mutex_t freeContextNumberLock = PTHREAD_MUTEX_INITIALIZER;
+
+struct timespec get_accurate_time()
+{
+    struct timespec time;
+    clockid_t clockType = CLOCK_MONOTONIC;
+//    clock_gettime(clockType, &time);
+    return time;
+}
+
+struct timespec diff(struct timespec start, struct timespec end)
+{
+    struct timespec res;
+    if ((end.tv_nsec - start.tv_nsec) < 0) {
+        res.tv_sec = end.tv_sec - start.tv_sec - 1;
+        res.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
+    } else {
+        res.tv_sec = end.tv_sec - start.tv_sec;
+        res.tv_nsec = end.tv_nsec - start.tv_nsec;
+    }
+    return res;
+}
+
+void record_start_time(void * context){
+	struct WrappingContext * cont = (struct WrappingContext *)context;
+	cont->startTime = get_accurate_time();
+}
+
+
+
+void record_end_time(void * context){
+	struct WrappingContext * cont = (struct WrappingContext *)context;
+	cont->endTime = get_accurate_time();
+	struct timespec duration = diff(cont->startTime, cont->endTime);
+	printf("Function duration = %ds %dns\n", duration.tv_sec, duration.tv_nsec);	
+}
+
+// This function returns address of currently free context
+struct WrappingContext * getNewContext(){
+	
+	struct WrappingContext * context;
+	
+
+	//pthread_mutex_lock(&freeContextNumberLock);
+	// Check freeContextNumber
+	if (freeContextNumber < CONTEXT_PREALLOCATED_NUMBER){
+		context = &contextArray[freeContextNumber++];
+	} else {
+		printf("Context buffer is full!!! Exiting\n");
+		exit(1);
+	}
+	
+	//pthread_mutex_unlock(&freeContextNumberLock);
+	return context;
+}
+
+
+
 
 static void elfperf_log(const char *msg) 
 {
@@ -206,30 +276,28 @@ dlsym_doit (void *a)
 // Wrapper code. 
 // We doesnt touch stack and variables, just print something and jmp to wrapped function.
 void wrapper(){
-elfperf_log("wrapper");
-#if 0
 	/*
 	*/
 	asm volatile(				
 		// by the start eax contains address of the wrapped function
-		"pushl %%eax\n"				//storing wrappedFunction_addr into stack
-		"movl (%%ebp), %%ebx\n"			// Start of the moved area 
-		"subl $0x4, %%ebx\n"			// ebx = old_ebp - 4
-		"movl (%%ebx), %%edx\n"			// edx = -4(%%old_ebp) = (%%ebp)
+		"pushl %eax\n"				//storing wrappedFunction_addr into stack
+		"movl (%ebp), %ebx\n"			// Start of the moved area 
+		"subl $0x4, %ebx\n"			// ebx = old_ebp - 4
+		"movl (%ebx), %edx\n"			// edx = -4(%old_ebp) = (%ebp)
 		// Storing context pointer into freed space
 		"call getNewContext\n"			// eax = getNewContext() 
-		"movl %%eax, (%%ebx)\n" 		// -4(%%old_ebp) = eax
-		"movl %%eax, %%ebx\n"			// %ebx = &context
-		"movl %%edx, 4(%%ebx)\n"		//context->oldEbpLocVar = edx
+		"movl %eax, (%ebx)\n" 		// -4(%old_ebp) = eax
+		"movl %eax, %ebx\n"			// %ebx = &context
+		"movl %edx, 4(%ebx)\n"		//context->oldEbpLocVar = edx
 		// Extracting wrappedFunction_addr from stack and placing it to context
-		"popl 20(%%ebx)\n"			// context->functionPointer = wrappedFunction_addr 
+		"popl 20(%ebx)\n"			// context->functionPointer = wrappedFunction_addr 
 		// Changing return address to wrapper_return_point 
-		"movl 4(%%ebp), %%ecx\n"		// Storing real return_addres
-		"movl %%ecx, (%%ebx) \n"
-//		"movl %%ebp, %%ecx\n"                	// Storing ebp for this frame 
-//                "movl %%ecx, 4(%%ebx) \n"		// needed for backshofting stackframe after $wrapper_return_point$
-		"movl $wrapper_return_point, 4(%%ebp)\n" // changing return address for $wrapper_return_point
-//		: : :		// (%%ebx) = %%eax
+		"movl 4(%ebp), %ecx\n"		// Storing real return_addres
+		"movl %ecx, (%ebx) \n"
+//		"movl %ebp, %ecx\n"                	// Storing ebp for this frame 
+//                "movl %ecx, 4(%ebx) \n"		// needed for backshofting stackframe after $wrapper_return_point$
+		"movl $wrapper_return_point, 4(%ebp)\n" // changing return address for $wrapper_return_point
+		//: : :		// (%ebx) = %eax
 		 
 	);
 
@@ -239,20 +307,20 @@ elfperf_log("wrapper");
 	// stack variables will be damaged, so i use global variable
 
 	asm volatile(	// Calculate address of WrappingContext
-		"movl (%%ebp), %%ecx\n"			//  old_ebp -> %%ecx
-		"movl -4(%%ecx), %%ebx\n"		//  %%ebx = context address 
+		"movl (%ebp), %ecx\n"			//  old_ebp -> %ecx
+		"movl -4(%ecx), %ebx\n"		//  %ebx = context address 
 		// WrapperContext struct layout
 		/*
 			(%ebx)		realReturnAddress 
-			4(%%ebx)	oldEbpLocVar // -4(%%old_ebp)
-			8(%%ebx)	eax
+			4(%ebx)	oldEbpLocVar // -4(%old_ebp)
+			8(%ebx)	eax
 			
 		*/
-		"pushl %%ebx\n"				// start recodring function time using record_start_time	
+		"pushl %ebx\n"				// start recodring function time using record_start_time	
 		"call record_start_time\n"
 		// Going to wrapped function (context->functionPointer)
-		"jmp 20(%%ebx)\n"	
-//		: : :
+		"jmp 20(%ebx)\n"	
+		//: : :
 	);	
 
 
@@ -263,36 +331,36 @@ elfperf_log("wrapper");
 	// 	memorizing eax value
 	asm volatile(
 		// Calculating address of WrappingContext and memorizing return values
-		"wrapper_return_point: movl -4(%%ebp), %%ebx\n"	// %%ebx = & context  
-		"movl %%eax, 8(%%ebx)\n"			// context->eax = %%eax
-		"fstpl 0xc(%%ebx)\n"				// context->doubleResult = ST0
-		"pushl %%ebx\n"
+		"wrapper_return_point: movl -4(%ebp), %ebx\n"	// %ebx = & context  
+		"movl %eax, 8(%ebx)\n"			// context->eax = %eax
+		"fstpl 0xc(%ebx)\n"				// context->doubleResult = ST0
+		"pushl %ebx\n"
 		"call record_end_time\n"
-//			: : :				// push &context
+		//	: : :				// push &context
 	);
 
 
-/*	asm(	"wrapper_return_point: movl 0(%%ebp), %0\n"
-		"movl %2, 0(%%ebp)\n"
-		"movl %%eax, %1 ": "=r"(context_), "=r"(context_->eax):"r"(context_->oldEbp):"%eax");*/
+/*	asm(	"wrapper_return_point: movl 0(%ebp), %0\n"
+		"movl %2, 0(%ebp)\n"
+		"movl %eax, %1 ": "=r"(context_), "=r"(context_->eax):"r"(context_->oldEbp):"%eax");*/
 
 	// Change this call to any needed routine
 	puts("back to wrapper!");	
 
 	// restoring real return_address and eax and return
-/*	asm(	"movl %1, %%eax\n"
+/*	asm(	"movl %1, %eax\n"
 		"jmp %0" : :"r"(context_->realReturnAddr), "r"(context_->eax) : "%eax");*/
 
 	// Getting context address 
 	// restoring value of eax and st0
 	// returning to caller
 	asm volatile(
-		"movl -4(%%ebp), %%ebx\n"	// get context address
-		"movl 4(%%ebx), %%edx\n"	// restoring -4(old_ebp)
-		"movl %%edx, -4(%%ebp)\n"	// edx = context->oldEbpLocVar ; -4(%%ebp) = edx
-		"movl 8(%%ebx), %%eax\n"	// restoring eax
-		"fldl 0xc(%%ebx)\n"		// restoring ST0
-		"pushl (%%ebx)\n"		// returning to caller - pushing return address to stack
+		"movl -4(%ebp), %ebx\n"	// get context address
+		"movl 4(%ebx), %edx\n"	// restoring -4(old_ebp)
+		"movl %edx, -4(%ebp)\n"	// edx = context->oldEbpLocVar ; -4(%ebp) = edx
+		"movl 8(%ebx), %eax\n"	// restoring eax
+		"fldl 0xc(%ebx)\n"		// restoring ST0
+		"pushl (%ebx)\n"		// returning to caller - pushing return address to stack
 		"ret\n"// : : :
 	);
 
@@ -313,7 +381,6 @@ __dlsym (void *handle, const char *name DL_CALLER_DECL)
   {
 	initWrapperRedirectors(names,3,wrapper);
 	initialized = 1;
-	addNewFunction("hello",some_func);
   }
 
 
@@ -341,6 +408,8 @@ __dlsym (void *handle, const char *name DL_CALLER_DECL)
 
 
   elfperf_log(name);
+
+  addNewFunction(name,result);
 
   return getRedirectorAddressForName(name);
 }
