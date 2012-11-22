@@ -2,10 +2,10 @@
 #define _CDECL_WRAPPER_H_
 #include <time.h>
 // Number of contexts will be allocated
-#define CONTEXT_PREALLOCATED_NUMBER 1000
+#define CONTEXT_PREALLOCATED_NUMBER 100000
 
 // FIXME doesnt support recoursive calls  because of global stack variables usage
-struct WrappingContext{
+struct WrappingContext {
 	// real return address
 	void * realReturnAddr; 		// 4bytes
 	// content of -4(%%old_ebp)

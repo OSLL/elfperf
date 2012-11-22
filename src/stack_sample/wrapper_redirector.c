@@ -1,6 +1,45 @@
+/*
+ * Copyright © 2012 OSLL osll@osll.spb.ru
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * 3. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior written
+ *    permission.
+ *
+ * The advertising clause requiring mention in adverts must never be included.
+ */
+/*! ---------------------------------------------------------------
+ * \file wrapper_redirector.h
+ * \brief Implementation of functions for array-of-redirectors generation
+ *
+ * PROJ: OSLL/elfperf
+ * ---------------------------------------------------------------- */
+
+#include "wrapper_redirector.h"
 #include "cdecl_wrapper.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <errno.h>
 #include <sys/mman.h>
 
@@ -26,7 +65,6 @@ static char** s_names;
 //static void * s_functionPointers;
 static int s_count;
 static void * s_wrapperAddress;
-
 
 /*void * getFunctionPointer(unsigned int number){
 	if (number < s_count) return s_functionPointers[number];
@@ -55,7 +93,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
 	
 	// mov $wrapper, %ebx
 	//wrapperAddress = wrapperAddr;
-	unsigned int wrapper = &s_wrapperAddress;
+    unsigned int wrapper = (unsigned int)&s_wrapperAddress;
 	redirector[5]=0xbb;
 	redirector[9] = (wrapper >> 24) & 0xFF;
 	redirector[8] = (wrapper >> 16) & 0xFF;
@@ -74,58 +112,70 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
 
 //	memcpy(destination, redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
 	//printf("Written gateaway to %x, size %d\n", redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
-	unsigned int i = 0;
-	for (i = 0; i<REDIRECTOR_WORDS_SIZE*sizeof(void*) ; i++){
+    /*unsigned int i = 0;
+    for (i = 0; i<REDIRECTOR_WORDS_SIZE*sizeof(void*) ; i++){
 		printf("%02hhx ", redirector[i]);
-	}
-	printf("\nfcn_ptr = %x, destination = %x\n", fcnPtr, redirector);
+    }*/
+    //printf("\nfcn_ptr = %x, destination = %x\n", fcnPtr, redirector);
 }
 
 
 // Return index of function with name @name@
-static unsigned int getFunctionIndex(char* name){
+static unsigned int getFunctionIndex(char* name)
+{
 	unsigned int i;
 	for (i=0; i<s_count; i++){
 
 //		printf("%s, %s\n", s_names[i], name);
-		if ( !strcmp(name, s_names[i]) )
-			return i;
+        if ( !strcmp(name, s_names[i]) )
+            return i;
 	}
 	return 0;
 }
 
 // Return redirector address for function with name @name@
-void* getRedirectorAddressForName(char* name){
-	int functionIndex = getFunctionIndex(name);
-	void * result = s_redirectors +  functionIndex;
-	printf("getRedirectorAddressForName = %x\n", s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*));
-	return s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
+void* getRedirectorAddressForName(char* name)
+{
+    int functionIndex = getFunctionIndex(name);
+    void * result = s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
+    //printf("getRedirectorAddressForName = %x\n", (unsigned int)result);
+    return result;
 }
 
 
 // Add new function to the list of redirectors
-void addNewFunction(char* name, void * functionAddr){
-	writeRedirectionCode( getRedirectorAddressForName(name), functionAddr);
+void addNewFunction(char* name, void * functionAddr)
+{
+    writeRedirectionCode(getRedirectorAddressForName(name), functionAddr);
 }
 
 // Initialize s_redirectors and s_names
-void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr){
+void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr)
+{
 	s_wrapperAddress = wrapperAddr;
 
 	// Memory allocation
-	s_redirectors = (void *)malloc(sizeof(void*)*REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
+    size_t allocSize = sizeof(void*)*REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1;
+    s_redirectors = (void *)malloc(allocSize);
 	// Aligning by page border
-	printf("Before aligment %x, %x\n", s_redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
-	s_redirectors = (void *)(((int) s_redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
-	printf("After aligment %x\n", s_redirectors);
-	
-	if (mprotect(s_redirectors, 1024, PROT_READ | PROT_WRITE | PROT_EXEC)) {
-        	perror("Couldn't mprotect");
-        	exit(errno);
-    	}
+    printf("Before alignment %x, %d\n", (unsigned int)s_redirectors, allocSize);
+    s_redirectors = (void *)(((int) s_redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
+    printf("After alignment %x\n", (unsigned int)s_redirectors);
+
+
+    int pagesNum = allocSize/PAGESIZE + 1;
+    printf("Number of memory pages %d\n", pagesNum);
+
+    int i = 0;
+    for (i = 0; i < pagesNum; i++) {
+        if (mprotect(s_redirectors + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
+            perror("Couldn't mprotect");
+            exit(errno);
+        }
+    }
 
 	// Dealing with function names
-	unsigned int sumSize = 0, i = 0;
+    unsigned int sumSize = 0;
 	s_count = count;
 	for (i = 0 ; i < count ; i++){
 		sumSize += strlen(names[i])+1;
@@ -135,9 +185,7 @@ void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr)
 	for (i = 0 ; i < count ; i++){
 		s_names[i] = (char*)malloc(sizeof(char)*(strlen(names[i])+1));
 		memcpy(s_names[i], names[i], sizeof(char)*(strlen(names[i])+1));
-		printf("%s, %s\n",s_names[i], names[i]);
+        //printf("%s, %s\n",s_names[i], names[i]);
 	}
 
 }
-
-

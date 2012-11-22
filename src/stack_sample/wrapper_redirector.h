@@ -29,46 +29,25 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file time.c
- * \brief Implementation of functions for accurate time measuring
+ * \file wrapper_redirector.h
+ * \brief Declaration of functions for array-of-redirectors generation
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#include "time.h"
-
-struct timespec get_accurate_time()
-{
-    struct timespec time;
-    clockid_t clockType = CLOCK_MONOTONIC;
-    clock_gettime(clockType, &time);
-    return time;
-}
-
-struct timespec diff(struct timespec start, struct timespec end)
-{
-    struct timespec res;
-    if ((end.tv_nsec - start.tv_nsec) < 0) {
-        res.tv_sec = end.tv_sec - start.tv_sec - 1;
-        res.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
-    } else {
-        res.tv_sec = end.tv_sec - start.tv_sec;
-        res.tv_nsec = end.tv_nsec - start.tv_nsec;
-    }
-    return res;
-}
-
-void record_start_time(void * context)
-{
-    struct WrappingContext * cont = (struct WrappingContext *)context;
-    cont->startTime = get_accurate_time();
-}
+#ifndef _WRAPPER_REDIRECTOR_H_
+#define _WRAPPER_REDIRECTOR_H_
 
 
-void record_end_time(void * context)
-{
-    struct WrappingContext * cont = (struct WrappingContext *)context;
-    cont->endTime = get_accurate_time();
-    struct timespec duration = diff(cont->startTime, cont->endTime);
-    printf("Function duration = %ds %dns\n", duration.tv_sec, duration.tv_nsec);
-}
+void writeRedirectionCode(unsigned char * redirector, void * fcnPtr);
+
+static unsigned int getFunctionIndex(char* name);
+
+void* getRedirectorAddressForName(char* name);
+
+void addNewFunction(char* name, void * functionAddr);
+
+void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr);
+
+
+#endif // _WRAPPER_REDIRECTOR_H_

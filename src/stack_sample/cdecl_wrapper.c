@@ -25,10 +25,9 @@ static pthread_mutex_t freeContextNumberLock = PTHREAD_MUTEX_INITIALIZER;
 
 
 // This function returns address of currently free context
-static struct WrappingContext * getNewContext(){
-	
+static struct WrappingContext * getNewContext()
+{
 	struct WrappingContext * context;
-	
 
 	pthread_mutex_lock(&freeContextNumberLock);
 	// Check freeContextNumber
@@ -49,12 +48,14 @@ static struct WrappingContext * getNewContext(){
 //static void * realReturnAddr = NULL;
 //static void * eax = NULL;
 
-static void * getFunctionPointer(){
+static void * getFunctionPointer()
+{
 	return functionPointer;
 }
 
 // Return actual address for jmp
-static void * getFunctionJmpAddress(){
+static void * getFunctionJmpAddress()
+{
 	/* Adding 3 to addr because each cdecl function contains such code at the start:
 	55 	push   %ebp
 	89 e5	mov    %esp,%ebp
@@ -67,21 +68,17 @@ static void * getFunctionJmpAddress(){
 }
 
 // Set an pointer to wrapped function
-void setFunctionPointer(void * pointer){
-
+void setFunctionPointer(void * pointer)
+{
 	pthread_mutex_lock(&functionPointerLock);
 
 	functionPointer = pointer;
-
 }
-
-
 
 // Wrapper code. 
 // We doesnt touch stack and variables, just print something and jmp to wrapped function.
-void wrapper(){
-	/*
-	*/
+void wrapper()
+{
 	asm volatile(				
 		// by the start eax contains address of the wrapped function
 		"pushl %%eax\n"				//storing wrappedFunction_addr into stack
@@ -167,6 +164,5 @@ void wrapper(){
 		"pushl (%%ebx)\n"		// returning to caller - pushing return address to stack
 		"ret\n" : : :
 	);
-
 }
 
