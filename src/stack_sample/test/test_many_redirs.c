@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "cdecl_wrapper.h"
+#include "../cdecl_wrapper.h"
 
 // This tests check how wrapper work
 // For all test functions wrapper is setted up for their pointers,
@@ -10,7 +10,6 @@
 #define ARG1 2
 #define FUNCTION_3_RESULT 4
 #define FUNCTION_4_RESULT 3
-
 
 #define FUNCTION_5_RESULT 5.5
 #define FUNCTION_6_RESULT 6.6
@@ -91,7 +90,7 @@ int main(){
 		addNewFunction(testFuncNames[i], funcPointers[i]);
 	}
 
-	// Workaround for test
+    // Workaround for test
 	// Each function which return object with size >8byte should have one hidden parameter
 	// address  where memory is allocated
 	struct testStruct workaroundVar ;//= (struct testStruct*)malloc(sizeof(struct testStruct));

@@ -40,7 +40,7 @@
 
 #include <stdlib.h>
 #include <time.h>
-#include "cdecl_wrapper.h"
+#include "../stack_sample/cdecl_wrapper.h"
 
 struct timespec get_accurate_time();
 struct timespec diff(struct timespec start, struct timespec end);
