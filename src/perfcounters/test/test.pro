@@ -6,11 +6,13 @@ INCLUDEPATH += \
 SOURCES += \
     test.c \
     ../time.c \
-    ../stack_sample/cdecl_wrapper.c 
+    ../rdtsc_cntrs.c \
+    ../../stack_sample/cdecl_wrapper.c
 
 HEADERS += \
     ../time.h \
-    ../stack_sample/cdecl_wrapper.h 
+    ../rdtsc_cntrs.h \
+    ../../stack_sample/cdecl_wrapper.h
 
 CONFIG -= qt
 

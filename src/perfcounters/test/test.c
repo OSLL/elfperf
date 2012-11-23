@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "../time.h"
+#include "../rdtsc_cntrs.h"
 
 void loop(int n)
 {
@@ -45,45 +46,56 @@ void loop(int n)
     for (i = 0; i < n; i++);
 }
 
-void test_sleep()
+void test_loop_with_HPET()
 {
-    printf("Test of sleep function:\n");
-
-    struct timespec start, end;
-    int expected = 1;
-    start = get_accurate_time();
-    sleep(expected);
-    end = get_accurate_time();
-    int elapsed_sec = diff(start, end).tv_sec;
-    int elapsed_ns = diff(start, end).tv_nsec;
-    printf("1: expected: %ds; elapsed: %ds %dns\n", expected, elapsed_sec, elapsed_ns);
-    assert(expected == elapsed_sec);
-
-    expected = 2;
-    start = get_accurate_time();
-    sleep(expected);
-    end = get_accurate_time();
-    elapsed_sec = diff(start, end).tv_sec;
-    elapsed_ns = diff(start, end).tv_nsec;
-    printf("2: expected: %ds; elapsed: %ds %dns\n", expected, elapsed_sec, elapsed_ns);
-    assert(expected == elapsed_sec);
-
-    expected = 5;
-    start = get_accurate_time();
-    sleep(expected);
-    end = get_accurate_time();
-    elapsed_sec = diff(start, end).tv_sec;
-    elapsed_ns = diff(start, end).tv_nsec;
-    printf("3: expected: %ds; elapsed: %ds %dns\n", expected, elapsed_sec, elapsed_ns);
-    assert(expected == elapsed_sec);
-}
-
-void test_loop()
-{
-    printf("Test of loops:\n");
+    printf("Test of loops using HPET counters:\n");
 
     struct timespec start, end;
     int elapsed_sec, elapsed_ns;
+
+    printf("loop(100)\n");
+    start = get_accurate_time();
+    loop(100);
+    end = get_accurate_time();
+    elapsed_sec = diff(start, end).tv_sec;
+    elapsed_ns = diff(start, end).tv_nsec;
+    printf("\t1: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
+
+    start = get_accurate_time();
+    loop(100);
+    end = get_accurate_time();
+    elapsed_sec = diff(start, end).tv_sec;
+    elapsed_ns = diff(start, end).tv_nsec;
+    printf("\t2: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
+
+    start = get_accurate_time();
+    loop(100);
+    end = get_accurate_time();
+    elapsed_sec = diff(start, end).tv_sec;
+    elapsed_ns = diff(start, end).tv_nsec;
+    printf("\t3: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
+
+    printf("loop(1000)\n");
+    start = get_accurate_time();
+    loop(1000);
+    end = get_accurate_time();
+    elapsed_sec = diff(start, end).tv_sec;
+    elapsed_ns = diff(start, end).tv_nsec;
+    printf("\t1: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
+
+    start = get_accurate_time();
+    loop(1000);
+    end = get_accurate_time();
+    elapsed_sec = diff(start, end).tv_sec;
+    elapsed_ns = diff(start, end).tv_nsec;
+    printf("\t2: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
+
+    start = get_accurate_time();
+    loop(1000);
+    end = get_accurate_time();
+    elapsed_sec = diff(start, end).tv_sec;
+    elapsed_ns = diff(start, end).tv_nsec;
+    printf("\t3: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
 
     printf("loop(10000)\n");
     start = get_accurate_time();
@@ -106,47 +118,79 @@ void test_loop()
     elapsed_sec = diff(start, end).tv_sec;
     elapsed_ns = diff(start, end).tv_nsec;
     printf("\t3: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
+}
 
-    printf("loop(1000000)\n");
-    start = get_accurate_time();
-    loop(1000000);
-    end = get_accurate_time();
+void test_loop_with_RDTSC()
+{
+    printf("Test of loops using RDTSC counters:\n");
+
+    initRdtsc();
+
+    struct timespec start, end;
+    int elapsed_sec, elapsed_ns;
+
+    printf("loop(100)\n");
+    getRdtscTime(&start);
+    loop(100);
+    getRdtscTime(&end);
     elapsed_sec = diff(start, end).tv_sec;
     elapsed_ns = diff(start, end).tv_nsec;
     printf("\t1: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
 
-    start = get_accurate_time();
-    loop(1000000);
-    end = get_accurate_time();
+    getRdtscTime(&start);
+    loop(100);
+    getRdtscTime(&end);
     elapsed_sec = diff(start, end).tv_sec;
     elapsed_ns = diff(start, end).tv_nsec;
     printf("\t2: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
 
-    start = get_accurate_time();
-    loop(1000000);
-    end = get_accurate_time();
+    getRdtscTime(&start);
+    loop(100);
+    getRdtscTime(&end);
     elapsed_sec = diff(start, end).tv_sec;
     elapsed_ns = diff(start, end).tv_nsec;
     printf("\t3: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
 
-    printf("loop(100000000)\n");
-    start = get_accurate_time();
-    loop(100000000);
-    end = get_accurate_time();
+    printf("loop(1000)\n");
+    getRdtscTime(&start);
+    loop(1000);
+    getRdtscTime(&end);
     elapsed_sec = diff(start, end).tv_sec;
     elapsed_ns = diff(start, end).tv_nsec;
     printf("\t1: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
 
-    start = get_accurate_time();
-    loop(1000000);
-    end = get_accurate_time();
+    getRdtscTime(&start);
+    loop(1000);
+    getRdtscTime(&end);
     elapsed_sec = diff(start, end).tv_sec;
     elapsed_ns = diff(start, end).tv_nsec;
     printf("\t2: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
 
-    start = get_accurate_time();
-    loop(1000000);
-    end = get_accurate_time();
+    getRdtscTime(&start);
+    loop(1000);
+    getRdtscTime(&end);
+    elapsed_sec = diff(start, end).tv_sec;
+    elapsed_ns = diff(start, end).tv_nsec;
+    printf("\t3: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
+
+    printf("loop(10000)\n");
+    getRdtscTime(&start);
+    loop(10000);
+    getRdtscTime(&end);
+    elapsed_sec = diff(start, end).tv_sec;
+    elapsed_ns = diff(start, end).tv_nsec;
+    printf("\t1: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
+
+    getRdtscTime(&start);
+    loop(10000);
+    getRdtscTime(&end);
+    elapsed_sec = diff(start, end).tv_sec;
+    elapsed_ns = diff(start, end).tv_nsec;
+    printf("\t2: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
+
+    getRdtscTime(&start);
+    loop(10000);
+    getRdtscTime(&end);
     elapsed_sec = diff(start, end).tv_sec;
     elapsed_ns = diff(start, end).tv_nsec;
     printf("\t3: elapsed: %ds %dns\n", elapsed_sec, elapsed_ns);
@@ -154,7 +198,11 @@ void test_loop()
 
 int main(int argc, char **argv)
 {
-    //test_sleep();
-    test_loop();
+    // Testing of HPET counters
+    test_loop_with_HPET();
+    printf("\n");
+    // Testing of RDTSC counters
+    test_loop_with_RDTSC();
+
     return 0;
 }
