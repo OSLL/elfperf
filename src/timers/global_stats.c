@@ -38,11 +38,16 @@
 #include "global_stats.h"
 #include "../wrappers/cdecl_wrapper.h"
 #include "hpet_cntrs.h"
+#include "rdtsc_cntrs.h"
 
+#include <stdlib.h>
+#include <stdio.h>
+
+#define STATS_LIMIT 100000
 // Global array of functions statistics
-static struct FunctionStatistic* s_stats;
+static struct FunctionStatistic* s_stats[STATS_LIMIT];
 // Number of statistics
-static int s_statsCount;
+static int s_statsCount = 0;
 
 // Record function start time into context->startTime
 void record_start_time(void * context)
@@ -60,7 +65,8 @@ void record_end_time(void * context)
     struct timespec duration = diff(cont->startTime, cont->endTime);
     printf("Function duration = %ds %dns\n", duration.tv_sec, duration.tv_nsec);
 
-    printf("Function address = %d\n", cont->functionPointer);
+    // Updating statistic for function
+    updateStat(cont->functionPointer - 3, duration);
 }
 
 // Get statistic for given function
@@ -68,10 +74,49 @@ struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
 {
     int i;
     for (i = 0; i < s_statsCount; i++) {
-        struct FunctionStatistic* stat = s_stats + i;
-        if (stat->realFuncAddr == realFuncAddr)
-            return stat;
+        if (s_stats[i]->realFuncAddr == realFuncAddr)
+            return s_stats[i];
     }
 
     return NULL;
+}
+
+void updateStat(void* funcAddr, struct timespec diffTime)
+{
+    struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
+    if (stat != NULL) {
+        __time_t result_sec = stat->totalDiffTime.tv_sec;
+        long int result_nsec = stat->totalDiffTime.tv_nsec;
+
+        result_sec += diffTime.tv_sec;
+        result_nsec += diffTime.tv_nsec;
+
+        if (result_nsec >= 1000000000) {
+            result_sec += 1;
+            result_nsec = result_nsec - 1000000000;
+        }
+
+        stat->totalDiffTime.tv_sec = result_sec;
+        stat->totalDiffTime.tv_nsec = (long int)result_nsec;
+    } else {
+        addNewStat(funcAddr, diffTime);
+    }
+}
+
+struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
+{
+    if (s_statsCount == STATS_LIMIT){
+        printf("Statistics buffer is full! Exiting\n");
+        exit(1);
+    }
+
+    s_statsCount += 1;
+    struct FunctionStatistic* stat = (struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
+
+    stat->realFuncAddr = funcAddr;
+    stat->totalDiffTime.tv_sec = diffTime.tv_sec;
+    stat->totalDiffTime.tv_nsec = diffTime.tv_nsec;
+    s_stats[s_statsCount - 1] = stat;
+
+    return stat;
 }

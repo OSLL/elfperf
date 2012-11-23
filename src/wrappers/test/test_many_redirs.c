@@ -40,6 +40,7 @@
 #include <string.h>
 #include "../cdecl_wrapper.h"
 #include "../wrapper_redirector.h"
+#include "../../timers/global_stats.h"
 
 #define STRUCT_A_VALUE 1
 #define STRUCT_B_VALUE 2
@@ -58,13 +59,14 @@ struct testStruct testFunction(){
 	result.a = STRUCT_A_VALUE;
 	result.b = STRUCT_B_VALUE;
 	result.c = STRUCT_C_VALUE; 
-
+    int i;
+    for (i = 0; i < 1000000; i++);
 	return result;
 }
 
 int main()
 {
-    int n = 20000;
+    int n = 2500;
     char* funcNames[n];
     void* funcPointers[n];
 
@@ -91,7 +93,13 @@ int main()
                funcNames[i],
                result.a, result.b, result.c,
                STRUCT_A_VALUE, STRUCT_B_VALUE, STRUCT_C_VALUE);
+        struct FunctionStatistic* stat = getFunctionStatistic(testFunction);
+        printf("Function statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
     }
+
+    printf("=== Total statistics ===\n");
+    struct FunctionStatistic* stat = getFunctionStatistic(testFunction);
+    printf("Function statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
 
 	return 0;
 }

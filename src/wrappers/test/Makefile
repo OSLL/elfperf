@@ -1,6 +1,6 @@
 all: bin 
 
-bin: cdecl_wrapper #many_redirs_test #cdecl_wrapper asm_shift_test 
+bin: many_redirs_test cdecl_wrapper asm_shift_test 
 
 cdecl_wrapper:
 	gcc -m32 -g3 -O0 -o cdecl_wrapp test_cdecl_wrapper.c ../cdecl_wrapper.c ../../timers/hpet_cntrs.c ../../timers/global_stats.c ../wrapper_redirector.c -I. -lrt

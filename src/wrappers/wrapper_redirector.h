@@ -50,6 +50,4 @@ void addNewFunction(char* name, void * functionAddr);
 
 void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr);
 
-struct FunctionStatistic* getFunctionStatistic(void* realFuncAddr);
-
 #endif // _WRAPPER_REDIRECTOR_H_

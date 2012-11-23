@@ -40,12 +40,15 @@
 
 #include "../wrappers/cdecl_wrapper.h"
 
-
 struct FunctionStatistic
 {
     struct timespec totalDiffTime; // Total time of function calls
     void* realFuncAddr;            // Address of the function
 };
+
+struct FunctionStatistic* getFunctionStatistic(void* realFuncAddr);
+void updateStat(void* funcAddr, struct timespec diffTime);
+struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime);
 
 // Record function start time into context->startTime
 void record_start_time(void * context);

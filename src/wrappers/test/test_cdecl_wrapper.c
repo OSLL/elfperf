@@ -1,5 +1,44 @@
+/*
+ * Copyright © 2012 OSLL osll@osll.spb.ru
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * 3. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior written
+ *    permission.
+ *
+ * The advertising clause requiring mention in adverts must never be included.
+ */
+/*! ---------------------------------------------------------------
+ * \file test_cdecl_wrapper.c
+ * \brief Test for wrapper
+ *
+ * PROJ: OSLL/elfperf
+ * ---------------------------------------------------------------- */
+
 #include <stdio.h>
+#include <stdlib.h>
 #include "../cdecl_wrapper.h"
+#include "../../timers/global_stats.h"
 
 // This tests check how wrapper work
 // For all test functions wrapper is setted up for their pointers,
@@ -107,7 +146,13 @@ int main(){
 	printf("calling wrapper for testFunction1\n");
 	func *func1 = getRedirectorAddressForName("testFunction1");
 	(*func1)();
-//	wrapper();
+    (*func1)();
+    (*func1)();
+    (*func1)();
+    (*func1)();
+    (*func1)();
+    (*func1)();
+    (*func1)();
 	printf("wrapper called for testFunction1\n");
 
 	/////////////////////////////////////////////
@@ -116,7 +161,8 @@ int main(){
 	void (*func2)(int,int) = getRedirectorAddressForName("testFunction2");
 	// Calling wrapper instead of testFunction2
 	(*func2)(1,2);
-	//wrapper();
+    (*func2)(1,2);
+    (*func2)(1,2);
 	printf("wrapper called for testFunction2\n");
 
 
@@ -127,6 +173,7 @@ int main(){
 	printf("\ncalling wrapper for testFunction3\n");
 	func *func3 = getRedirectorAddressForName("testFunction3");
 	(*func3)();
+    (*func3)();
 	// Getting function return value from eax
 	asm("movl %%eax, %0" :"=r"(intResult) );
 	printf("wrapper called for testFunction3, result = %d, expected_result = %d\n", intResult, FUNCTION_3_RESULT );
@@ -138,6 +185,10 @@ int main(){
 	// Pushing arguments
 	// Calling wrapper instead of testFunction4
 	(*func4)(1, 2);
+    (*func4)(1, 2);
+    (*func4)(1, 2);
+    (*func4)(1, 2);
+    (*func4)(1, 2);
 	// Getting function return value from eax
 	asm("movl %%eax, %0" :"=r"(intResult) );
 	printf("wrapper called for testFunction4, result = %d, expected_result = %d\n", intResult, FUNCTION_4_RESULT );
@@ -149,7 +200,9 @@ int main(){
 	func *func5 = getRedirectorAddressForName("testFunction5");
 	// Calling wrapper
 	(*func5)();
-	// Getting function return value from eax
+    (*func5)();
+    (*func5)();
+    // Getting function return value from eax
 	asm("mov %%eax, %0" :"=m"(floatResult));
 	printf("wrapper called for testFunction5, result = %f, expected_result = %f\n", floatResult, FUNCTION_5_RESULT );
 
@@ -176,8 +229,21 @@ int main(){
 		structResult->b, structResult->c, STRUCT_A_VALUE, STRUCT_B_VALUE, STRUCT_C_VALUE);
 
 
-    printf("Function7 redir address - %d\n", func7);
-    printf("Function7 address - %d\n", testFunction7);
+    printf("=== Total statistics ===\n");
+    struct FunctionStatistic* stat = getFunctionStatistic(testFunction1);
+    printf("Function1 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    stat = getFunctionStatistic(testFunction2);
+    printf("Function2 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    stat = getFunctionStatistic(testFunction3);
+    printf("Function3 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    stat = getFunctionStatistic(testFunction4);
+    printf("Function4 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    stat = getFunctionStatistic(testFunction5);
+    printf("Function5 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    stat = getFunctionStatistic(testFunction6);
+    printf("Function6 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    stat = getFunctionStatistic(testFunction7);
+    printf("Function7 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
 
-	return 0;
+    return 0;
 }
