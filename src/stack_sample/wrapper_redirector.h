@@ -38,6 +38,13 @@
 #ifndef _WRAPPER_REDIRECTOR_H_
 #define _WRAPPER_REDIRECTOR_H_
 
+#include <time.h>
+
+struct FunctionStatistic
+{
+    struct timespec totalDiffTime; // Total time of function calls
+    void* realFuncAddr;            // Address of the function
+};
 
 void writeRedirectionCode(unsigned char * redirector, void * fcnPtr);
 
@@ -49,5 +56,6 @@ void addNewFunction(char* name, void * functionAddr);
 
 void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr);
 
+struct FunctionStatistic* getFunctionStatistic(void* realFuncAddr);
 
 #endif // _WRAPPER_REDIRECTOR_H_
