@@ -1,7 +1,8 @@
 TARGET = test
 
 SOURCES = \
-    ../../perfcounters/time.c \
+    ../../timers/hpet_cntrs.c \
+    ../../timers/rdtsc_cntrs.c \
     ../cdecl_wrapper.c \
     ../wrapper_redirector.c \
     test_cdecl_wrapper.c \
@@ -10,7 +11,8 @@ SOURCES = \
 
 
 HEADERS = \
-    ../../perfcounters/time.h \
+    ../../timers/hpet_cntrs.c \
+    ../../timers/rdtsc_cntrs.c \
     ../cdecl_wrapper.h \
     ../wrapper_redirector.h
 

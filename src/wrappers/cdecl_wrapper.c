@@ -39,7 +39,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include "cdecl_wrapper.h"
-#include "../perfcounters/time.h" 
+#include "../timers/hpet_cntrs.h"
 
 /**
  * This file contains of wrapper for cdecl functions

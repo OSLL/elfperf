@@ -5,14 +5,14 @@ INCLUDEPATH += \
 
 SOURCES += \
     test.c \
-    ../time.c \
+    ../hpet_cntrs.c \
     ../rdtsc_cntrs.c \
-    ../../stack_sample/cdecl_wrapper.c
+    ../../wrappers/cdecl_wrapper.c
 
 HEADERS += \
-    ../time.h \
+    ../hpet_cntrs.h \
     ../rdtsc_cntrs.h \
-    ../../stack_sample/cdecl_wrapper.h
+    ../../wrappers/cdecl_wrapper.h
 
 CONFIG -= qt
 

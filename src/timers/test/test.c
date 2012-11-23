@@ -37,7 +37,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <assert.h>
-#include "../time.h"
+#include "../hpet_cntrs.h"
 #include "../rdtsc_cntrs.h"
 
 void loop(int n)

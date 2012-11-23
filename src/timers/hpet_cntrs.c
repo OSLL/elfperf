@@ -30,12 +30,13 @@
  */
 /*! ---------------------------------------------------------------
  * \file time.c
- * \brief Implementation of functions for accurate time measuring
+ * \brief Implementation of functions for time measurement based on event approach
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
 #include "time.h"
+#include "../wrappers/cdecl_wrapper.h"
 
 struct timespec get_accurate_time()
 {

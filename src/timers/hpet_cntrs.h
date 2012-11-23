@@ -30,17 +30,17 @@
  */
 /*! ---------------------------------------------------------------
  * \file time.h
- * \brief Declarations of functions for accurate time measuring
+ * \brief Declarations of functions for time measurement based on event approach
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef ELFPERF_TIME_H
-#define ELFPERF_TIME_H
+#ifndef _ELFPERF_HPET_CNTRS_H_
+#define _ELFPERF_HPET_CNTRS_H_
 
 #include <stdlib.h>
 #include <time.h>
-#include "../stack_sample/cdecl_wrapper.h"
+#include "../wrappers/cdecl_wrapper.h"
 
 struct timespec get_accurate_time();
 struct timespec diff(struct timespec start, struct timespec end);
@@ -51,4 +51,4 @@ void record_start_time(void * context);
 // print the duration of function execution
 void record_end_time(void * context);
 
-#endif // ELFPERF_TIME_H
+#endif // _ELFPERF_HPET_CNTRS_H_
