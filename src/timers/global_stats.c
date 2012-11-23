@@ -29,19 +29,49 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file hpet_cntrs.h
- * \brief Declarations of functions for time measurement based on event approach
+ * \file global_stats.c
+ * \brief Global statistics for functions
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef _ELFPERF_HPET_CNTRS_H_
-#define _ELFPERF_HPET_CNTRS_H_
+#include "global_stats.h"
+#include "../wrappers/cdecl_wrapper.h"
+#include "hpet_cntrs.h"
 
-#include <stdlib.h>
-#include <time.h>
+// Global array of functions statistics
+static struct FunctionStatistic* s_stats;
+// Number of statistics
+static int s_statsCount;
 
-struct timespec get_accurate_time();
-struct timespec diff(struct timespec start, struct timespec end);
+// Record function start time into context->startTime
+void record_start_time(void * context)
+{
+    struct WrappingContext * cont = (struct WrappingContext *)context;
+    cont->startTime = get_accurate_time();
+}
 
-#endif // _ELFPERF_HPET_CNTRS_H_
+// Record function end time into context->endTime and
+// print the duration of function execution
+void record_end_time(void * context)
+{
+    struct WrappingContext * cont = (struct WrappingContext *)context;
+    cont->endTime = get_accurate_time();
+    struct timespec duration = diff(cont->startTime, cont->endTime);
+    printf("Function duration = %ds %dns\n", duration.tv_sec, duration.tv_nsec);
+
+    printf("Function address = %d\n", cont->functionPointer);
+}
+
+// Get statistic for given function
+struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
+{
+    int i;
+    for (i = 0; i < s_statsCount; i++) {
+        struct FunctionStatistic* stat = s_stats + i;
+        if (stat->realFuncAddr == realFuncAddr)
+            return stat;
+    }
+
+    return NULL;
+}

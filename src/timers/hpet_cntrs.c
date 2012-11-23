@@ -29,14 +29,13 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file time.c
+ * \file hpet_cntrs.h
  * \brief Implementation of functions for time measurement based on event approach
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#include "time.h"
-#include "../wrappers/cdecl_wrapper.h"
+#include "hpet_cntrs.h"
 
 struct timespec get_accurate_time()
 {
@@ -57,19 +56,4 @@ struct timespec diff(struct timespec start, struct timespec end)
         res.tv_nsec = end.tv_nsec - start.tv_nsec;
     }
     return res;
-}
-
-void record_start_time(void * context)
-{
-    struct WrappingContext * cont = (struct WrappingContext *)context;
-    cont->startTime = get_accurate_time();
-}
-
-
-void record_end_time(void * context)
-{
-    struct WrappingContext * cont = (struct WrappingContext *)context;
-    cont->endTime = get_accurate_time();
-    struct timespec duration = diff(cont->startTime, cont->endTime);
-    printf("Function duration = %ds %dns\n", duration.tv_sec, duration.tv_nsec);
 }

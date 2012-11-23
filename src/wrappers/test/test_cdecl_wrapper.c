@@ -175,5 +175,9 @@ int main(){
 	printf("wrapper called for testFunction7, result = (%d,%d,%d), expected_result = (%d,%d,%d)\n", structResult->a, 
 		structResult->b, structResult->c, STRUCT_A_VALUE, STRUCT_B_VALUE, STRUCT_C_VALUE);
 
+
+    printf("Function7 redir address - %d\n", func7);
+    printf("Function7 address - %d\n", testFunction7);
+
 	return 0;
 }

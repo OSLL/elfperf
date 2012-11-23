@@ -29,19 +29,28 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file hpet_cntrs.h
- * \brief Declarations of functions for time measurement based on event approach
+ * \file global_stats.h
+ * \brief Global statistics for functions
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef _ELFPERF_HPET_CNTRS_H_
-#define _ELFPERF_HPET_CNTRS_H_
+#ifndef _ELFPERF_GLOBAL_STATS_H_
+#define _ELFPERF_GLOBAL_STATS_H_
 
-#include <stdlib.h>
-#include <time.h>
+#include "../wrappers/cdecl_wrapper.h"
 
-struct timespec get_accurate_time();
-struct timespec diff(struct timespec start, struct timespec end);
 
-#endif // _ELFPERF_HPET_CNTRS_H_
+struct FunctionStatistic
+{
+    struct timespec totalDiffTime; // Total time of function calls
+    void* realFuncAddr;            // Address of the function
+};
+
+// Record function start time into context->startTime
+void record_start_time(void * context);
+// Record function end time into context->endTime and
+// print the duration of function execution
+void record_end_time(void * context);
+
+#endif // _ELFPERF_GLOBAL_STATS_H_

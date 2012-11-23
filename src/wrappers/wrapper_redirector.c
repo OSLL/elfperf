@@ -58,7 +58,6 @@
 */
 // After reaching wrapper, address will be poped from stack
 
-
 // Array which contains redirectors
 static void * s_redirectors;
 // Array of function names, the same indexing as in redirectors
@@ -66,12 +65,6 @@ static char** s_names;
 //static void * s_functionPointers;
 static int s_count;
 static void * s_wrapperAddress;
-
-// Global array of functions statistics
-static struct FunctionStatistic* s_stats;
-// Number of statistics
-static int s_statsCount;
-
 
 // Create set of machine instructions
 /*
@@ -187,17 +180,4 @@ void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr)
         memcpy(s_names[i], names[i], sizeof(char)*(strlen(names[i])+1));
         //printf("%s, %s\n",s_names[i], names[i]);
     }
-}
-
-// Get statistic for given function
-struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
-{
-    int i;
-    for (i = 0; i < s_statsCount; i++) {
-        struct FunctionStatistic* stat = s_stats + i;
-        if (stat->realFuncAddr == realFuncAddr)
-            return stat;
-    }
-
-    return NULL;
 }

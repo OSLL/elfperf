@@ -3,6 +3,7 @@ TARGET = test
 SOURCES = \
     ../../timers/hpet_cntrs.c \
     ../../timers/rdtsc_cntrs.c \
+    ../../timers/global_stats.c \
     ../cdecl_wrapper.c \
     ../wrapper_redirector.c \
     test_cdecl_wrapper.c \
@@ -11,8 +12,9 @@ SOURCES = \
 
 
 HEADERS = \
-    ../../timers/hpet_cntrs.c \
-    ../../timers/rdtsc_cntrs.c \
+    ../../timers/hpet_cntrs.h \
+    ../../timers/rdtsc_cntrs.h \
+    ../../timers/global_stats.h \
     ../cdecl_wrapper.h \
     ../wrapper_redirector.h
 

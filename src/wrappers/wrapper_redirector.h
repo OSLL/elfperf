@@ -40,12 +40,6 @@
 
 #include <time.h>
 
-struct FunctionStatistic
-{
-    struct timespec totalDiffTime; // Total time of function calls
-    void* realFuncAddr;            // Address of the function
-};
-
 void writeRedirectionCode(unsigned char * redirector, void * fcnPtr);
 
 static unsigned int getFunctionIndex(char* name);
