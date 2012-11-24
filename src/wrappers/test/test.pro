@@ -4,6 +4,7 @@ SOURCES = \
     ../../timers/hpet_cntrs.c \
     ../../timers/rdtsc_cntrs.c \
     ../../timers/global_stats.c \
+    ../../timers/test/test.c \
     ../cdecl_wrapper.c \
     ../wrapper_redirector.c \
     test_cdecl_wrapper.c \

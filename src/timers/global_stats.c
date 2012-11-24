@@ -53,7 +53,18 @@ static int s_statsCount = 0;
 void record_start_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
+
+#ifdef TIMING_WITH_HPET
+    printf("LOG: get start time with HPET\n");
     cont->startTime = get_accurate_time();
+#endif
+
+#ifdef TIMING_WITH_RDTSC
+    printf("LOG: get start time with RDTSC\n");
+    initRdtsc();
+    getRdtscTime(&cont->startTime);
+#endif
+
 }
 
 // Record function end time into context->endTime and
@@ -61,7 +72,17 @@ void record_start_time(void * context)
 void record_end_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
+
+#ifdef TIMING_WITH_HPET
+    printf("LOG: get end time with HPET\n");
     cont->endTime = get_accurate_time();
+#endif
+
+#ifdef TIMING_WITH_RDTSC
+    printf("LOG: get end time with RDTSC\n");
+    getRdtscTime(&cont->endTime);
+#endif
+
     struct timespec duration = diff(cont->startTime, cont->endTime);
     printf("Function duration = %ds %dns\n", duration.tv_sec, duration.tv_nsec);
 

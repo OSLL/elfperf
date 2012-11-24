@@ -101,6 +101,8 @@ struct testStruct testFunction7(){
 //	asm("movl 0x8(%%ebp),%0":"=r"(addr));
 //	printf("in testFunction7(hidden_parameter = %x)\n",addr);
 
+    printf("in testFunction7()\n");
+
     struct testStruct result;
     result.a = STRUCT_A_VALUE;
     result.b = STRUCT_B_VALUE;
@@ -108,7 +110,6 @@ struct testStruct testFunction7(){
 
     return result;
 }
-
 
 char * testFuncNames [7]= {"testFunction1","testFunction2","testFunction3","testFunction4",
     "testFunction5","testFunction6","testFunction7"};
