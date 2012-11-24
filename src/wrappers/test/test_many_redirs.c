@@ -48,20 +48,20 @@
 
 // Test structure, with size > 8byte
 struct testStruct{
-	int a;
-	int b;	
-	int c;
+    int a;
+    int b;
+    int c;
 };
 
 
 struct testStruct testFunction(){
-	struct testStruct result;
-	result.a = STRUCT_A_VALUE;
-	result.b = STRUCT_B_VALUE;
-	result.c = STRUCT_C_VALUE; 
+    struct testStruct result;
+    result.a = STRUCT_A_VALUE;
+    result.b = STRUCT_B_VALUE;
+    result.c = STRUCT_C_VALUE;
     int i;
     for (i = 0; i < 1000000; i++);
-	return result;
+    return result;
 }
 
 int main()
@@ -101,5 +101,5 @@ int main()
     struct FunctionStatistic* stat = getFunctionStatistic(testFunction);
     printf("Function statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
 
-	return 0;
+    return 0;
 }
