@@ -1,0 +1,18 @@
+# We need special startup code for statically linked binaries.
+# See Makefile in this directory for the rule that builds this.
+# We must define this variable earlier than sysdeps Makefiles are included.
+static-start-installed-name = crt0.o
+
+have-thread-library = yes
+shared-thread-library = /lib/libpthread.so
+static-thread-library = /lib/libpthread.a
+bounded-thread-library = $(static-thread-library)
+
+$(shared-thread-library):
+	true
+$(static-thread-library):
+	true
+$(inst_includedir)/pthread.h:
+	true
+
++force =

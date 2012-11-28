@@ -41,11 +41,6 @@
 #include "cdecl_wrapper.h"
 #include "../timers/global_stats.h"
 
-/**
- * This file contains of wrapper for cdecl functions
- * it use getFunctionPointer() function for obtainting address of a wrapped function
- *  
- */
 
 // Global function pointer - stub for us, until we will get better way to 
 // understand which function should be wrapped
