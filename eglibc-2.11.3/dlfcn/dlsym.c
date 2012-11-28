@@ -289,7 +289,8 @@ void updateStat(void* funcAddr, struct timespec diffTime)
 	__sync_fetch_and_add(&(stat->totalCallsNumber), 1);
 
 	// Try to lock 
-	while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
+	while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0)
+		printf("Waiting inside spinlock\n");
 
         __time_t result_sec = stat->totalDiffTime.tv_sec;
         long int result_nsec = stat->totalDiffTime.tv_nsec;
@@ -304,9 +305,11 @@ void updateStat(void* funcAddr, struct timespec diffTime)
             result_nsec = result_nsec - 1000000000;
         }
 
+//	printf("Going to update stat: old %ds %dns, addition %ds %dns \n", 
+//		stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec, result_sec, result_nsec);
 	// Atomicly increment the stat->totalCallsNumber
-	stat->totalDiffTime.tv_nsec += result_nsec;
-	stat->totalDiffTime.tv_sec += result_sec;
+	stat->totalDiffTime.tv_nsec = (long int)result_nsec;
+	stat->totalDiffTime.tv_sec = result_sec;
 
 	// Unlock
 	updateStatSpinlock = 0;
