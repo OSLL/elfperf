@@ -1,7 +1,7 @@
 /*
  * Copyright © 2012 OSLL osll@osll.spb.ru
  *
- * Redistribution and use in source and binary forms, with or without
+     * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  *
@@ -29,33 +29,33 @@
  * The advertising clause requiring mention in adverts must never be included.
  */
 /*! ---------------------------------------------------------------
- * \file rdtsc_cntrs.h
- * \brief Declaration of functions for time measurement based on processor-specific registers
+ * \file cpufreqmeter.c
+ * \brief This program calculates current value of cpu frequency
  *
  * PROJ: OSLL/elfperf
  * ---------------------------------------------------------------- */
 
-#ifndef _ELFPERF_RDTSC_CNTRS_H_
-#define _ELFPERF_RDTSC_CNTRS_H_
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "../timers/rdtsc_cntrs.h"
 
-#include <time.h>
-#include <stdint.h>
+#define CPU_FREQUENCY_ENV_VAR "ELFPERF_CPU_FREQ"
 
-//Calibrate the number of CPU cycles per nanosecond
-void calibrateTicks();
 
-// Initialize environment for correct using of rdtsc()
-void initRdtsc();
+int main(int argc, char **argv)
+{
+    calibrateTicks();
 
-// Calculate difference between two timespecs
-struct timespec diffTimeSpec(struct timespec start, struct timespec end);
+    double cpuFreq = getCpuFrequency();
+    printf("CPU Frequency: %f\n", cpuFreq);
 
-// Get elapsed time in timespecs for given time in nanoseconds
-void getTimeSpec(struct timespec* ts, uint64_t nsecs);
+    char env_val[50];
+    sprintf(env_val, "%.10f", cpuFreq);
 
-// Get elapsed time in timespecs using time converted from TSC reading
-void getRdtscTime(struct timespec* ts);
+    FILE* of = fopen("cpufreq.tmp", "w");
+    fprintf(of, "%.10f", cpuFreq);
+    fclose(of);
 
-double getCpuFrequency();
-
-#endif // _ELFPERF_RDTSC_CNTRS_H_
+    return 0;
+}

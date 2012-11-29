@@ -101,3 +101,9 @@ void getRdtscTime(struct timespec* ts)
 {
     getTimeSpec(ts, rdtsc()/s_ticksPerNanoSec);
 }
+
+double getCpuFrequency()
+{
+
+    return s_ticksPerNanoSec;
+}
