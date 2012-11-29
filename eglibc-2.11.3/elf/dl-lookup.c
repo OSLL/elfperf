@@ -579,16 +579,21 @@ static bool isFunctionRedirectorRegistered(char* name){
     // check is it 0xba or not
     // 0xba - code for the first byte of each registerred redirector
     void * redirectorAddress = getRedirectorAddressForName(name);
+    _dl_error_printf("isFunctionRedirectorRegistered\n");
     return (*((unsigned int *)redirectorAddress) != 0);
 }
 
 // Add new function to the list of redirectors
 static void addNewFunction(char* name, void * functionAddr){
+    _dl_error_printf("addNewFunction\n");
     writeRedirectionCode( getRedirectorAddressForName(name), functionAddr);
 }
 
 // Initialize s_redirectors and s_names
 static void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr){
+
+    _dl_error_printf("Starting initWrapperRedirectors\n");
+
     s_wrapperAddress = wrapperAddr;
 
     // Memory allocation
@@ -596,17 +601,19 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
 
     s_redirectors = (void *)malloc(allocSize);
     // Aligning by page border
-    //_dl_printf("Before aligment %x, %x\n", s_redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
+    _dl_error_printf("Before aligment %x, %x\n", s_redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
+    //_dl_error_printf("Before aligment \n");
     s_redirectors = (void *)(((int) s_redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
-    //_dl_printf("After aligment %p\n", (void*)s_redirectors);
+    _dl_error_printf("After aligment %x\n", s_redirectors);
 
-    int pagesNum = allocSize/PAGESIZE + 1;
-    //_dl_printf("Number of memory pages %d\n", pagesNum);
+    int pagesNum = allocSize/PAGESIZE ;
+    _dl_error_printf("Number of memory pages %x\n", pagesNum);
 
     unsigned int i = 0;
     for (i = 0; i < pagesNum; i++) {
+	_dl_error_printf("Going to do mprotect\n");
         if (mprotect(s_redirectors + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
-            _dl_printf("Couldn't mprotect");
+            _dl_error_printf("Couldn't mprotect");
             //exit(errno);
             return;
         }
@@ -614,6 +621,7 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
 
     // Set 0 into each redirector first byte
     // This will allow to determine wich one is inited
+    _dl_error_printf("Zeroing\n");
     for (i = 0 ; i < sizeof(void*)*REDIRECTOR_WORDS_SIZE*count ; i+=REDIRECTOR_SIZE){
         *((unsigned int*)(s_redirectors+i)) = 0;
     }
@@ -622,14 +630,19 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
     unsigned int sumSize = 0;
     s_count = count;
     for (i = 0 ; i < count ; i++){
+	_dl_error_printf("Calling strlen\n");
         sumSize += strlen(names[i])+1;
     }
 
     s_names = (char**) malloc(sizeof(char*)*count);
+    size_t size;
     for (i = 0 ; i < count ; i++){
-        s_names[i] = (char*)malloc(sizeof(char)*(strlen(names[i])+1));
-        memcpy(s_names[i], names[i], sizeof(char)*(strlen(names[i])+1));
-        _dl_printf("%s, %s\n",s_names[i], names[i]);
+	_dl_error_printf("Calling malloc\n");
+	size = sizeof(char)*(strlen(names[i])+1);
+        s_names[i] = (char*)malloc(size);
+	_dl_error_printf("Calling memcpy\n");
+        memcpy(s_names[i], names[i], size);
+        //_dl_error_printf("%s, %s\n",s_names[i], names[i]);
     }
 
 }
@@ -943,12 +956,14 @@ run:
 
                 //names=get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
                 void *wr = &&wrapper_code;
+		_dl_error_printf("Going to initWrapperRedirectors\n");
                 initWrapperRedirectors(names, count, wr);
                 initialized = 1;
             }
                         void * result = sym;
                         // Check if function is in list for profiling
                         if (isFunctionInFunctionList(undef_name) ){
+			_dl_error_printf("Going to isFunctionRedirectorRegistered\n");
           //                   Add redirector for function into s_redirectors
                             if ( !isFunctionRedirectorRegistered(undef_name)) addNewFunction(undef_name,result);
 
