@@ -47,7 +47,8 @@ static int s_statsCount = 0;
 
 static bool isElfPerfEnabled()
 {
-    return getenv(ELFPERF_ENABLE_VARIABLE)!=NULL;
+	return true;
+    //return getenv(ELFPERF_ENABLE_VARIABLE)!=NULL;
 }
 
 // Return list of function names separted by ":" passed from @env_name@ envoironment variable

@@ -297,7 +297,7 @@ void record_end_time_(void * context)
 #endif
 
     struct timespec duration = diff(cont->startTime, cont->endTime);
-    //    _dl_printf("Function(%p) duration = %ds %dns\n", cont->functionPointer-3, duration.tv_sec, duration.tv_nsec);
+    _dl_printf("Function(%p) duration = %ds %dns\n", cont->functionPointer-3, duration.tv_sec, duration.tv_nsec);
 
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
@@ -542,7 +542,7 @@ static void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
     for (i = 0; i<REDIRECTOR_WORDS_SIZE*sizeof(void*) ; i++){
         _dl_printf("%02hhx ", redirector[i]);
     }
-    _dl_printf("\nfcn_ptr = %x, destination = %x\n", fcnPtr, redirector);
+    //_dl_printf("\nfcn_ptr = %x, destination = %x\n", fcnPtr, redirector);
 }
 
 
@@ -569,7 +569,7 @@ static bool isFunctionInFunctionList(char* name){
 static void* getRedirectorAddressForName(char* name){
     int functionIndex = getFunctionIndex(name);
     void * result = s_redirectors +  functionIndex;
-    _dl_printf("getRedirectorAddressForName = %x\n", s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*));
+    //_dl_printf("getRedirectorAddressForName = %x\n", s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*));
     return s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
 }
 
@@ -596,9 +596,9 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
 
     s_redirectors = (void *)malloc(allocSize);
     // Aligning by page border
-    _dl_printf("Before aligment %x, %x\n", s_redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
+    //_dl_printf("Before aligment %x, %x\n", s_redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
     s_redirectors = (void *)(((int) s_redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
-    _dl_printf("After aligment %p\n", (void*)s_redirectors);
+    //_dl_printf("After aligment %p\n", (void*)s_redirectors);
 
     int pagesNum = allocSize/PAGESIZE + 1;
     //_dl_printf("Number of memory pages %d\n", pagesNum);
@@ -839,7 +839,9 @@ do_lookup_x (const char *undef_name, uint_fast32_t new_hash,
 
             wrapper_code:
             asm volatile(
-
+			// Building stack frame
+			"push %ebp\n"
+			"movl %esp,%ebp"
                         // By the start of wrapper edx contains jump addres of function, which is wrapped
                         "pushl %edx\n"				// Storing wrappedFunction_addr into stack
                         "movl (%ebp), %ebx\n"			// ebx = old_ebp
@@ -935,6 +937,7 @@ do_lookup_x (const char *undef_name, uint_fast32_t new_hash,
 run:
             if(0==initialized)
             {
+		_dl_error_printf("Hello from ELFPERF!\n");
                 char **names={"printf","sin"};
                 int count = 2;
 
