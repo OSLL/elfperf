@@ -90,6 +90,7 @@ do_sym (void *handle, const char *name, void *who,
   lookup_t result;
   ElfW(Addr) caller = (ElfW(Addr)) who;
 
+
   /* If the address is not recognized the call comes from the main
      program (we hope).  */
   struct link_map *match = GL(dl_ns)[LM_ID_BASE]._ns_loaded;

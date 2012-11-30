@@ -565,7 +565,6 @@ static unsigned int getFunctionIndex(char* name){
 
 // Return true, if function name exists into s_names array
 static bool isFunctionInFunctionList(char* name){
-    _dl_error_printf("isFunctionInFunctionList(%s)\n", name);
     return getFunctionIndex(name) != s_count+1;
 }
 
@@ -976,21 +975,33 @@ run:
                 initWrapperRedirectors(names, count, wr);
                 initialized = 1;
             }
-                        void * result = sym;
                         // Check if function is in list for profiling
                         if (isFunctionInFunctionList(undef_name) ){
 			_dl_error_printf("Going to isFunctionRedirectorRegistered\n");
           //                   Add redirector for function into s_redirectors
                             if ( !isFunctionRedirectorRegistered(undef_name)){
 					_dl_error_printf("function %s not registered, adding\n", undef_name);
-					addNewFunction(undef_name,result);
+					addNewFunction(undef_name, sym->st_value);
 
 				}
 
-                            return getRedirectorAddressForName(undef_name);
+                            void * redirectorAddr = getRedirectorAddressForName(undef_name);
+			    //result->s->st_value = (uint32_t) redirectorAddr;
+			    _dl_error_printf("sym->st_value = %lu, result->s = %lu\n", sym->st_value, result->s); 
+
+			    ElfW(Sym) * sym1 = (ElfW(Sym) *)malloc(sizeof(ElfW(Sym)));
+			    sym1->st_name = sym->st_name;
+			    sym1->st_value = (uint32_t) redirectorAddr; 
+			    sym1->st_size = sym->st_size;
+			    sym1->st_info = sym->st_info;
+			    sym1->st_other = sym->st_other;
+			    sym1->st_shndx = sym->st_shndx;
+
+			    //result->s = sym1;
+	
+			    return sym1;
                         }
 
-            //            return result;
             return sym;
         }
 
@@ -1499,6 +1510,8 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
         int res = do_lookup_x (undef_name, new_hash, &old_hash, *ref,
                                &current_value, *scope, start, version, flags,
                                skip_map, type_class, undef_map);
+	_dl_error_printf("place1\n");
+
         if (res > 0)
             break;
 
@@ -1527,6 +1540,8 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
         }
     }
 
+    _dl_error_printf("place5\n");
+
     if (__builtin_expect (current_value.s == NULL, 0))
     {
         if ((*ref == NULL || ELFW(ST_BIND) ((*ref)->st_info) != STB_WEAK)
@@ -1549,6 +1564,7 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
         *ref = NULL;
         return 0;
     }
+    _dl_error_printf("place6\n");
 
     int protected = (*ref
                      && ELFW(ST_VISIBILITY) ((*ref)->st_other) == STV_PROTECTED);
@@ -1571,8 +1587,13 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
             for (scope = symbol_scope; *scope != NULL; i = 0, ++scope)
                 if (do_lookup_x (undef_name, new_hash, &old_hash, *ref,
                                  &protected_value, *scope, i, version, flags,
-                                 skip_map, ELF_RTYPE_CLASS_PLT, NULL) != 0)
-                    break;
+                                 skip_map, ELF_RTYPE_CLASS_PLT, NULL) != 0){
+                   _dl_error_printf("place2\n"); 
+		   break;
+		}else{
+		   _dl_error_printf("place3\n");
+		}
+
 
             if (protected_value.s != NULL && protected_value.m != undef_map)
             {
@@ -1580,7 +1601,8 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
                 current_value.m = undef_map;
             }
         }
-    }
+   }
+   _dl_error_printf("place7\n");
 
     /* We have to check whether this would bind UNDEF_MAP to an object
      in the global scope which was dynamically loaded.  In this case
@@ -1591,24 +1613,29 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
                              runtime lookups.  */
             && (flags & DL_LOOKUP_ADD_DEPENDENCY) != 0
             /* Add UNDEF_MAP to the dependencies.  */
-            && add_dependency (undef_map, current_value.m, flags) < 0)
+            && add_dependency (undef_map, current_value.m, flags) < 0){
         /* Something went wrong.  Perhaps the object we tried to reference
      was just removed.  Try finding another definition.  */
+	_dl_error_printf("doing recoursive call of _dl_lookup_symbol_x\n");
         return _dl_lookup_symbol_x (undef_name, undef_map, ref,
                                     (flags & DL_LOOKUP_GSCOPE_LOCK)
                                     ? undef_map->l_scope : symbol_scope,
                                     version, type_class, flags, skip_map);
-
+}
     /* The object is used.  */
     if (__builtin_expect (current_value.m->l_used == 0, 0))
         current_value.m->l_used = 1;
+
+
+   _dl_error_printf("place8\n");
 
     if (__builtin_expect (GLRO(dl_debug_mask)
                           & (DL_DEBUG_BINDINGS|DL_DEBUG_PRELINK), 0))
         _dl_debug_bindings (undef_name, undef_map, ref,
                             &current_value, version, type_class, protected);
-
+    _dl_error_printf("before *ref = current_value.s\n");
     *ref = current_value.s;
+    _dl_error_printf("after *ref = current_value.s\n");
     return LOOKUP_VALUE (current_value.m);
 }
 
@@ -1666,6 +1693,7 @@ _dl_debug_bindings (const char *undef_name, struct link_map *undef_map,
                     const struct r_found_version *version, int type_class,
                     int protected)
 {
+    _dl_error_printf("_dl_debug_bindings\n");
     const char *reference_name = undef_map->l_name;
 
     if (GLRO(dl_debug_mask) & DL_DEBUG_BINDINGS)
@@ -1699,7 +1727,7 @@ _dl_debug_bindings (const char *undef_name, struct link_map *undef_map,
             do_lookup_x (undef_name, new_hash, &old_hash, *ref, &val,
                          undef_map->l_local_scope[0], 0, version, 0, NULL,
                     type_class, undef_map);
-
+	    _dl_error_printf("place4\n");
             if (val.s != value->s || val.m != value->m)
                 conflict = 1;
         }
