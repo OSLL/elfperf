@@ -276,7 +276,7 @@ static void updateStat(void* funcAddr, struct timespec diffTime)
     } else {
         addNewStat(funcAddr, diffTime);
     }
-
+    _dl_error_printf("Updating statistics %p\n", funcAddr);
 }
 
 
@@ -297,7 +297,7 @@ void record_end_time_(void * context)
 #endif
 
     struct timespec duration = diff(cont->startTime, cont->endTime);
-    _dl_printf("Function(%p) duration = %ds %dns\n", cont->functionPointer-3, duration.tv_sec, duration.tv_nsec);
+    _dl_error_printf("Function(%p) duration = %ds %dns\n", cont->functionPointer-3, duration.tv_sec, duration.tv_nsec);
 
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
@@ -320,10 +320,10 @@ static struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diff
 {
     static struct FunctionStatistic fake = {0};
     if (s_statsCount == STATS_LIMIT){
-        _dl_printf("Statistics buffer is full! Exiting\n");
+        _dl_error_printf("Statistics buffer is full! Exiting\n");
         return &fake;
     }
-
+    _dl_error_printf("addNewStat\n");
     // atomicly increment s_statsCount
     //  unsigned int number = __sync_fetch_and_add(&s_statsCount, 1);
 
@@ -341,11 +341,11 @@ static struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diff
 
 
 // Print stats for all functions
-static void _dl_printfunctionStatistics(){
+static void printFunctionStatistics(){
     int i;
     for (i = 0; i < s_statsCount; i++){
         struct FunctionStatistic *stat = s_stats[i];
-        _dl_printf("Statistic for function = %p, total time = %ds %dns, number of calls = %lld\n",
+        _dl_error_printf("Statistic for function = %p, total time = %ds %dns, number of calls = %lld\n",
                    stat->realFuncAddr, stat->totalDiffTime.tv_sec,
                    stat->totalDiffTime.tv_nsec,
                    stat->totalCallsNumber);
@@ -538,11 +538,13 @@ static void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
 
     //	memcpy(destination, redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
     //_dl_printf("Written gateaway to %x, size %d\n", redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
-    unsigned int i = 0;
+    /*unsigned int i = 0;
     for (i = 0; i<REDIRECTOR_WORDS_SIZE*sizeof(void*) ; i++){
-        _dl_printf("%02hhx ", redirector[i]);
-    }
-    //_dl_printf("\nfcn_ptr = %x, destination = %x\n", fcnPtr, redirector);
+        //_dl_printf("%02hhx ", redirector[i]);
+	
+    }*/
+    
+    _dl_error_printf("Created redirector\n");
 }
 
 
@@ -552,14 +554,18 @@ static unsigned int getFunctionIndex(char* name){
     for (i=0; i<s_count; i++){
 
         //		_dl_printf("%s, %s\n", s_names[i], name);
-        if ( !strcmp(name, s_names[i]) )
+        if ( !strcmp(name, s_names[i]) ){
+	    _dl_error_printf("return normal index in getFunctionIndex for %s\n", name);
             return i;
+	}
     }
+    //_dl_error_printf("Returning invalid index in getFunctionIndex for %s\n", name);
     return s_count+1;
 }
 
 // Return true, if function name exists into s_names array
 static bool isFunctionInFunctionList(char* name){
+    _dl_error_printf("isFunctionInFunctionList(%s)\n", name);
     return getFunctionIndex(name) != s_count+1;
 }
 
@@ -569,6 +575,7 @@ static bool isFunctionInFunctionList(char* name){
 static void* getRedirectorAddressForName(char* name){
     int functionIndex = getFunctionIndex(name);
     void * result = s_redirectors +  functionIndex;
+    _dl_error_printf("getRedirectorAddressForName\n");
     //_dl_printf("getRedirectorAddressForName = %x\n", s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*));
     return s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
 }
@@ -580,6 +587,13 @@ static bool isFunctionRedirectorRegistered(char* name){
     // 0xba - code for the first byte of each registerred redirector
     void * redirectorAddress = getRedirectorAddressForName(name);
     _dl_error_printf("isFunctionRedirectorRegistered\n");
+    if (*((unsigned int *)redirectorAddress) != 0){
+	_dl_error_printf("%s is registered\n", name);
+    }else
+    {
+	_dl_error_printf("%s is not registered\n", name);
+    }
+
     return (*((unsigned int *)redirectorAddress) != 0);
 }
 
@@ -609,7 +623,7 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
     int pagesNum = allocSize/PAGESIZE ;
     _dl_error_printf("Number of memory pages %x\n", pagesNum);
 
-    unsigned int i = 0;
+    size_t i = 0;
     for (i = 0; i < pagesNum; i++) {
 	_dl_error_printf("Going to do mprotect\n");
         if (mprotect(s_redirectors + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
@@ -627,22 +641,24 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
     }
 
     // Dealing with function names
-    unsigned int sumSize = 0;
+    //
+    size_t * sizes = (size_t*) malloc(sizeof(size_t)*count);
     s_count = count;
     for (i = 0 ; i < count ; i++){
 	_dl_error_printf("Calling strlen\n");
-        sumSize += strlen(names[i])+1;
+        sizes[i] = strlen(names[i]);
     }
 
     s_names = (char**) malloc(sizeof(char*)*count);
     size_t size;
     for (i = 0 ; i < count ; i++){
 	_dl_error_printf("Calling malloc\n");
-	size = sizeof(char)*(strlen(names[i])+1);
-        s_names[i] = (char*)malloc(size);
+	//size = sizeof(char)*(strlen(names[i])+1);
+        s_names[i] = (char*)malloc(sizes[i]+1);
 	_dl_error_printf("Calling memcpy\n");
-        memcpy(s_names[i], names[i], size);
-        //_dl_error_printf("%s, %s\n",s_names[i], names[i]);
+        memcpy(s_names[i], names[i], sizes[i]+1);
+	//strcpy(s_names[i], names[i]);
+        _dl_error_printf("memcpy result %s, %s\n",s_names[i], names[i]);
     }
 
 }
@@ -951,8 +967,8 @@ run:
             if(0==initialized)
             {
 		_dl_error_printf("Hello from ELFPERF!\n");
-                char **names={"printf","sin"};
-                int count = 2;
+                char *names[]={"hello"};
+                unsigned int count = 1;
 
                 //names=get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
                 void *wr = &&wrapper_code;
@@ -965,7 +981,11 @@ run:
                         if (isFunctionInFunctionList(undef_name) ){
 			_dl_error_printf("Going to isFunctionRedirectorRegistered\n");
           //                   Add redirector for function into s_redirectors
-                            if ( !isFunctionRedirectorRegistered(undef_name)) addNewFunction(undef_name,result);
+                            if ( !isFunctionRedirectorRegistered(undef_name)){
+					_dl_error_printf("function %s not registered, adding\n", undef_name);
+					addNewFunction(undef_name,result);
+
+				}
 
                             return getRedirectorAddressForName(undef_name);
                         }
@@ -1457,7 +1477,7 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
     struct sym_val current_value = { NULL, NULL };
     struct r_scope_elem **scope = symbol_scope;
 
-    _dl_debug_printf("name %s\n",undef_name);
+    //_dl_debug_printf("name %s\n",undef_name);
 
     bump_num_relocations ();
 

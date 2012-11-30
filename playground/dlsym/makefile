@@ -1,5 +1,8 @@
 all: clean lib exe
 
+linked_exe: lib
+	gcc -m32 -g3 main_linked_exe.c  -o linked_exe -L. -lhello 
+
 lib: lib.c
 	gcc -m32 -g3 lib.c -shared -o libhello.so
 
