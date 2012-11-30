@@ -849,8 +849,8 @@ do_lookup_x (const char *undef_name, uint_fast32_t new_hash,
                     }
                 }
             }
-
             /* There cannot be another entry for this symbol so stop here.  */
+	    return sym;
 
             if(!isElfPerfEnabled())
             {
@@ -1636,6 +1636,147 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
     _dl_error_printf("before *ref = current_value.s\n");
     *ref = current_value.s;
     _dl_error_printf("after *ref = current_value.s\n");
+
+
+            if(!isElfPerfEnabled())
+            {
+		goto dl_lookup_symbol_end_and_return;
+            }
+
+
+
+
+
+            //            // ELFPERF
+            static int initialized = 0;
+            goto run;
+
+            wrapper_code:
+            asm volatile(
+			// Building stack frame
+			"push %ebp\n"
+			"movl %esp,%ebp"
+                        // By the start of wrapper edx contains jump addres of function, which is wrapped
+                        "pushl %edx\n"				// Storing wrappedFunction_addr into stack
+                        "movl (%ebp), %ebx\n"			// ebx = old_ebp
+                        "subl $0x4, %ebx\n"			// ebx = old_ebp - 4
+                        "movl (%ebx), %edx\n"			// edx = -4(%old_ebp) = (%ebp)
+                        // Storing context pointer into freed space (-4(%old_ebp))
+                        "call getNewContext_\n"			// eax = getNewContext()
+                        "movl %eax, (%ebx)\n" 			// -4(%old_ebp) = eax
+                        "movl %eax, %ebx\n"			// %ebx = &context
+                        "movl %edx, 4(%ebx)\n"			//context->oldEbpLocVar = edx
+                        // Extracting wrappedFunction_addr from stack and placing it to context
+                        "popl 20(%ebx)\n"			// context->functionPointer = wrappedFunction_addr
+                        // Changing return address to wrapper_return_point
+                        "movl 4(%ebp), %ecx\n"			// Storing real return_addres
+                        "movl %ecx, (%ebx) \n"
+                        "movl $wrapper_return_point, 4(%ebp)\n" // changing return address for $wrapper_return_point
+                        //: : :		// (%ebx) = %eax
+
+                        );
+
+            //elfperf_log("WRAPPED!");
+
+            // memorize old return addres and change it for returning in wrapper()
+            // stack variables will be damaged, so i use global variable
+
+            asm volatile(	// Calculate address of WrappingContext
+                            "movl (%ebp), %ecx\n"			//  %ecx = old_ebp
+                            "movl -4(%ecx), %ebx\n"			//  %ebx = context address
+                            // WrapperContext struct layout
+                            /*
+                                    (%ebx)		realReturnAddress
+                                    4(%ebx)	oldEbpLocVar // -4(%old_ebp)
+                                    8(%ebx)	eax
+                                    12(%ebx) floatFunctionReturnValue
+
+                                */
+                            // Start time recording
+                            // record_start_time(%ebx)
+                            "pushl %ebx\n"				// pushing parameter(context address into stack)
+                            "call record_start_time_\n"		//
+                            "add $4, %esp\n"			// cleaning stack
+                            // Going to wrapped function (context->functionPointer)
+                            "jmp 20(%ebx)\n"
+                            //: : :
+                            );
+
+
+            // going to wrapped function
+            //	asm("jmp %0" : :"r"(getFunctionJmpAddress()));
+
+            // returning back into wrapper()
+            // 	memorizing eax value
+            asm volatile(
+                        // Calculating address of WrappingContext and memorizing return values
+                        "wrapper_return_point: movl -4(%ebp), %ebx\n"	// %ebx = & context
+                        "movl %eax, 8(%ebx)\n"			// context->eax = %eax
+                        "fstpl 0xc(%ebx)\n"			// context->doubleResult = ST0
+                        // Measuring time of function execution
+                        "pushl %ebx\n"				// pushing context address to stack
+                        "call record_end_time_\n"		// calling record_end_time
+                        "add $4, %esp\n"			// cleaning allocated memory
+                        //	: : :
+                        );
+
+
+            /*	asm(	"wrapper_return_point: movl 0(%ebp), %0\n"
+                "movl %2, 0(%ebp)\n"
+                "movl %eax, %1 ": "=r"(context_), "=r"(context_->eax):"r"(context_->oldEbp):"%eax");*/
+
+            // Change this call to any needed routine
+            //elfperf_log("back to wrapper!");
+
+            // restoring real return_address and eax and return
+            /*	asm(	"movl %1, %eax\n"
+                "jmp %0" : :"r"(context_->realReturnAddr), "r"(context_->eax) : "%eax");*/
+
+            // Getting context address
+            // restoring value of eax and st0
+            // returning to caller
+            asm volatile(
+                        "movl -4(%ebp), %ebx\n"	// get context address
+                        "movl 4(%ebx), %edx\n"	// restoring -4(old_ebp)
+                        "movl %edx, -4(%ebp)\n"	// edx = context->oldEbpLocVar ; -4(%ebp) = edx
+                        "movl 8(%ebx), %eax\n"	// restoring eax
+                        "fldl 0xc(%ebx)\n"		// restoring ST0
+                        "pushl (%ebx)\n"		// returning to caller - pushing return address to stack
+                        "ret\n"// : : :
+                        );
+
+            //////////
+
+
+run:
+            if(0==initialized)
+            {
+		_dl_error_printf("Hello from ELFPERF!\n");
+                char *names[]={"printf"};
+                unsigned int count = 1;
+
+                //names=get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+                void *wr = &&wrapper_code;
+		_dl_error_printf("Going to initWrapperRedirectors\n");
+                initWrapperRedirectors(names, count, wr);
+                initialized = 1;
+            }
+                        // Check if function is in list for profiling
+/*                        if (isFunctionInFunctionList(undef_name) ){
+			_dl_error_printf("Going to isFunctionRedirectorRegistered\n");
+          //                   Add redirector for function into s_redirectors
+                            if ( !isFunctionRedirectorRegistered(undef_name)){
+					_dl_error_printf("function %s not registered, adding\n", undef_name);
+					addNewFunction(undef_name,(void*) current_value.m->l_ld->d_un.d_ptr);
+
+				}
+
+                            void * redirectorAddr = getRedirectorAddressForName(undef_name);
+			    //result->s->st_value = (uint32_t) redirectorAddr;
+			    current_value.m->l_ld->d_un.d_ptr = (uint32_t) redirectorAddr;
+                        }*/
+
+dl_lookup_symbol_end_and_return:
     return LOOKUP_VALUE (current_value.m);
 }
 

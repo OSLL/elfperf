@@ -114,7 +114,7 @@ _dl_fixup (
 #ifdef RTLD_ENABLE_FOREIGN_CALL
       RTLD_ENABLE_FOREIGN_CALL;
 #endif
-
+	_dl_error_printf("dl-runtime1\n");
       result = _dl_lookup_symbol_x (strtab + sym->st_name, l, &sym, l->l_scope,
 				    version, ELF_RTYPE_CLASS_PLT, flags, NULL);
 
@@ -152,6 +152,18 @@ _dl_fixup (
   if (__builtin_expect (GLRO(dl_bind_not), 0))
     return value;
 
+  if(isElfPerfEnabled() && isFunctionInFunctionList(strtab + sym->st_name)){
+    _dl_error_printf("Doing routines for ELFPERF\n");
+    if (!isFunctionRedirectorRegistered(strtab + sym->st_name)){
+		_dl_error_printf("function %s not registered, adding\n", strtab + sym->st_name);
+		addNewFunction(strtab + sym->st_name,(void*) value);
+
+    }
+
+    value = (uint32_t) getRedirectorAddressForName(strtab + sym->st_name);
+  }
+  
+  _dl_error_printf("try to return with elf_machine_fixup_plt\n");
   return elf_machine_fixup_plt (l, result, reloc, rel_addr, value);
 }
 #endif
@@ -215,7 +227,7 @@ _dl_profile_fixup (
 	      THREAD_GSCOPE_SET_FLAG ();
 	      flags |= DL_LOOKUP_GSCOPE_LOCK;
 	    }
-
+	  _dl_error_printf("dl-runtime2\n");
 	  result = _dl_lookup_symbol_x (strtab + refsym->st_name, l,
 					&defsym, l->l_scope, version,
 					ELF_RTYPE_CLASS_PLT, flags, NULL);
