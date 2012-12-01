@@ -1,5 +1,8 @@
 #include <stdio.h>
 
+void hella(const char *p){
+	printf("Hacked hello for %s arg\n", p);
+}
 
 void hello(const char *p)
 {
