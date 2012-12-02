@@ -15,6 +15,13 @@
 
 static const int MAX_SLOTS = 3;
 
+#define STATS_LIMIT 100000
+// Global array of functions statistics
+static struct FunctionStatistic* s_stats[STATS_LIMIT];
+
+// Number of statistics
+static int s_statsCount = 0;
+
 
 // Return list of function names separted by ":" passed from @env_name@ envoironment variable
 // storing number of them into @count@
@@ -152,11 +159,6 @@ static struct timespec diff(struct timespec start, struct timespec end)
     return res;
 }
 
-#define STATS_LIMIT 100000
-// Global array of functions statistics
-static struct FunctionStatistic* s_stats[STATS_LIMIT];
-// Number of statistics
-static int s_statsCount = 0;
 
 // Record function start time into context->startTime
 static void record_start_time(void * context)
@@ -214,9 +216,10 @@ static struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
 
 static struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
 {
+    static struct FunctionStatistic fake = {0};
     if (s_statsCount == STATS_LIMIT){
         _dl_printf("Statistics buffer is full! Exiting\n");
-        exit(1);
+        return &fake;
     }
 
     // atomicly increment s_statsCount
@@ -243,15 +246,15 @@ void __updateStat(void* funcAddr, struct timespec diffTime)
     if (stat != NULL) {
 
 
-//        __sync_fetch_and_add(&(stat->totalCallsNumber), 1);
+        __sync_fetch_and_add(&(stat->totalCallsNumber), 1);
 
-//        // Try to lock
-//        while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
-//        //_dl_printf("Waiting inside spinlock\n");
+        // Try to lock
+        while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
+        //_dl_printf("Waiting inside spinlock\n");
 
-//        __time_t result_sec = stat->totalDiffTime.tv_sec;
-//        long int result_nsec = stat->totalDiffTime.tv_nsec;
-#if 0
+        __time_t result_sec = stat->totalDiffTime.tv_sec;
+        long int result_nsec = stat->totalDiffTime.tv_nsec;
+
         // Atomicly add diffTime.tv_sec to stat->totalDiffTime.tv_sec
         //__sync_fetch_and_add(&(stat->totalDiffTime.tv_sec), diffTime.tv_sec);
         result_sec += diffTime.tv_sec;
@@ -270,9 +273,9 @@ void __updateStat(void* funcAddr, struct timespec diffTime)
 
         // Unlock
         updateStatSpinlock = 0;
-#endif
+
     } else {
-      //  addNewStat(funcAddr, diffTime);
+       addNewStat(funcAddr, diffTime);
     }
 
 }
