@@ -705,6 +705,8 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
   struct sym_val current_value = { NULL, NULL };
   struct r_scope_elem **scope = symbol_scope;
 
+  _dl_debug_printf("name %s\n",undef_name);
+
   bump_num_relocations ();
 
   /* No other flag than DL_LOOKUP_ADD_DEPENDENCY or DL_LOOKUP_GSCOPE_LOCK

@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 #include <time.h>
 #include <pthread.h> 
+#include <math.h>
 
 void * p;
 void * f;
@@ -28,6 +29,7 @@ int main()
 		sizeof(time_t), sizeof(long int), sizeof(unsigned long long int) );
 	
 
+	sin(1.0);
 	int i=0;
 	p = dlopen("./libhello.so",RTLD_LAZY);
 	printf("handle=%p\n",p);
