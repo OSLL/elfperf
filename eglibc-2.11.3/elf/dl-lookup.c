@@ -31,6 +31,9 @@
 
 #include <assert.h>
 
+#include "../dlfcn/prof/cdecl_wrapper.h"
+#include "elfperf.h"
+
 #define VERSTAG(tag)	(DT_NUM + DT_THISPROCNUM + DT_VERSIONTAGIDX (tag))
 
 /* We need this string more than once.  */

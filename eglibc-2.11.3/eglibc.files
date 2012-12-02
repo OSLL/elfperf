@@ -13286,3 +13286,4 @@ tls.make.c
 version.h
 Versions.def
 WUR-REPORT
+elf/elfperf.h
