@@ -1,10 +1,31 @@
-#ifndef ELFPERF
-#define ELFPERF
+#ifndef ELFPERF___
+#define ELFPERF___
 
 #include <sched.h>
 #include <time.h>
 #include <stdint.h>
 #include <limits.h>    /* for PAGESIZE */
+
+// Number of contexts will be allocated
+#define CONTEXT_PREALLOCATED_NUMBER 1000
+
+// FIXME doesnt support recoursive calls  because of global stack variables usage
+struct WrappingContext{
+    // real return address
+    void * realReturnAddr; 		// 4bytes
+    // content of -4(%%old_ebp)
+    void * oldEbpLocVar; 		// 4bytes
+    // function return value
+    void * eax;			// 4bytes
+    double doubleResult;		// 8bytes
+    void * functionPointer;		// 4bytes
+    struct timespec startTime; 	// function starting time
+    struct timespec endTime;	// function ending time
+};
+
+void setFunctionPointer(void * pointer);
+static struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr);
+static struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime);
 
 #ifndef PAGESIZE
 #define PAGESIZE 4096
@@ -12,6 +33,7 @@
 #define REDIRECTOR_WORDS_SIZE 4
 
 #define ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE "ELFPERF_PROFILE_FUNCTION"
+#define ELFPERF_ENABLE_VARIABLE "ELFPERF_ENABLE"
 
 static const int MAX_SLOTS = 3;
 
@@ -22,6 +44,11 @@ static struct FunctionStatistic* s_stats[STATS_LIMIT];
 // Number of statistics
 static int s_statsCount = 0;
 
+
+static bool isElfPerfEnabled()
+{
+    return getenv(ELFPERF_ENABLE_VARIABLE)!=NULL;
+}
 
 // Return list of function names separted by ":" passed from @env_name@ envoironment variable
 // storing number of them into @count@
@@ -126,7 +153,7 @@ static void calibrateTicks()
 static void initRdtsc()
 {
     size_t cpuMask = 1;
-    sched_setaffinity(0, sizeof(cpuMask), &cpuMask);
+    //sched_setaffinity(0, sizeof(cpuMask), &cpuMask);
     calibrateTicks();
 }
 
@@ -161,7 +188,7 @@ static struct timespec diff(struct timespec start, struct timespec end)
 
 
 // Record function start time into context->startTime
-static void record_start_time(void * context)
+void record_start_time_(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
@@ -178,9 +205,54 @@ static void record_start_time(void * context)
 
 }
 
+// Spinlock for updateStat
+static int updateStatSpinlock=0;
+
+static void updateStat(void* funcAddr, struct timespec diffTime)
+{
+
+    struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
+    if (stat != NULL) {
+
+
+        __sync_fetch_and_add(&(stat->totalCallsNumber), 1);
+
+        // Try to lock
+        while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
+        //_dl_printf("Waiting inside spinlock\n");
+
+        __time_t result_sec = stat->totalDiffTime.tv_sec;
+        long int result_nsec = stat->totalDiffTime.tv_nsec;
+
+        // Atomicly add diffTime.tv_sec to stat->totalDiffTime.tv_sec
+        //__sync_fetch_and_add(&(stat->totalDiffTime.tv_sec), diffTime.tv_sec);
+        result_sec += diffTime.tv_sec;
+        result_nsec += diffTime.tv_nsec;
+
+        if (result_nsec >= 1000000000) {
+            result_sec += 1;
+            result_nsec = result_nsec - 1000000000;
+        }
+
+        //	_dl_printf("Going to update stat: old %ds %dns, addition %ds %dns \n",
+        //		stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec, result_sec, result_nsec);
+        // Atomicly increment the stat->totalCallsNumber
+        stat->totalDiffTime.tv_nsec = (long int)result_nsec;
+        stat->totalDiffTime.tv_sec = result_sec;
+
+        // Unlock
+        updateStatSpinlock = 0;
+
+    } else {
+       addNewStat(funcAddr, diffTime);
+    }
+
+}
+
+
 // Record function end time into context->endTime and
 // print the duration of function execution
-static void record_end_time(void * context)
+void record_end_time_(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
@@ -236,49 +308,6 @@ static struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diff
     return stat;
 }
 
-// Spinlock for updateStat
-static int updateStatSpinlock=0;
-
-void __updateStat(void* funcAddr, struct timespec diffTime)
-{
-
-    struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
-    if (stat != NULL) {
-
-
-        __sync_fetch_and_add(&(stat->totalCallsNumber), 1);
-
-        // Try to lock
-        while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
-        //_dl_printf("Waiting inside spinlock\n");
-
-        __time_t result_sec = stat->totalDiffTime.tv_sec;
-        long int result_nsec = stat->totalDiffTime.tv_nsec;
-
-        // Atomicly add diffTime.tv_sec to stat->totalDiffTime.tv_sec
-        //__sync_fetch_and_add(&(stat->totalDiffTime.tv_sec), diffTime.tv_sec);
-        result_sec += diffTime.tv_sec;
-        result_nsec += diffTime.tv_nsec;
-
-        if (result_nsec >= 1000000000) {
-            result_sec += 1;
-            result_nsec = result_nsec - 1000000000;
-        }
-
-        //	_dl_printf("Going to update stat: old %ds %dns, addition %ds %dns \n",
-        //		stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec, result_sec, result_nsec);
-        // Atomicly increment the stat->totalCallsNumber
-        stat->totalDiffTime.tv_nsec = (long int)result_nsec;
-        stat->totalDiffTime.tv_sec = result_sec;
-
-        // Unlock
-        updateStatSpinlock = 0;
-
-    } else {
-       addNewStat(funcAddr, diffTime);
-    }
-
-}
 
 
 // Print stats for all functions
@@ -295,7 +324,7 @@ static void _dl_printfunctionStatistics(){
 
 
 // This function returns address of currently free context
-static struct WrappingContext * getNewContext(){
+struct WrappingContext * getNewContext_(){
 
     struct WrappingContext * context;
 
@@ -310,13 +339,114 @@ static struct WrappingContext * getNewContext(){
         context = &contextArray[number];
     } else {
         _dl_printf("Context buffer is full!!! Exiting\n");
-        exit(1);
+        return 0;
+       // exit(1);
     }
 
     //pthread_mutex_unlock(&freeContextNumberLock);
     return context;
 }
 
+// Wrapper code.
+// We doesnt touch stack and variables, just print something and jmp to wrapped function.
+// Schema
+// 1. Programm recieve redirector address from dlsym(....)
+// 2. Programm push params to stack and perform call of redirector addres
+// 3. Redirector stores function jump address (= real_function_address+3) into %edx
+// 4. Redirector jumps into wrapper
+
+static void wrapper(){
+    asm volatile(
+        // By the start of wrapper edx contains jump addres of function, which is wrapped
+        "pushl %edx\n"				// Storing wrappedFunction_addr into stack
+        "movl (%ebp), %ebx\n"			// ebx = old_ebp
+        "subl $0x4, %ebx\n"			// ebx = old_ebp - 4
+        "movl (%ebx), %edx\n"			// edx = -4(%old_ebp) = (%ebp)
+        // Storing context pointer into freed space (-4(%old_ebp))
+        "call getNewContext_\n"			// eax = getNewContext()
+        "movl %eax, (%ebx)\n" 			// -4(%old_ebp) = eax
+        "movl %eax, %ebx\n"			// %ebx = &context
+        "movl %edx, 4(%ebx)\n"			//context->oldEbpLocVar = edx
+        // Extracting wrappedFunction_addr from stack and placing it to context
+        "popl 20(%ebx)\n"			// context->functionPointer = wrappedFunction_addr
+        // Changing return address to wrapper_return_point
+        "movl 4(%ebp), %ecx\n"			// Storing real return_addres
+        "movl %ecx, (%ebx) \n"
+        "movl $wrapper_return_point, 4(%ebp)\n" // changing return address for $wrapper_return_point
+        //: : :		// (%ebx) = %eax
+
+    );
+
+    //elfperf_log("WRAPPED!");
+
+    // memorize old return addres and change it for returning in wrapper()
+    // stack variables will be damaged, so i use global variable
+
+    asm volatile(	// Calculate address of WrappingContext
+        "movl (%ebp), %ecx\n"			//  %ecx = old_ebp
+        "movl -4(%ecx), %ebx\n"			//  %ebx = context address
+        // WrapperContext struct layout
+        /*
+            (%ebx)		realReturnAddress
+            4(%ebx)	oldEbpLocVar // -4(%old_ebp)
+            8(%ebx)	eax
+            12(%ebx) floatFunctionReturnValue
+
+        */
+        // Start time recording
+        // record_start_time(%ebx)
+        "pushl %ebx\n"				// pushing parameter(context address into stack)
+        "call record_start_time_\n"		//
+        "add $4, %esp\n"			// cleaning stack
+        // Going to wrapped function (context->functionPointer)
+        "jmp 20(%ebx)\n"
+        //: : :
+    );
+
+
+    // going to wrapped function
+//	asm("jmp %0" : :"r"(getFunctionJmpAddress()));
+
+    // returning back into wrapper()
+    // 	memorizing eax value
+    asm volatile(
+        // Calculating address of WrappingContext and memorizing return values
+        "wrapper_return_point: movl -4(%ebp), %ebx\n"	// %ebx = & context
+        "movl %eax, 8(%ebx)\n"			// context->eax = %eax
+        "fstpl 0xc(%ebx)\n"			// context->doubleResult = ST0
+        // Measuring time of function execution
+        "pushl %ebx\n"				// pushing context address to stack
+        "call record_end_time_\n"		// calling record_end_time
+        "add $4, %esp\n"			// cleaning allocated memory
+        //	: : :
+    );
+
+
+/*	asm(	"wrapper_return_point: movl 0(%ebp), %0\n"
+        "movl %2, 0(%ebp)\n"
+        "movl %eax, %1 ": "=r"(context_), "=r"(context_->eax):"r"(context_->oldEbp):"%eax");*/
+
+    // Change this call to any needed routine
+    //elfperf_log("back to wrapper!");
+
+    // restoring real return_address and eax and return
+/*	asm(	"movl %1, %eax\n"
+        "jmp %0" : :"r"(context_->realReturnAddr), "r"(context_->eax) : "%eax");*/
+
+    // Getting context address
+    // restoring value of eax and st0
+    // returning to caller
+    asm volatile(
+        "movl -4(%ebp), %ebx\n"	// get context address
+        "movl 4(%ebx), %edx\n"	// restoring -4(old_ebp)
+        "movl %edx, -4(%ebp)\n"	// edx = context->oldEbpLocVar ; -4(%ebp) = edx
+        "movl 8(%ebx), %eax\n"	// restoring eax
+        "fldl 0xc(%ebx)\n"		// restoring ST0
+        "pushl (%ebx)\n"		// returning to caller - pushing return address to stack
+        "ret\n"// : : :
+    );
+
+}
 
 
 
@@ -446,8 +576,9 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
     unsigned int i = 0;
     for (i = 0; i < pagesNum; i++) {
         if (mprotect(s_redirectors + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
-            perror("Couldn't mprotect");
-            exit(errno);
+            _dl_printf("Couldn't mprotect");
+            //exit(errno);
+            return;
         }
     }
 
@@ -472,6 +603,7 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
     }
 
 }
+
 
 //#################################################
 #endif

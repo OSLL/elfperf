@@ -202,7 +202,8 @@ static struct FunctionStatistic* s_stats[STATS_LIMIT];
 static int s_statsCount = 0;
 
 // Record function start time into context->startTime
-void record_start_time(void * context)
+extern void record_start_time(void * context)
+
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
@@ -219,9 +220,11 @@ void record_start_time(void * context)
 
 }
 
+
 // Record function end time into context->endTime and
 // print the duration of function execution
 void record_end_time(void * context)
+
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
@@ -332,7 +335,8 @@ void printFunctionStatistics(){
 
 
 // This function returns address of currently free context
-struct WrappingContext * getNewContext(){
+struct WrappingContext * getNewContext()
+{
 	
 	struct WrappingContext * context;
 	
@@ -353,7 +357,6 @@ struct WrappingContext * getNewContext(){
 	//pthread_mutex_unlock(&freeContextNumberLock);
 	return context;
 }
-
 
 
 
