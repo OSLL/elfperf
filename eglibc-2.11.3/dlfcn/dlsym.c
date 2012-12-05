@@ -101,7 +101,7 @@ static int freeContextNumber = 0 ;
 
 struct FunctionStatistic
 {
-    struct timespec totalDiffTime; // Total time of function calls
+    uint64_t totalDiffTime; // Total time of function calls
     unsigned long long int totalCallsNumber; 
     void* realFuncAddr;            // Address of the function
 };
@@ -170,7 +170,14 @@ void getTimeSpec(struct timespec *ts, uint64_t nsecs)
 void getRdtscTime(struct timespec* ts)
 {
     getTimeSpec(ts, rdtsc()/s_ticksPerNanoSec);
-} 
+}
+
+// Get number of CPU ticks by the moment
+uint64_t getRdtscTicks()
+{
+    return rdtsc();
+}
+ 
 
 /*struct timespec get_accurate_time()
 {
@@ -180,7 +187,7 @@ void getRdtscTime(struct timespec* ts)
     return time;
 }*/
 
-struct timespec diff(struct timespec start, struct timespec end)
+/*struct timespec diff(struct timespec start, struct timespec end)
 {
     struct timespec res;
     if ((end.tv_nsec - start.tv_nsec) < 0) {
@@ -191,7 +198,14 @@ struct timespec diff(struct timespec start, struct timespec end)
         res.tv_nsec = end.tv_nsec - start.tv_nsec;
     }
     return res;
+}*/
+
+uint64_t diff(uint64_t start, uint64_t end)
+{
+    return end - start;
 }
+
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -205,18 +219,7 @@ static int s_statsCount = 0;
 void record_start_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
-
-#ifdef TIMING_WITH_HPET
-    printf("LOG: get start time with HPET\n");
-    cont->startTime = get_accurate_time();
-#endif
-
-#ifdef TIMING_WITH_RDTSC
-//    printf("LOG: get start time with RDTSC\n");
-    initRdtsc();
-    getRdtscTime(&cont->startTime);
-#endif
-
+    cont->startTime = getRdtscTicks();
 }
 
 // Record function end time into context->endTime and
@@ -225,18 +228,10 @@ void record_end_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
-#ifdef TIMING_WITH_HPET
-//    printf("LOG: get end time with HPET\n");
-    cont->endTime = get_accurate_time();
-#endif
+    cont->endTime = getRdtscTicks();
 
-#ifdef TIMING_WITH_RDTSC
-    //printf("LOG: get end time with RDTSC\n");
-    getRdtscTime(&cont->endTime);
-#endif
-
-    struct timespec duration = diff(cont->startTime, cont->endTime);
-//    printf("Function(%p) duration = %ds %dns\n", cont->functionPointer-3, duration.tv_sec, duration.tv_nsec);
+    uint64_t duration = diff(cont->startTime, cont->endTime);
+    printf("Function(%p) duration = %llu ticks\n", duration);
     
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
@@ -255,7 +250,7 @@ struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
 }
 
 
-struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
+struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime)
 {
     if (s_statsCount == STATS_LIMIT){
         printf("Statistics buffer is full! Exiting\n");
@@ -263,14 +258,13 @@ struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
     }
 
     // atomicly increment s_statsCount
-  //  unsigned int number = __sync_fetch_and_add(&s_statsCount, 1);
+    // unsigned int number = __sync_fetch_and_add(&s_statsCount, 1);
 
     struct FunctionStatistic* stat = (struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
 
     stat->realFuncAddr = funcAddr;
     stat->totalCallsNumber = 1;
-    stat->totalDiffTime.tv_sec = diffTime.tv_sec;
-    stat->totalDiffTime.tv_nsec = diffTime.tv_nsec;
+    stat->totalDiffTime = diffTime;
     s_stats[__sync_fetch_and_add(&s_statsCount, 1)] = stat;
 
     return stat;
@@ -279,7 +273,7 @@ struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
 // Spinlock for updateStat
 int updateStatSpinlock=0;
 
-void updateStat(void* funcAddr, struct timespec diffTime)
+void updateStat(void* funcAddr, uint64_t diffTime)
 {
     struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
     if (stat != NULL) {
@@ -291,12 +285,12 @@ void updateStat(void* funcAddr, struct timespec diffTime)
 	while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0)
 		printf("Waiting inside spinlock\n");
 
-        __time_t result_sec = stat->totalDiffTime.tv_sec;
+        /*__time_t result_sec = stat->totalDiffTime.tv_sec;
         long int result_nsec = stat->totalDiffTime.tv_nsec;
 
-	// Atomicly add diffTime.tv_sec to stat->totalDiffTime.tv_sec
-	//__sync_fetch_and_add(&(stat->totalDiffTime.tv_sec), diffTime.tv_sec);
-	result_sec += diffTime.tv_sec;
+	    // Atomicly add diffTime.tv_sec to stat->totalDiffTime.tv_sec
+	    //__sync_fetch_and_add(&(stat->totalDiffTime.tv_sec), diffTime.tv_sec);
+ 	    result_sec += diffTime.tv_sec;
         result_nsec += diffTime.tv_nsec;
 
         if (result_nsec >= 1000000000) {
@@ -304,14 +298,16 @@ void updateStat(void* funcAddr, struct timespec diffTime)
             result_nsec = result_nsec - 1000000000;
         }
 
-//	printf("Going to update stat: old %ds %dns, addition %ds %dns \n", 
-//		stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec, result_sec, result_nsec);
-	// Atomicly increment the stat->totalCallsNumber
-	stat->totalDiffTime.tv_nsec = (long int)result_nsec;
-	stat->totalDiffTime.tv_sec = result_sec;
+        // printf("Going to update stat: old %ds %dns, addition %ds %dns \n", 
+        // stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec, result_sec, result_nsec);
+        // Atomicly increment the stat->totalCallsNumber
+        stat->totalDiffTime.tv_nsec = (long int)result_nsec;
+        stat->totalDiffTime.tv_sec = result_sec;*/
 
-	// Unlock
-	updateStatSpinlock = 0;
+        stat->totalDiffTime += diffTime;
+
+        // Unlock
+        updateStatSpinlock = 0;
 
     } else {
         addNewStat(funcAddr, diffTime);
@@ -323,9 +319,9 @@ void printFunctionStatistics(){
 	int i; 
 	for (i = 0; i < s_statsCount; i++){
 		struct FunctionStatistic *stat = s_stats[i];
-		printf("Statistic for function = %p, total time = %ds %dns, number of calls = %lld\n", 
-			stat->realFuncAddr, stat->totalDiffTime.tv_sec,
-			stat->totalDiffTime.tv_nsec, 
+		printf("Statistic for function = %p, total time = %llu ticks, number of calls = %lld\n", 
+			stat->realFuncAddr,
+			stat->totalDiffTime, 
 			stat->totalCallsNumber);
 	}
 }
