@@ -199,10 +199,18 @@ void test_loop_with_RDTSC()
 int main(int argc, char **argv)
 {
     // Testing of HPET counters
-    test_loop_with_HPET();
-    printf("\n");
+    //test_loop_with_HPET();
+    //printf("\n");
     // Testing of RDTSC counters
-    test_loop_with_RDTSC();
+    //test_loop_with_RDTSC();
+
+    uint64_t start = getRdtscTicks();
+    sleep(2);
+    uint64_t end = getRdtscTicks();
+
+    printf("elapsed: start: %llu ticks\n", start);
+    printf("         end: %llu ticks\n", end);
+    printf("         diff: %llu ticks\n", end - start);
 
     return 0;
 }

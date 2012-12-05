@@ -66,7 +66,7 @@ struct testStruct testFunction(){
 
 int main()
 {
-    int n = 2500;
+    int n = 100;
     char* funcNames[n];
     void* funcPointers[n];
 
@@ -94,12 +94,12 @@ int main()
                result.a, result.b, result.c,
                STRUCT_A_VALUE, STRUCT_B_VALUE, STRUCT_C_VALUE);
         struct FunctionStatistic* stat = getFunctionStatistic(testFunction);
-        printf("Function statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+        printf("Function statistics:\n\tduration = %llu ticks\n", stat->totalDiffTime);
     }
 
     printf("=== Total statistics ===\n");
     struct FunctionStatistic* stat = getFunctionStatistic(testFunction);
-    printf("Function statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    printf("Function statistics:\n\tduration = %llu ticks\n", stat->totalDiffTime);
 
     return 0;
 }
