@@ -132,32 +132,6 @@ struct timespec diffTimeSpec(struct timespec start, struct timespec end)
     return res;
 }
 
-// This function is used for calibrating the number of CPU cycles per nanosecond
-void calibrateTicks()
-{
-    /*struct timespec start_ts, end_ts;
-    uint64_t start = 0, end = 0;
-    clock_gettime(CLOCK_MONOTONIC, &start_ts);
-    start = rdtsc();
-    uint64_t i;
-    for (i = 0; i < 1000000; i++);
-    end = rdtsc();
-    clock_gettime(CLOCK_MONOTONIC, &end_ts);
-    struct timespec elapsed_ts = diffTimeSpec(start_ts, end_ts);
-    uint64_t elapsed_nsec = elapsed_ts.tv_sec * 1000000000LL + elapsed_ts.tv_nsec;
-    s_ticksPerNanoSec = (double)(end - start) / (double)elapsed_nsec;*/
-}
-
-// This function should be called before using rdtsc(),
-// has side effect of binding to CPU0.
-void initRdtsc()
-{
-    size_t cpuMask = 1;
-    sched_setaffinity(0, sizeof(cpuMask), &cpuMask);
-    calibrateTicks();
-}
-
-
 
 // Get elapsed time in timespecs for given time in nanoseconds
 void getTimeSpec(struct timespec *ts, uint64_t nsecs)
@@ -166,11 +140,13 @@ void getTimeSpec(struct timespec *ts, uint64_t nsecs)
     ts->tv_nsec = nsecs % NANOSECONDS_IN_SEC;
 }
 
+
 // Get elapsed time in timespecs using time converted from TSC reading
 void getRdtscTime(struct timespec* ts)
 {
     getTimeSpec(ts, rdtsc()/s_ticksPerNanoSec);
 }
+
 
 // Get number of CPU ticks by the moment
 uint64_t getRdtscTicks()
@@ -178,27 +154,6 @@ uint64_t getRdtscTicks()
     return rdtsc();
 }
  
-
-/*struct timespec get_accurate_time()
-{
-    struct timespec time;
-    clockid_t clockType = CLOCK_MONOTONIC;
-    clock_gettime(clockType, &time);
-    return time;
-}*/
-
-/*struct timespec diff(struct timespec start, struct timespec end)
-{
-    struct timespec res;
-    if ((end.tv_nsec - start.tv_nsec) < 0) {
-        res.tv_sec = end.tv_sec - start.tv_sec - 1;
-        res.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
-    } else {
-        res.tv_sec = end.tv_sec - start.tv_sec;
-        res.tv_nsec = end.tv_nsec - start.tv_nsec;
-    }
-    return res;
-}*/
 
 uint64_t diff(uint64_t start, uint64_t end)
 {
@@ -231,7 +186,7 @@ void record_end_time(void * context)
     cont->endTime = getRdtscTicks();
 
     uint64_t duration = diff(cont->startTime, cont->endTime);
-    printf("Function(%p) duration = %llu ticks\n", duration);
+    //printf("Function(%p) duration = %llu ticks\n", cont->functionPointer - 3, duration);
     
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
@@ -282,33 +237,11 @@ void updateStat(void* funcAddr, uint64_t diffTime)
 	__sync_fetch_and_add(&(stat->totalCallsNumber), 1);
 
 	// Try to lock 
-	while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0)
-		printf("Waiting inside spinlock\n");
-
-        /*__time_t result_sec = stat->totalDiffTime.tv_sec;
-        long int result_nsec = stat->totalDiffTime.tv_nsec;
-
-	    // Atomicly add diffTime.tv_sec to stat->totalDiffTime.tv_sec
-	    //__sync_fetch_and_add(&(stat->totalDiffTime.tv_sec), diffTime.tv_sec);
- 	    result_sec += diffTime.tv_sec;
-        result_nsec += diffTime.tv_nsec;
-
-        if (result_nsec >= 1000000000) {
-            result_sec += 1;
-            result_nsec = result_nsec - 1000000000;
-        }
-
-        // printf("Going to update stat: old %ds %dns, addition %ds %dns \n", 
-        // stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec, result_sec, result_nsec);
-        // Atomicly increment the stat->totalCallsNumber
-        stat->totalDiffTime.tv_nsec = (long int)result_nsec;
-        stat->totalDiffTime.tv_sec = result_sec;*/
-
+    while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0)
+        printf("Waiting inside spinlock\n");
         stat->totalDiffTime += diffTime;
-
         // Unlock
         updateStatSpinlock = 0;
-
     } else {
         addNewStat(funcAddr, diffTime);
     }
@@ -316,13 +249,13 @@ void updateStat(void* funcAddr, uint64_t diffTime)
 
 // Print stats for all functions
 void printFunctionStatistics(){
-	int i; 
-	for (i = 0; i < s_statsCount; i++){
-		struct FunctionStatistic *stat = s_stats[i];
-		printf("Statistic for function = %p, total time = %llu ticks, number of calls = %lld\n", 
-			stat->realFuncAddr,
-			stat->totalDiffTime, 
-			stat->totalCallsNumber);
+    int i; 
+    for (i = 0; i < s_statsCount; i++){
+        struct FunctionStatistic *stat = s_stats[i];
+        printf("Statistic for function = %p, total time = %llu ticks, number of calls = %lld\n", 
+            stat->realFuncAddr,
+            stat->totalDiffTime, 
+            stat->totalCallsNumber);
 	}
 }
 
@@ -330,7 +263,7 @@ void printFunctionStatistics(){
 // This function returns address of currently free context
 struct WrappingContext * getNewContext(){
 	
-	struct WrappingContext * context;
+    struct WrappingContext * context;
 	
 
 	//pthread_mutex_lock(&freeContextNumberLock);
