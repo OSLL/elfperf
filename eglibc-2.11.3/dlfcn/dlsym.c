@@ -186,7 +186,7 @@ void record_end_time(void * context)
     cont->endTime = getRdtscTicks();
 
     uint64_t duration = diff(cont->startTime, cont->endTime);
-    //printf("Function(%p) duration = %llu ticks\n", cont->functionPointer - 3, duration);
+    printf("ELFPERF_LOG: Function(%p) duration = %llu ticks\n", cont->functionPointer - 3, duration);
     
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
@@ -208,7 +208,7 @@ struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
 struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime)
 {
     if (s_statsCount == STATS_LIMIT){
-        printf("Statistics buffer is full! Exiting\n");
+        printf("ELFPERF_LOG: Statistics buffer is full! Exiting\n");
         exit(1);
     }
 
@@ -238,7 +238,7 @@ void updateStat(void* funcAddr, uint64_t diffTime)
 
 	// Try to lock 
     while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0)
-        printf("Waiting inside spinlock\n");
+        printf("ELFPERF_LOG: Waiting inside spinlock\n");
         stat->totalDiffTime += diffTime;
         // Unlock
         updateStatSpinlock = 0;
@@ -252,7 +252,7 @@ void printFunctionStatistics(){
     int i; 
     for (i = 0; i < s_statsCount; i++){
         struct FunctionStatistic *stat = s_stats[i];
-        printf("Statistic for function = %p, total time = %llu ticks, number of calls = %lld\n", 
+        printf("ELFPERF_LOG: Statistic for function = %p, total time = %llu ticks, number of calls = %lld\n", 
             stat->realFuncAddr,
             stat->totalDiffTime, 
             stat->totalCallsNumber);
@@ -275,7 +275,7 @@ struct WrappingContext * getNewContext(){
 	if (number < CONTEXT_PREALLOCATED_NUMBER){
 		context = &contextArray[number];
 	} else {
-		printf("Context buffer is full!!! Exiting\n");
+		printf("ELFPERF_LOG: Context buffer is full!!! Exiting\n");
 		exit(1);
 	}
 	
@@ -289,7 +289,7 @@ struct WrappingContext * getNewContext(){
 static void elfperf_log(const char *msg) 
 {
 	static int c=0;
-	printf("[ELFPERF:%d] %s\n",c++,msg);
+	printf("[ELFPERF_LOG:%d] %s\n",c++,msg);
 }
 
 

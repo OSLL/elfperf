@@ -3,7 +3,7 @@
 #include <time.h>
 #include <stdint.h>
 // Number of contexts will be allocated
-#define CONTEXT_PREALLOCATED_NUMBER 1000
+#define CONTEXT_PREALLOCATED_NUMBER 100000
 
 // FIXME doesnt support recoursive calls  because of global stack variables usage
 struct WrappingContext{
