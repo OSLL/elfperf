@@ -72,7 +72,6 @@ static struct FunctionStatistic* s_stats[STATS_LIMIT];
 // Number of statistics
 static int s_statsCount = 0;
 
-
 static bool isElfPerfEnabled()
 {
     return getenv(ELFPERF_ENABLE_VARIABLE)!=NULL;
