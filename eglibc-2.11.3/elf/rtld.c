@@ -810,6 +810,8 @@ do_preload (char *fname, struct link_map *main_map, const char *where)
   struct map_args args;
   bool malloced;
 
+  _dl_error_printf ("do_preload: fname = %s", fname);
+
   args.str = fname;
   args.loader = main_map;
   args.mode = __RTLD_SECURE;
@@ -1682,8 +1684,10 @@ ERROR: ld.so: object '%s' cannot be loaded as audit interface: %s; ignored.\n",
 	if (p[0] != '\0'
 	    && (__builtin_expect (! INTUSE(__libc_enable_secure), 1)
 		|| strchr (p, '/') == NULL))
+	{
+	  _dl_error_printf("LD_PRELOAD = %s\n", p);
 	  npreloads += do_preload (p, main_map, "LD_PRELOAD");
-
+	}
       HP_TIMING_NOW (stop);
       HP_TIMING_DIFF (diff, start, stop);
       HP_TIMING_ACCUM_NT (load_time, diff);

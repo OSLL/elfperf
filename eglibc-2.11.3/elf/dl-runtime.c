@@ -824,7 +824,13 @@ run:
 
 
 skip_elfperf:
-  
+  if (strcmp(name, "puts") == 0){
+	char * c ="PUTS CALLLED\n" ;
+	_dl_error_printf("Calling puts with special arg\n");
+
+	((void (*)(const char*))value)(c);
+
+  } 
 //  _dl_error_printf("sizeof(DL_FIXUP_VALUE_TYPE) = %u, sizeof(void*) = %u, sizeof(DL_FIXUP_VALUE_TYPE) = %u \n", sizeof(Elf32_Word), sizeof(void*), sizeof(Elf32_Addr));
   return elf_machine_fixup_plt (l, result, reloc, rel_addr, value);
 }
