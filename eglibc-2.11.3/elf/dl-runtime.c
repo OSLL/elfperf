@@ -572,7 +572,105 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
 # define reloc_index  reloc_arg / sizeof (PLTREL)
 #endif
 
+#define ELFPERF_LIB_NAME "libhello.so"
 
+/*
+  Search for library @libname@'s link_map, and if its exists try to get from it
+  symbol with name @symbol_name@.
+  @flags@ are domestic var resieved from dl_fixup
+  @l@ is link_map from which we start search.
+
+  If nothing found or something went wrong 0 is returned. 
+*/
+static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbol_name, 
+	struct link_map *l, int flags){
+
+	ElfW(Sym) * sym1 = (ElfW(Sym) *)malloc(sizeof(ElfW(Sym) ));
+	lookup_t result1;
+	DL_FIXUP_VALUE_TYPE value1 = 0;
+//	char* name1 = "hello";
+//	char* libname = "libhello.so";
+	struct link_map* libhello_map = NULL;
+	struct link_map* tmp_map = NULL;
+
+	_dl_error_printf("Doing search for libhello linkmap\n");
+	// Finding libhello link_map by string name
+	if (strstr(l->l_name,libname) == NULL){
+		// If l is not the needed lib search in the previous and next libs 
+
+		// Analyze previous libs
+		if (l->l_prev != NULL){
+			_dl_error_printf("Doing search for libhello linkmap in PREVIOUS libs\n");
+
+			tmp_map = l;
+
+			while (tmp_map->l_prev != NULL) {
+				
+				if (strstr(tmp_map->l_name,libname) != NULL){
+					_dl_error_printf("Map for libhello found: %s\n", tmp_map->l_name);
+					libhello_map = tmp_map;
+					break;
+				}
+
+				tmp_map = tmp_map->l_prev;
+			}
+
+		// Analyze next libs if they exists and we didnt found anything else
+		}else if (l->l_next != NULL && libhello_map == NULL){
+			_dl_error_printf("Doing search for libhello linkmap in NEXT libs\n");
+
+			tmp_map = l;
+
+			while (tmp_map->l_next != NULL) {
+				
+				if (strstr(tmp_map->l_name,libname) != NULL){
+					_dl_error_printf("Map for libhello found: %s\n", tmp_map->l_name);
+					libhello_map = tmp_map;
+					break;
+				}
+
+				tmp_map = tmp_map->l_next;
+			}
+
+		}
+		
+
+	}else {
+		// l is needed lib
+		_dl_error_printf("libhello found. l is libhello.so\n");
+		libhello_map = l;
+	}
+
+	// If we found something
+	if (libhello_map != NULL){
+	
+
+		_dl_error_printf("Doing _dl_lookup_symbol_x for hello symbol\n");
+		result1 = _dl_lookup_symbol_x (symbol_name, libhello_map, &sym1, libhello_map->l_scope,
+					    NULL, ELF_RTYPE_CLASS_PLT, flags, NULL);
+		
+		if (sym1 !=NULL){
+		
+			_dl_error_printf("Found not NULL symbol for \"hello\"!\n");
+			value1 = DL_FIXUP_MAKE_VALUE (result1,
+						   sym1 ? (LOOKUP_VALUE_ADDRESS (result1)
+							  + sym1->st_value) : 0);
+
+			if (sym1 != NULL
+			    && __builtin_expect (ELFW(ST_TYPE) (sym1->st_info) == STT_GNU_IFUNC, 0))
+			  value1 = ((DL_FIXUP_VALUE_TYPE (*) (void)) DL_FIXUP_VALUE_ADDR (value1)) ();
+				
+		}else{
+			
+			_dl_error_printf("Error! Found NULL symbol for \"hello\"!\n");
+		}
+	}else {
+		_dl_error_printf("Library not found!\n");
+	}
+
+	//free(sym1);
+	return value1;
+}
 
 /* This function is called through a special trampoline from the PLT the
    first time each PLT entry is called.  We must perform the relocation
@@ -582,6 +680,9 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
    function.  */
 
 static DL_FIXUP_VALUE_TYPE hella_addr = 0;
+
+
+
 
 #ifndef ELF_MACHINE_NO_PLT
 DL_FIXUP_VALUE_TYPE
@@ -606,6 +707,7 @@ _dl_fixup (
   DL_FIXUP_VALUE_TYPE value;
 
   char* name = 0;
+  int flags;
 
   /* Sanity check that we're really looking at a PLT relocation.  */
   assert (ELFW(R_TYPE)(reloc->r_info) == ELF_MACHINE_JMP_SLOT);
@@ -629,7 +731,7 @@ _dl_fixup (
       /* We need to keep the scope around so do some locking.  This is
 	 not necessary for objects which cannot be unloaded or when
 	 we are not using any threads (yet).  */
-      int flags = DL_LOOKUP_ADD_DEPENDENCY;
+      flags = DL_LOOKUP_ADD_DEPENDENCY;
       if (!RTLD_SINGLE_THREAD_P)
 	{
 	  THREAD_GSCOPE_SET_FLAG ();
@@ -655,7 +757,7 @@ _dl_fixup (
       RTLD_FINALIZE_FOREIGN_CALL;
 #endif
 
-//	_dl_error_printf("dl-runtime2\n");
+	_dl_error_printf("dl-runtime2\n");
       /* Currently result contains the base load address (or link map)
 	 of the object that defines sym.  Now add in the symbol
 	 offset.  */
@@ -829,6 +931,13 @@ skip_elfperf:
 	_dl_error_printf("Calling puts with special arg\n");
 
 	((void (*)(const char*))value)(c);
+
+	// Studying how to use _dl_lookup_symbol_x
+	
+	DL_FIXUP_VALUE_TYPE value1;
+	value1 = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "hello", l, flags);
+
+	if (value1) ((void (*)(const char*))value1)("calling hello function from dl_fixup");
 
   } 
 //  _dl_error_printf("sizeof(DL_FIXUP_VALUE_TYPE) = %u, sizeof(void*) = %u, sizeof(DL_FIXUP_VALUE_TYPE) = %u \n", sizeof(Elf32_Word), sizeof(void*), sizeof(Elf32_Addr));
