@@ -61,7 +61,7 @@ static int s_statsCount = 0;
 
 // Return list of function names separted by ":" passed from @env_name@ envoironment variable
 // storing number of them into @count@
-static char** get_fn_list(const char* env_name, int* count)
+/*static char** get_fn_list(const char* env_name, int* count)
 {
     char* env_value = getenv(env_name);
 
@@ -88,7 +88,7 @@ static char** get_fn_list(const char* env_name, int* count)
 
     *count = word_count;
     return result;
-}
+}*/
 
 
 
@@ -196,7 +196,7 @@ void record_start_time_(void * context)
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
 #ifdef TIMING_WITH_HPET
-    _dl_printf("LOG: get start time with HPET\n");
+    printf("LOG: get start time with HPET\n");
     cont->startTime = get_accurate_time();
 #endif
 
@@ -341,7 +341,7 @@ struct WrappingContext * getNewContext_(){
     if (number < CONTEXT_PREALLOCATED_NUMBER){
         context = &contextArray[number];
     } else {
-        _dl_printf("Context buffer is full!!! Exiting\n");
+        printf("Context buffer is full!!! Exiting\n");
         return 0;
         // exit(1);
     }
@@ -414,11 +414,11 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
 unsigned int getFunctionIndex(char* name){
     unsigned int i;
     for (i=0; i<s_count; i++){
-
+	printf("Testing %s for %s\n", s_names[i], name);
         //		_dl_printf("%s, %s\n", s_names[i], name);
         if ( !strcmp(name, s_names[i]) ){
-	    printf("return normal index in getFunctionIndex for %s\n", name);
-            return i;
+    		printf("Index of %s is %u\n", name, index);
+        	return i;
 	}
     }
     //printf("Returning invalid index in getFunctionIndex for %s\n", name);
@@ -427,6 +427,7 @@ unsigned int getFunctionIndex(char* name){
 
 // Return true, if function name exists into s_names array
 bool isFunctionInFunctionList(char* name){
+    printf("Doing isFunctionInFunctionList\n");
     unsigned int index = getFunctionIndex(name);
     return (index != (s_count+1) );
 }

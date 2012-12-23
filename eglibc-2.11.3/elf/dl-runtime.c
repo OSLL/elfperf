@@ -37,7 +37,7 @@
 // Number of contexts will be allocated
 #define CONTEXT_PREALLOCATED_NUMBER 1000
 
-// FIXME doesnt support recoursive calls  because of global stack variables usage
+/*// FIXME doesnt support recoursive calls  because of global stack variables usage
 struct WrappingContext{
     // real return address
     void * realReturnAddr; 		// 4bytes
@@ -49,11 +49,11 @@ struct WrappingContext{
     void * functionPointer;		// 4bytes
     struct timespec startTime; 	// function starting time
     struct timespec endTime;	// function ending time
-};
+};*/
 
-void setFunctionPointer(void * pointer);
-static struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr);
-static struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime);
+//void setFunctionPointer(void * pointer);
+//static struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr);
+//static struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime);
 
 #ifndef PAGESIZE
 #define PAGESIZE 4096
@@ -67,10 +67,10 @@ static const int MAX_SLOTS = 3;
 
 #define STATS_LIMIT 100000
 // Global array of functions statistics
-static struct FunctionStatistic* s_stats[STATS_LIMIT];
+//static struct FunctionStatistic* s_stats[STATS_LIMIT];
 
 // Number of statistics
-static int s_statsCount = 0;
+//static int s_statsCount = 0;
 
 static bool isElfPerfEnabled()
 {
@@ -108,9 +108,25 @@ static char** get_fn_list(const char* env_name, int* count)
     return result;
 }
 
+// Check should function be profiled or not
+static bool isFunctionProfiled(char * name){
 
+	static unsigned int count =0;
+	static char** functions = NULL;
+	if (functions == NULL) 
+		functions = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+	
+	unsigned int i;
 
+	for (i = 0; i < count; i++){
+		if (strcmp(functions[i],name) == 0) 
+			return true;
+	}
+	
+	return false;
+}
 
+/*
 static void * functionPointer = NULL;
 //static pthread_mutex_t functionPointerLock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -162,7 +178,7 @@ static struct timespec diffTimeSpec(struct timespec start, struct timespec end)
 // This function is used for calibrating the number of CPU cycles per nanosecond
 static void calibrateTicks()
 {
-    /*struct timespec start_ts, end_ts;
+    struct timespec start_ts, end_ts;
     uint64_t start = 0, end = 0;
     clock_gettime(CLOCK_MONOTONIC, &start_ts);
     start = rdtsc();
@@ -172,7 +188,7 @@ static void calibrateTicks()
     clock_gettime(CLOCK_MONOTONIC, &end_ts);
     struct timespec elapsed_ts = diffTimeSpec(start_ts, end_ts);
     uint64_t elapsed_nsec = elapsed_ts.tv_sec * 1000000000LL + elapsed_ts.tv_nsec;
-    s_ticksPerNanoSec = (double)(end - start) / (double)elapsed_nsec;*/
+    s_ticksPerNanoSec = (double)(end - start) / (double)elapsed_nsec;
 }
 
 // This function should be called before using rdtsc(),
@@ -384,11 +400,11 @@ static void * s_wrapperAddress;
 #define REDIRECTOR_SIZE 16
 
 // Create set of machine instructions
-/*
-        mov fcnPtr+3, %eax
-    mov wrapper_addr, %ebx
-        jmp *(%ebx)
-*/
+
+//      mov fcnPtr+3, %edx
+//	mov wrapper_addr, %ebx
+//      jmp *(%ebx)
+
 // and write them to @destination@
 static void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
     //	 unsigned char* redirector[REDIRECTOR_WORDS_SIZE*sizeof(void*)];
@@ -424,11 +440,6 @@ static void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
 
     //	memcpy(destination, redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
     //_dl_printf("Written gateaway to %x, size %d\n", redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
-    /*unsigned int i = 0;
-    for (i = 0; i<REDIRECTOR_WORDS_SIZE*sizeof(void*) ; i++){
-        //_dl_printf("%02hhx ", redirector[i]);
-	
-    }*/
     
     _dl_error_printf("Created redirector\n");
 }
@@ -546,7 +557,7 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
         _dl_error_printf("memcpy result %s, %s\n",s_names[i], names[i]);
     }
 
-}
+} */
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -572,7 +583,70 @@ static void initWrapperRedirectors(char** names,unsigned int count, void * wrapp
 # define reloc_index  reloc_arg / sizeof (PLTREL)
 #endif
 
-#define ELFPERF_LIB_NAME "libhello.so"
+#define ELFPERF_LIB_NAME "libelfperf.so"
+
+/*
+  Search for library @libname@'s link_map, and if it exists return pointer to it,
+  otherwise return NULL.
+*/
+
+static struct link_map* getLibMap(char * libname, struct link_map *l)
+{
+
+
+	struct link_map* lib_map = NULL;
+	struct link_map* tmp_map = NULL;
+
+	_dl_error_printf("Doing search for %s linkmap\n", libname);
+	// Finding libhello link_map by string name
+	if (strstr(l->l_name,libname) == NULL){
+		// If l is not the needed lib search in the previous and next libs 
+
+		// Analyze previous libs
+		if (l->l_prev != NULL){
+			_dl_error_printf("Doing search for %s linkmap in PREVIOUS libs\n", libname);
+
+			tmp_map = l;
+
+			while (tmp_map->l_prev != NULL) {
+				
+				if (strstr(tmp_map->l_name,libname) != NULL){
+					_dl_error_printf("Map for %s found: %s\n", libname, tmp_map->l_name);
+					lib_map = tmp_map;
+					break;
+				}
+
+				tmp_map = tmp_map->l_prev;
+			}
+
+		// Analyze next libs if they exists and we didnt found anything else
+		}else if (l->l_next != NULL && lib_map == NULL){
+			_dl_error_printf("Doing search for %s linkmap in NEXT libs\n", libname);
+
+			tmp_map = l;
+
+			while (tmp_map->l_next != NULL) {
+				
+				if (strstr(tmp_map->l_name,libname) != NULL){
+					_dl_error_printf("Map for %s found: %s\n", libname, tmp_map->l_name);
+					lib_map = tmp_map;
+					break;
+				}
+
+				tmp_map = tmp_map->l_next;
+			}
+
+		}
+		
+
+	}else {
+		// l is needed lib
+		_dl_error_printf("%s found. l is %s\n", libname);
+		lib_map = l;
+	}
+	return lib_map;
+}
+
 
 /*
   Search for library @libname@'s link_map, and if its exists try to get from it
@@ -590,68 +664,19 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 	DL_FIXUP_VALUE_TYPE value1 = 0;
 //	char* name1 = "hello";
 //	char* libname = "libhello.so";
-	struct link_map* libhello_map = NULL;
-	struct link_map* tmp_map = NULL;
-
-	_dl_error_printf("Doing search for libhello linkmap\n");
-	// Finding libhello link_map by string name
-	if (strstr(l->l_name,libname) == NULL){
-		// If l is not the needed lib search in the previous and next libs 
-
-		// Analyze previous libs
-		if (l->l_prev != NULL){
-			_dl_error_printf("Doing search for libhello linkmap in PREVIOUS libs\n");
-
-			tmp_map = l;
-
-			while (tmp_map->l_prev != NULL) {
-				
-				if (strstr(tmp_map->l_name,libname) != NULL){
-					_dl_error_printf("Map for libhello found: %s\n", tmp_map->l_name);
-					libhello_map = tmp_map;
-					break;
-				}
-
-				tmp_map = tmp_map->l_prev;
-			}
-
-		// Analyze next libs if they exists and we didnt found anything else
-		}else if (l->l_next != NULL && libhello_map == NULL){
-			_dl_error_printf("Doing search for libhello linkmap in NEXT libs\n");
-
-			tmp_map = l;
-
-			while (tmp_map->l_next != NULL) {
-				
-				if (strstr(tmp_map->l_name,libname) != NULL){
-					_dl_error_printf("Map for libhello found: %s\n", tmp_map->l_name);
-					libhello_map = tmp_map;
-					break;
-				}
-
-				tmp_map = tmp_map->l_next;
-			}
-
-		}
-		
-
-	}else {
-		// l is needed lib
-		_dl_error_printf("libhello found. l is libhello.so\n");
-		libhello_map = l;
-	}
+	struct link_map* lib_map = getLibMap(libname, l);
 
 	// If we found something
-	if (libhello_map != NULL){
+	if (lib_map != NULL){
 	
 
-		_dl_error_printf("Doing _dl_lookup_symbol_x for hello symbol\n");
-		result1 = _dl_lookup_symbol_x (symbol_name, libhello_map, &sym1, libhello_map->l_scope,
+		_dl_error_printf("Doing _dl_lookup_symbol_x for %s symbol\n", symbol_name);
+		result1 = _dl_lookup_symbol_x (symbol_name, lib_map, &sym1, lib_map->l_scope,
 					    NULL, ELF_RTYPE_CLASS_PLT, flags, NULL);
 		
 		if (sym1 !=NULL){
 		
-			_dl_error_printf("Found not NULL symbol for \"hello\"!\n");
+			_dl_error_printf("Found not NULL symbol for \"%s\"!\n", symbol_name);
 			value1 = DL_FIXUP_MAKE_VALUE (result1,
 						   sym1 ? (LOOKUP_VALUE_ADDRESS (result1)
 							  + sym1->st_value) : 0);
@@ -662,7 +687,7 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 				
 		}else{
 			
-			_dl_error_printf("Error! Found NULL symbol for \"hello\"!\n");
+			_dl_error_printf("Error! Found NULL symbol for \"%s\"!\n", symbol_name);
 		}
 	}else {
 		_dl_error_printf("Library not found!\n");
@@ -672,17 +697,57 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 	return value1;
 }
 
+struct ElfperfFunctions {
+
+	void (* wrapper)();
+	void (* initWrapperRedirectors)(char**, unsigned int, void *);
+	void (* addNewFunction)(char* , void *);
+	bool (* isFunctionRedirectorRegistered)(char*);
+	bool (* isFunctionInFunctionList)(char*);
+	void * (* getRedirectorAddressForName)(char*);
+
+};
+
+#define ELFPERF_WRAPPER_SYMBOL "wrapper"
+#define ELFPERF_GET_REDIRECTOR_ADDRESS_FOR_NAME_SYMBOL "getRedirectorAddressForName"
+#define ELFPERF_IS_FUNCTION_REDIRECTOR_REGISTERED_SYMBOL "isFunctionRedirectorRegistered"
+#define ELFPERF_IS_FUNCTION_IN_FUNCTION_LIST_SYMBOL "isFunctionInFunctionList"
+#define ELFPERF_ADD_NEW_FUNCTION_SYMBOL "addNewFunction"
+#define ELFPERF_INIT_WRAPPER_REDIRECTORS_SYMBOL "initWrapperRedirectors"
+
+/*
+  Return pointer to struct ElfperfFunctions with pointers to the all needed routines.
+  If something went wrong NULL returned.
+*/
+static struct ElfperfFunctions * getElfperfFunctions(struct link_map* l, int flags){
+
+	struct ElfperfFunctions * result = 
+		(struct ElfperfFunctions *)malloc(sizeof(struct ElfperfFunctions));
+	
+
+	result->wrapper =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_WRAPPER_SYMBOL, l, flags);
+	result->initWrapperRedirectors =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_INIT_WRAPPER_REDIRECTORS_SYMBOL, l, flags);
+	result->addNewFunction =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_ADD_NEW_FUNCTION_SYMBOL, l, flags);
+	result->isFunctionInFunctionList = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_IS_FUNCTION_IN_FUNCTION_LIST_SYMBOL, l, flags);
+	result->isFunctionRedirectorRegistered =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_IS_FUNCTION_REDIRECTOR_REGISTERED_SYMBOL, l, flags);
+	result->getRedirectorAddressForName =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_GET_REDIRECTOR_ADDRESS_FOR_NAME_SYMBOL, l, flags);
+
+	// Something went wrong - symbol not found
+	if ( result->wrapper == NULL || result->initWrapperRedirectors == NULL 
+		|| result->addNewFunction == NULL || result->isFunctionRedirectorRegistered == NULL 
+		|| result->getRedirectorAddressForName == NULL || result->isFunctionInFunctionList == NULL)
+	return NULL;
+
+	return result;
+
+}
+
 /* This function is called through a special trampoline from the PLT the
    first time each PLT entry is called.  We must perform the relocation
    specified in the PLT of the given shared object, and return the resolved
    function address to the trampoline, which will restart the original call
    to that address.  Future calls will bounce directly from the PLT to the
    function.  */
-
-static DL_FIXUP_VALUE_TYPE hella_addr = 0;
-
-
-
 
 #ifndef ELF_MACHINE_NO_PLT
 DL_FIXUP_VALUE_TYPE
@@ -790,156 +855,98 @@ _dl_fixup (
   if (__builtin_expect (GLRO(dl_bind_not), 0))
     return value;
 
-            if(!isElfPerfEnabled())
-            {
-               goto skip_elfperf;
-            }
+
+/// Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
+
+	static struct ElfperfFunctions * elfperfFuncs = NULL;
+	static bool errorDuringElfperfFunctionLoad = 0;
+
+	if (isElfPerfEnabled() && isFunctionProfiled(name) && getLibMap(ELFPERF_LIB_NAME, l) != NULL 
+		&& !errorDuringElfperfFunctionLoad) {
+
+		_dl_error_printf("All conditions for %s profiling is fine\n", name);
+	}else{
+		goto skip_elfperf;
+	}
+
+	// Try to get structure with functions
+	// if unsuccess - elfperf routines will be skipped
+	if (elfperfFuncs == NULL){
+		// Getting pointers to all needed functions
+		_dl_error_printf("Recieving functoins pointers from libelfperf.so\n");
+		elfperfFuncs = getElfperfFunctions(l, flags);
+		// skip elfperf part 
+		if (elfperfFuncs == NULL){
+			_dl_error_printf("Errors during getElfperfFunctions!\n");
+			errorDuringElfperfFunctionLoad = 1;
+			goto skip_elfperf;
+		}
+	}
+	_dl_error_printf("Recieved all pointers to functions from libelfperf.so\n");
+
+	//            // ELFPERF
+	static int initialized = 0;
 
 
-            //            // ELFPERF
-            static int initialized = 0;
-            goto run;
-
-            wrapper_code:
-            asm volatile(
-			// Building stack frame
-			"push %ebp\n"
-			"movl %esp,%ebp"
-                        // By the start of wrapper edx contains jump addres of function, which is wrapped
-                        "pushl %edx\n"				// Storing wrappedFunction_addr into stack
-                        "movl (%ebp), %ebx\n"			// ebx = old_ebp
-                        "subl $0x4, %ebx\n"			// ebx = old_ebp - 4
-                        "movl (%ebx), %edx\n"			// edx = -4(%old_ebp) = (%ebp)
-                        // Storing context pointer into freed space (-4(%old_ebp))
-                        "call getNewContext_\n"			// eax = getNewContext()
-                        "movl %eax, (%ebx)\n" 			// -4(%old_ebp) = eax
-                        "movl %eax, %ebx\n"			// %ebx = &context
-                        "movl %edx, 4(%ebx)\n"			//context->oldEbpLocVar = edx
-                        // Extracting wrappedFunction_addr from stack and placing it to context
-                        "popl 20(%ebx)\n"			// context->functionPointer = wrappedFunction_addr
-                        // Changing return address to wrapper_return_point
-                        "movl 4(%ebp), %ecx\n"			// Storing real return_addres
-                        "movl %ecx, (%ebx) \n"
-                        "movl $wrapper_return_point, 4(%ebp)\n" // changing return address for $wrapper_return_point
-                        //: : :		// (%ebx) = %eax
-
-                        );
-
-            //elfperf_log("WRAPPED!");
-
-            // memorize old return addres and change it for returning in wrapper()
-            // stack variables will be damaged, so i use global variable
-
-            asm volatile(	// Calculate address of WrappingContext
-                            "movl (%ebp), %ecx\n"			//  %ecx = old_ebp
-                            "movl -4(%ecx), %ebx\n"			//  %ebx = context address
-                            // WrapperContext struct layout
-                            /*
-                                    (%ebx)		realReturnAddress
-                                    4(%ebx)	oldEbpLocVar // -4(%old_ebp)
-                                    8(%ebx)	eax
-                                    12(%ebx) floatFunctionReturnValue
-
-                                */
-                            // Start time recording
-                            // record_start_time(%ebx)
-                            "pushl %ebx\n"				// pushing parameter(context address into stack)
-                            "call record_start_time_\n"		//
-                            "add $4, %esp\n"			// cleaning stack
-                            // Going to wrapped function (context->functionPointer)
-                            "jmp 20(%ebx)\n"
-                            //: : :
-                            );
+	if(0 == initialized)
+	{
+		_dl_error_printf("Redirectors are not initialized.\n");
+		char **names = 0;//={"hello"};
+		unsigned int count = 0;
 
 
-            // going to wrapped function
-            //	asm("jmp %0" : :"r"(getFunctionJmpAddress()));
+		names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
 
-            // returning back into wrapper()
-            // 	memorizing eax value
-            asm volatile(
-                        // Calculating address of WrappingContext and memorizing return values
-                        "wrapper_return_point: movl -4(%ebp), %ebx\n"	// %ebx = & context
-                        "movl %eax, 8(%ebx)\n"			// context->eax = %eax
-                        "fstpl 0xc(%ebx)\n"			// context->doubleResult = ST0
-                        // Measuring time of function execution
-                        "pushl %ebx\n"				// pushing context address to stack
-                        "call record_end_time_\n"		// calling record_end_time
-                        "add $4, %esp\n"			// cleaning allocated memory
-                        //	: : :
-                        );
+		_dl_error_printf("Initializing redirectors for:\n");
+		unsigned int i = 0;
+		for ( i =0 ; i < count; i++){
+			_dl_error_printf("\t%s\n", names[i]);
+		}
+		void *wr = elfperfFuncs->wrapper;
 
+		_dl_error_printf("Going to initWrapperRedirectors\n");
+		( * (elfperfFuncs->initWrapperRedirectors))(names, count, wr);
+//		_dl_error_printf("Setting initialized == 1, curr val = %u\n", initialized);
+		__sync_fetch_and_add(&initialized, 1);
+		_dl_error_printf("After setting initialized , curr val = %u\n", initialized);
 
-            /*	asm(	"wrapper_return_point: movl 0(%ebp), %0\n"
-                "movl %2, 0(%ebp)\n"
-                "movl %eax, %1 ": "=r"(context_), "=r"(context_->eax):"r"(context_->oldEbp):"%eax");*/
+	//	initialized = 1;
 
-            // Change this call to any needed routine
-            //elfperf_log("back to wrapper!");
-
-            // restoring real return_address and eax and return
-            /*	asm(	"movl %1, %eax\n"
-                "jmp %0" : :"r"(context_->realReturnAddr), "r"(context_->eax) : "%eax");*/
-
-            // Getting context address
-            // restoring value of eax and st0
-            // returning to caller
-            asm volatile(
-                        "movl -4(%ebp), %ebx\n"	// get context address
-                        "movl 4(%ebx), %edx\n"	// restoring -4(old_ebp)
-                        "movl %edx, -4(%ebp)\n"	// edx = context->oldEbpLocVar ; -4(%ebp) = edx
-                        "movl 8(%ebx), %eax\n"	// restoring eax
-                        "fldl 0xc(%ebx)\n"		// restoring ST0
-                        "pushl (%ebx)\n"		// returning to caller - pushing return address to stack
-                        "ret\n"// : : :
-                        );
-
-            //////////
-
-
-run:
-    if(0==initialized)
-    {
-	_dl_error_printf("Hello from ELFPERF!\n");
-	char *names[]={"hello"};
-	unsigned int count = 1;
-
-	//names=get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
-	void *wr = &&wrapper_code;
-	//_dl_error_printf("Going to initWrapperRedirectors\n");
-	initWrapperRedirectors(names, count, wr);
-	initialized = 1;
-
-    }
-	  if( isFunctionInFunctionList(name)){
-	    _dl_error_printf("Doing routines for ELFPERF\n");
-	    if (!isFunctionRedirectorRegistered(name)){
-			_dl_error_printf("function %s not registered, adding\n", name);
-			addNewFunction(name,(void*) value);
-
-	    }
-
-	    value = (DL_FIXUP_VALUE_TYPE) getRedirectorAddressForName(name);
-	  }
+	}
+//	_dl_error_printf("Going to check is %s in list\n", name);
+//	if( (* (elfperfFuncs->isFunctionInFunctionList))(name)){
+		_dl_error_printf("Doing routines for ELFPERF\n");
+		if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name)){
+			_dl_error_printf("Function %s not registered, adding\n", name);
+			(*(elfperfFuncs->addNewFunction))(name,(void*) value);
+			_dl_error_printf("Registration of %s successful.\n", name);
+		}	
+		_dl_error_printf("Getting redirector address for  %s \n", name);
+		value = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))(name);
+		_dl_error_printf("Got redirector address for %s, addr = %u\n", name, value);
+//	}else {
+//		_dl_error_printf("Function %s is not in list, skipping.\n");
+//	}
       
 
 
 
 skip_elfperf:
-  if (strcmp(name, "puts") == 0){
-	char * c ="PUTS CALLLED\n" ;
-	_dl_error_printf("Calling puts with special arg\n");
 
-	((void (*)(const char*))value)(c);
+/*	if (strcmp(name, "puts") == 0){
+		char * c ="PUTS CALLLED\n" ;
+		_dl_error_printf("Calling puts with special arg\n");
 
-	// Studying how to use _dl_lookup_symbol_x
-	
-	DL_FIXUP_VALUE_TYPE value1;
-	value1 = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "hello", l, flags);
+		((void (*)(const char*))value)(c);
 
-	if (value1) ((void (*)(const char*))value1)("calling hello function from dl_fixup");
+		// Studying how to use _dl_lookup_symbol_x
 
-  } 
+		//DL_FIXUP_VALUE_TYPE value1;
+		//value1 = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "hello", l, flags);
+
+		//if (value1 != NULL) ((void (*)(const char*))value1)("calling hello function from dl_fixup");
+
+	} */
 //  _dl_error_printf("sizeof(DL_FIXUP_VALUE_TYPE) = %u, sizeof(void*) = %u, sizeof(DL_FIXUP_VALUE_TYPE) = %u \n", sizeof(Elf32_Word), sizeof(void*), sizeof(Elf32_Addr));
   return elf_machine_fixup_plt (l, result, reloc, rel_addr, value);
 }
