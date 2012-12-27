@@ -93,12 +93,6 @@ static int s_statsCount = 0;
 
 
 
-static void * functionPointer = NULL;
-//static pthread_mutex_t functionPointerLock = PTHREAD_MUTEX_INITIALIZER;
-
-// Workaround - storing context in global variable
-//static struct WrappingContext context;
-
 // preallocated array of contexts
 static struct WrappingContext contextArray[CONTEXT_PREALLOCATED_NUMBER];
 // number of first not used context
@@ -222,7 +216,6 @@ static void updateStat(void* funcAddr, struct timespec diffTime)
 
         // Try to lock
         while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
-        //_dl_printf("Waiting inside spinlock\n");
 
         __time_t result_sec = stat->totalDiffTime.tv_sec;
         long int result_nsec = stat->totalDiffTime.tv_nsec;
@@ -350,182 +343,14 @@ struct WrappingContext * getNewContext_(){
     return context;
 }
 // Array which contains redirectors
-void * s_redirectors;
+//void * s_redirectors;
 // Array of function names, the same indexing as in redirectors
-char** s_names;
+//char** s_names;
 //static void * s_functionPointers;
-int s_count;
-void * s_wrapperAddress;
+//int s_count;
+//void * s_wrapperAddress;
 
 #define REDIRECTOR_SIZE 16
-
-// Create set of machine instructions
-/*
-        mov fcnPtr+3, %eax
-    mov wrapper_addr, %ebx
-        jmp *(%ebx)
-*/
-// and write them to @destination@
-void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
-    //	 unsigned char* redirector[REDIRECTOR_WORDS_SIZE*sizeof(void*)];
-    // mov $number, %%edx
-    // ret = 0xc3
-    unsigned int functionPointer = (unsigned int )(fcnPtr)+3;
-    redirector[0]=0xba;//0xb8;
-    // reversing byte order
-    redirector[4] = (functionPointer >> 24) & 0xFF;
-    redirector[3] = (functionPointer >> 16) & 0xFF;
-    redirector[2] = (functionPointer >>  8) & 0xFF;
-    redirector[1] =  functionPointer        & 0xFF;
-    //memcpy(redirector+1, &number, 4);
-
-    // mov $wrapper, %ebx
-    //wrapperAddress = wrapperAddr;
-    unsigned int wrapper = (int)&s_wrapperAddress;
-    redirector[5]=0xbb;
-    redirector[9] = (wrapper >> 24) & 0xFF;
-    redirector[8] = (wrapper >> 16) & 0xFF;
-    redirector[7] = (wrapper >>  8) & 0xFF;
-    redirector[6] =  wrapper        & 0xFF;
-
-    // jmp *(%ebx)
-    redirector[10] = 0xFF;
-    redirector[11] = 0x23;
-    redirector[12] = 0x90;
-
-    // nop nop
-    redirector[13] = 0x90;
-    redirector[14] = 0x90;
-    redirector[15] = 0x90;
-
-    //	memcpy(destination, redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
-    //_dl_printf("Written gateaway to %x, size %d\n", redirector, REDIRECTOR_WORDS_SIZE*sizeof(void*));
-    /*unsigned int i = 0;
-    for (i = 0; i<REDIRECTOR_WORDS_SIZE*sizeof(void*) ; i++){
-        //_dl_printf("%02hhx ", redirector[i]);
-	
-    }*/
-    
-    printf("Created redirector\n");
-}
-
-
-// Return index of function with name @name@
-unsigned int getFunctionIndex(char* name){
-    unsigned int i;
-    for (i=0; i<s_count; i++){
-	printf("Testing %s for %s\n", s_names[i], name);
-        //		_dl_printf("%s, %s\n", s_names[i], name);
-        if ( !strcmp(name, s_names[i]) ){
-    		printf("Index of %s is %u\n", name, index);
-        	return i;
-	}
-    }
-    //printf("Returning invalid index in getFunctionIndex for %s\n", name);
-    return s_count+1;
-}
-
-// Return true, if function name exists into s_names array
-bool isFunctionInFunctionList(char* name){
-    printf("Doing isFunctionInFunctionList\n");
-    unsigned int index = getFunctionIndex(name);
-    return (index != (s_count+1) );
-}
-
-
-
-// Return redirector address for function with name @name@
-void* getRedirectorAddressForName(char* name){
-    int functionIndex = getFunctionIndex(name);
-    void * result = s_redirectors +  functionIndex;
-    printf("getRedirectorAddressForName\n");
-    //_dl_printf("getRedirectorAddressForName = %x\n", s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*));
-    return s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
-}
-
-// Return true, if redirector for function with name = @name@ is already registered
-bool isFunctionRedirectorRegistered(char* name){
-    // Gets first byte of redirector
-    // check is it 0xba or not
-    // 0xba - code for the first byte of each registerred redirector
-    void * redirectorAddress = getRedirectorAddressForName(name);
-    printf("isFunctionRedirectorRegistered\n");
-    if (*((unsigned int *)redirectorAddress) != 0){
-	printf("%s is registered\n", name);
-    }else
-    {
-	printf("%s is not registered\n", name);
-    }
-
-    return ((*((unsigned int *)redirectorAddress)) != 0);
-}
-
-// Add new function to the list of redirectors
-void addNewFunction(char* name, void * functionAddr){
-    printf("addNewFunction\n");
-    writeRedirectionCode( getRedirectorAddressForName(name), functionAddr);
-}
-
-// Initialize s_redirectors and s_names
-void initWrapperRedirectors(char** names,unsigned int count, void * wrapperAddr){
-
-    printf("Starting initWrapperRedirectors\n");
-
-    s_wrapperAddress = wrapperAddr;
-
-    // Memory allocation
-    size_t allocSize = sizeof(void*)*REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1;
-
-    s_redirectors = (void *)malloc(allocSize);
-    // Aligning by page border
-    printf("Before aligment %x, %x\n", s_redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*count + PAGESIZE-1);
-    //printf("Before aligment \n");
-    s_redirectors = (void *)(((int) s_redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
-    printf("After aligment %x\n", s_redirectors);
-
-    int pagesNum = allocSize/PAGESIZE ;
-    printf("Number of memory pages %x\n", pagesNum);
-
-    size_t i = 0;
-    for (i = 0; i < pagesNum; i++) {
-	printf("Going to do mprotect\n");
-        if (mprotect(s_redirectors + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
-            printf("Couldn't mprotect");
-            //exit(errno);
-            return;
-        }
-    }
-
-    // Set 0 into each redirector first byte
-    // This will allow to determine wich one is inited
-    printf("Zeroing\n");
-    for (i = 0 ; i < sizeof(void*)*REDIRECTOR_WORDS_SIZE*count ; i+=REDIRECTOR_SIZE){
-        *((unsigned int*)(s_redirectors+i)) = 0;
-    }
-
-    // Dealing with function names
-    //
-    size_t * sizes = (size_t*) malloc(sizeof(size_t)*count);
-    s_count = count;
-    for (i = 0 ; i < count ; i++){
-	printf("Calling strlen\n");
-        sizes[i] = strlen(names[i]);
-    }
-
-    s_names = (char**) malloc(sizeof(char*)*count);
-    size_t size;
-    for (i = 0 ; i < count ; i++){
-	printf("Calling malloc\n");
-	//size = sizeof(char)*(strlen(names[i])+1);
-        s_names[i] = (char*)malloc(sizes[i]+1);
-	printf("Calling memcpy\n");
-        memcpy(s_names[i], names[i], sizes[i]+1);
-	//strcpy(s_names[i], names[i]);
-        printf("memcpy result %s, %s\n",s_names[i], names[i]);
-    }
-
-}
-
 
 void  wrapper()
 {
@@ -575,17 +400,12 @@ void  wrapper()
 		    "call record_start_time_\n"		//
 		    "add $4, %esp\n"			// cleaning stack
 		    // Going to wrapped function (context->functionPointer)
-		    "jmp 20(%ebx)\n"
+		    "jmp *20(%ebx)\n"
 		    //: : :
 		    );
 
 
-    // going to wrapped function
-    //	asm("jmp %0" : :"r"(getFunctionJmpAddress()));
-
-    // returning back into wrapper()
-    // 	memorizing eax value
-    asm volatile(
+	asm volatile(
 		// Calculating address of WrappingContext and memorizing return values
 		"wrapper_return_point: movl -4(%ebp), %ebx\n"	// %ebx = & context
 		"movl %eax, 8(%ebx)\n"			// context->eax = %eax
@@ -597,17 +417,6 @@ void  wrapper()
 		//	: : :
 		);
 
-
-    /*	asm(	"wrapper_return_point: movl 0(%ebp), %0\n"
-	"movl %2, 0(%ebp)\n"
-	"movl %eax, %1 ": "=r"(context_), "=r"(context_->eax):"r"(context_->oldEbp):"%eax");*/
-
-    // Change this call to any needed routine
-    //elfperf_log("back to wrapper!");
-
-    // restoring real return_address and eax and return
-    /*	asm(	"movl %1, %eax\n"
-	"jmp %0" : :"r"(context_->realReturnAddr), "r"(context_->eax) : "%eax");*/
 
     // Getting context address
     // restoring value of eax and st0
@@ -621,4 +430,151 @@ void  wrapper()
 		"pushl (%ebx)\n"		// returning to caller - pushing return address to stack
 		"ret\n"// : : :
 		);
+}
+
+// Create set of machine instructions
+/*
+        mov fcnPtr+3, %edx
+	mov wrapper_addr, %ebx
+        jmp *(%ebx)
+*/
+// and write them to @destination@
+void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
+    //	 unsigned char* redirector[REDIRECTOR_WORDS_SIZE*sizeof(void*)];
+    // mov $number, %%edx
+    // ret = 0xc3
+    unsigned int functionPointer = (unsigned int )(fcnPtr)+3;
+    redirector[0]=0xba;//0xb8;
+    // reversing byte order
+    redirector[4] = (functionPointer >> 24) & 0xFF;
+    redirector[3] = (functionPointer >> 16) & 0xFF;
+    redirector[2] = (functionPointer >>  8) & 0xFF;
+    redirector[1] =  functionPointer        & 0xFF;
+    //memcpy(redirector+1, &number, 4);
+
+    // mov $wrapper, %ebx
+    //wrapperAddress = wrapperAddr;
+    //unsigned int wrapper_ = (int)&wrapperAddress;
+    unsigned int wrapper_ = (int)&wrapper;
+    redirector[5]=0xbb;
+    redirector[9] = (wrapper_ >> 24) & 0xFF;
+    redirector[8] = (wrapper_ >> 16) & 0xFF;
+    redirector[7] = (wrapper_ >>  8) & 0xFF;
+    redirector[6] =  wrapper_        & 0xFF;
+
+    // jmp *(%ebx)
+    redirector[10] = 0xFF;
+    redirector[11] = 0x23;
+    redirector[12] = 0x90;
+
+    // nop nop
+    redirector[13] = 0x90;
+    redirector[14] = 0x90;
+    redirector[15] = 0x90;
+
+    
+    printf("Created redirector for %p at %p\n", fcnPtr, redirector);
+}
+
+// Store all data for redirectors initialization
+struct RedirectorContext{
+	char ** names;
+	unsigned int count;
+	void * redirectors;
+};
+
+// Return index of function with name @name@
+unsigned int getFunctionIndex(char* name, struct RedirectorContext context){
+    unsigned int i;
+    for (i=0; i<context.count; i++){
+	printf("Testing %s for %s\n", context.names[i], name);
+
+        if ( !strcmp(name, context.names[i]) ){
+    		printf("Index of %s is %x\n", name, i);
+        	return i;
+	}
+    }
+    printf("Returning invalid index in getFunctionIndex for %s\n", name);
+    return context.count+1;
+}
+
+// Return true, if function name exists into s_names array
+bool isFunctionInFunctionList(char* name, struct RedirectorContext context){
+    printf("Doing isFunctionInFunctionList\n");
+    unsigned int index = getFunctionIndex(name, context);
+    return (index != (context.count+1) );
+}
+
+
+
+// Return redirector address for function with name @name@
+void* getRedirectorAddressForName(char* name, struct RedirectorContext context){
+    int functionIndex = getFunctionIndex(name, context);
+    //void * result = context.redirectors +  functionIndex;
+    printf("getRedirectorAddressForName\n");
+    //_dl_printf("getRedirectorAddressForName = %x\n", s_redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*));
+    return context.redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
+}
+
+// Return true, if redirector for function with name = @name@ is already registered
+bool isFunctionRedirectorRegistered(char* name, struct RedirectorContext context){
+    // Gets first byte of redirector
+    // check is it 0 or not
+    // 0 - code for the first byte of each unregisterred redirector
+    void * redirectorAddress = getRedirectorAddressForName(name, context);
+    printf("isFunctionRedirectorRegistered\n");
+    if (*((unsigned int *)redirectorAddress) != 0){
+	printf("%s is registered\n", name);
+    }else
+    {
+	printf("%s is not registered\n", name);
+    }
+
+    return ((*((unsigned int *)redirectorAddress)) != 0);
+}
+
+// Add new function to the list of redirectors
+void addNewFunction(char* name, void * functionAddr, struct RedirectorContext context){
+    printf("addNewFunction %s\n", name);
+    writeRedirectionCode( getRedirectorAddressForName(name, context), functionAddr);
+}
+
+// Initialize s_redirectors and s_names
+void initWrapperRedirectors( struct RedirectorContext *context/*char** names,unsigned int count, void * wrapperAddr, void* s_redirectors*/){
+
+    printf("Starting initWrapperRedirectors %p\n", context);
+
+    //s_wrapperAddress = wrapperAddr;
+
+    // Memory allocation
+    size_t allocSize = sizeof(void*)*REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1;
+
+    context->redirectors = (void *)malloc(allocSize);
+    // Aligning by page border
+    printf("Before aligment %x, %x\n", context->redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1);
+    //printf("Before aligment \n");
+    context->redirectors = (void *)(((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
+    printf("After aligment %x\n", context->redirectors);
+
+    int pagesNum = allocSize/PAGESIZE ;
+    printf("Number of memory pages %x\n", pagesNum);
+
+    size_t i = 0;
+    for (i = 0; i < pagesNum; i++) {
+	printf("Going to do mprotect\n");
+        if (mprotect(context->redirectors + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
+            printf("Couldn't mprotect");
+            //exit(errno);
+            return;
+        }
+    }
+
+    // Set 0 into each redirector first byte
+    // This will allow to determine wich one is inited
+    printf("Zeroing\n");
+    for (i = 0 ; i < sizeof(void*)*REDIRECTOR_WORDS_SIZE*context->count ; i+=REDIRECTOR_SIZE){
+        *((unsigned int*)(context->redirectors+i)) = 0;
+    }
+
+
 }

@@ -697,15 +697,29 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 	return value1;
 }
 
+
+// Store all data for redirectors initialization
+struct RedirectorContext{
+	char ** names;
+	unsigned int count;
+	void * redirectors;
+};
+
 struct ElfperfFunctions {
 
-	void (* wrapper)();
+/*	void (* wrapper)();
 	void (* initWrapperRedirectors)(char**, unsigned int, void *);
 	void (* addNewFunction)(char* , void *);
 	bool (* isFunctionRedirectorRegistered)(char*);
 	bool (* isFunctionInFunctionList)(char*);
-	void * (* getRedirectorAddressForName)(char*);
+	void * (* getRedirectorAddressForName)(char*);*/
 
+	void (* wrapper)();
+	void (* initWrapperRedirectors)(struct RedirectorContext*);
+	void (* addNewFunction)(char* , void *, struct RedirectorContext);
+	bool (* isFunctionRedirectorRegistered)(char*, struct RedirectorContext);
+	bool (* isFunctionInFunctionList)(char*, struct RedirectorContext);
+	void * (* getRedirectorAddressForName)(char*, struct RedirectorContext);
 };
 
 #define ELFPERF_WRAPPER_SYMBOL "wrapper"
@@ -860,6 +874,7 @@ _dl_fixup (
 
 	static struct ElfperfFunctions * elfperfFuncs = NULL;
 	static bool errorDuringElfperfFunctionLoad = 0;
+	static struct RedirectorContext context;
 
 	if (isElfPerfEnabled() && isFunctionProfiled(name) && getLibMap(ELFPERF_LIB_NAME, l) != NULL 
 		&& !errorDuringElfperfFunctionLoad) {
@@ -891,21 +906,23 @@ _dl_fixup (
 	if(0 == initialized)
 	{
 		_dl_error_printf("Redirectors are not initialized.\n");
-		char **names = 0;//={"hello"};
-		unsigned int count = 0;
+//		char **names = 0;//={"hello"};
+//		unsigned int count = 0;
 
 
-		names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+		context.names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &(context.count));
 
 		_dl_error_printf("Initializing redirectors for:\n");
 		unsigned int i = 0;
-		for ( i =0 ; i < count; i++){
-			_dl_error_printf("\t%s\n", names[i]);
+		for ( i =0 ; i < context.count; i++){
+			_dl_error_printf("\t%s\n", context.names[i]);
 		}
 		void *wr = elfperfFuncs->wrapper;
 
+		
+
 		_dl_error_printf("Going to initWrapperRedirectors\n");
-		( * (elfperfFuncs->initWrapperRedirectors))(names, count, wr);
+		( * (elfperfFuncs->initWrapperRedirectors))(&context);
 //		_dl_error_printf("Setting initialized == 1, curr val = %u\n", initialized);
 		__sync_fetch_and_add(&initialized, 1);
 		_dl_error_printf("After setting initialized , curr val = %u\n", initialized);
@@ -916,14 +933,14 @@ _dl_fixup (
 //	_dl_error_printf("Going to check is %s in list\n", name);
 //	if( (* (elfperfFuncs->isFunctionInFunctionList))(name)){
 		_dl_error_printf("Doing routines for ELFPERF\n");
-		if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name)){
-			_dl_error_printf("Function %s not registered, adding\n", name);
-			(*(elfperfFuncs->addNewFunction))(name,(void*) value);
+		if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name, context)){
+			_dl_error_printf("Function %s (%u) not registered, adding\n", name, value);
+			(*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
 			_dl_error_printf("Registration of %s successful.\n", name);
 		}	
 		_dl_error_printf("Getting redirector address for  %s \n", name);
-		value = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))(name);
-		_dl_error_printf("Got redirector address for %s, addr = %u\n", name, value);
+		DL_FIXUP_VALUE_TYPE value1 = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
+		_dl_error_printf("Got redirector address for %s, addr = %u\n", name, value1);
 //	}else {
 //		_dl_error_printf("Function %s is not in list, skipping.\n");
 //	}
