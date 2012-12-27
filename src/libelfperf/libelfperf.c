@@ -8,6 +8,9 @@
 #include <sys/mman.h>
 #include <stdbool.h>
 
+
+
+
 // Number of contexts will be allocated
 
 #define CONTEXT_PREALLOCATED_NUMBER 1000
@@ -396,9 +399,12 @@ void  wrapper()
 			*/
 		    // Start time recording
 		    // record_start_time(%ebx)
-		    "pushl %ebx\n"				// pushing parameter(context address into stack)
-		    "call record_start_time_\n"		//
-		    "add $4, %esp\n"			// cleaning stack
+
+/* Commented call of record_start_time_*/
+
+//		    "pushl %ebx\n"				// pushing parameter(context address into stack)
+//		    "call record_start_time_\n"		//
+//		    "add $4, %esp\n"			// cleaning stack
 		    // Going to wrapped function (context->functionPointer)
 		    "jmp *20(%ebx)\n"
 		    //: : :
@@ -411,9 +417,13 @@ void  wrapper()
 		"movl %eax, 8(%ebx)\n"			// context->eax = %eax
 		"fstpl 0xc(%ebx)\n"			// context->doubleResult = ST0
 		// Measuring time of function execution
-		"pushl %ebx\n"				// pushing context address to stack
-		"call record_end_time_\n"		// calling record_end_time
-		"add $4, %esp\n"			// cleaning allocated memory
+
+/* Commented call of record_end_time_ */
+
+//		"pushl %ebx\n"				// pushing context address to stack
+//		"call record_end_time_\n"		// calling record_end_time
+//		"add $4, %esp\n"			// cleaning allocated memory
+
 		//	: : :
 		);
 
@@ -549,7 +559,7 @@ void initWrapperRedirectors( struct RedirectorContext *context/*char** names,uns
     // Memory allocation
     size_t allocSize = sizeof(void*)*REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1;
 
-    context->redirectors = (void *)malloc(allocSize);
+//    context->redirectors = (void *)malloc(allocSize);
     // Aligning by page border
     printf("Before aligment %x, %x\n", context->redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1);
     //printf("Before aligment \n");

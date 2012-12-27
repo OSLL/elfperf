@@ -720,6 +720,7 @@ struct ElfperfFunctions {
 	bool (* isFunctionRedirectorRegistered)(char*, struct RedirectorContext);
 	bool (* isFunctionInFunctionList)(char*, struct RedirectorContext);
 	void * (* getRedirectorAddressForName)(char*, struct RedirectorContext);
+	void * storage;
 };
 
 #define ELFPERF_WRAPPER_SYMBOL "wrapper"
@@ -728,6 +729,7 @@ struct ElfperfFunctions {
 #define ELFPERF_IS_FUNCTION_IN_FUNCTION_LIST_SYMBOL "isFunctionInFunctionList"
 #define ELFPERF_ADD_NEW_FUNCTION_SYMBOL "addNewFunction"
 #define ELFPERF_INIT_WRAPPER_REDIRECTORS_SYMBOL "initWrapperRedirectors"
+#define ELFPERF_STORAGE "storage"
 
 /*
   Return pointer to struct ElfperfFunctions with pointers to the all needed routines.
@@ -745,6 +747,8 @@ static struct ElfperfFunctions * getElfperfFunctions(struct link_map* l, int fla
 	result->isFunctionInFunctionList = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_IS_FUNCTION_IN_FUNCTION_LIST_SYMBOL, l, flags);
 	result->isFunctionRedirectorRegistered =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_IS_FUNCTION_REDIRECTOR_REGISTERED_SYMBOL, l, flags);
 	result->getRedirectorAddressForName =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_GET_REDIRECTOR_ADDRESS_FOR_NAME_SYMBOL, l, flags);
+
+	result->storage = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_STORAGE, l, flags);
 
 	// Something went wrong - symbol not found
 	if ( result->wrapper == NULL || result->initWrapperRedirectors == NULL 
@@ -911,6 +915,7 @@ _dl_fixup (
 
 
 		context.names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &(context.count));
+		context.redirectors = elfperfFuncs->storage;		
 
 		_dl_error_printf("Initializing redirectors for:\n");
 		unsigned int i = 0;
@@ -930,20 +935,16 @@ _dl_fixup (
 	//	initialized = 1;
 
 	}
-//	_dl_error_printf("Going to check is %s in list\n", name);
-//	if( (* (elfperfFuncs->isFunctionInFunctionList))(name)){
-		_dl_error_printf("Doing routines for ELFPERF\n");
-		if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name, context)){
-			_dl_error_printf("Function %s (%u) not registered, adding\n", name, value);
-			(*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
-			_dl_error_printf("Registration of %s successful.\n", name);
-		}	
-		_dl_error_printf("Getting redirector address for  %s \n", name);
-		DL_FIXUP_VALUE_TYPE value1 = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
-		_dl_error_printf("Got redirector address for %s, addr = %u\n", name, value1);
-//	}else {
-//		_dl_error_printf("Function %s is not in list, skipping.\n");
-//	}
+
+	_dl_error_printf("Doing routines for ELFPERF\n");
+	if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name, context)){
+		_dl_error_printf("Function %s (%u) not registered, adding\n", name, value);
+		(*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
+		_dl_error_printf("Registration of %s successful.\n", name);
+	}	
+	_dl_error_printf("Getting redirector address for  %s \n", name);
+	value = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
+	_dl_error_printf("Got redirector address for %s, addr = %x, storage = %x\n", name, value, elfperfFuncs->storage);
       
 
 
