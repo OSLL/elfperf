@@ -944,7 +944,8 @@ _dl_fixup (
 	}	
 	_dl_error_printf("Getting redirector address for  %s \n", name);
 	value = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
-	_dl_error_printf("Got redirector address for %s, addr = %x, storage = %x\n", name, value, elfperfFuncs->storage);
+	_dl_error_printf("Got redirector address for %s, addr = %x, storage = %x, fixup result = %x\n", 
+		name, value, elfperfFuncs->storage, elf_machine_fixup_plt (l, result, reloc, rel_addr, value));
       
 
 
