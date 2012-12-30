@@ -8,8 +8,7 @@
 #include <sys/mman.h>
 #include <stdbool.h>
 
-
-
+extern void testFunc(char * a);
 
 // Number of contexts will be allocated
 
@@ -402,11 +401,11 @@ void  wrapper()
 
 /* Commented call of record_start_time_*/
 
-//		    "pushl %ebx\n"				// pushing parameter(context address into stack)
-//		    "call record_start_time_\n"		//
-//		    "add $4, %esp\n"			// cleaning stack
+		    "pushl %ebx\n"				// pushing parameter(context address into stack)
+		    "call record_start_time_\n"		//
+		    "add $4, %esp\n"			// cleaning stack
 		    // Going to wrapped function (context->functionPointer)
-		    "jmp *20(%ebx)\n"
+		    "jmp 20(%ebx)\n"
 		    //: : :
 		    );
 
@@ -420,9 +419,9 @@ void  wrapper()
 
 /* Commented call of record_end_time_ */
 
-//		"pushl %ebx\n"				// pushing context address to stack
-//		"call record_end_time_\n"		// calling record_end_time
-//		"add $4, %esp\n"			// cleaning allocated memory
+		"pushl %ebx\n"				// pushing context address to stack
+		"call record_end_time_\n"		// calling record_end_time
+		"add $4, %esp\n"			// cleaning allocated memory
 
 		//	: : :
 		);
@@ -466,7 +465,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
     //wrapperAddress = wrapperAddr;
     //unsigned int wrapper_ = (int)&wrapperAddress;
     unsigned int wrapper_ = (int)&wrapper;
-    redirector[5]=0xbb;
+    redirector[5] = 0xbb;
     redirector[9] = (wrapper_ >> 24) & 0xFF;
     redirector[8] = (wrapper_ >> 16) & 0xFF;
     redirector[7] = (wrapper_ >>  8) & 0xFF;
@@ -474,7 +473,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
 
     // jmp *(%ebx)
     redirector[10] = 0xFF;
-    redirector[11] = 0x23;
+    redirector[11] = 0xE3;//0x23;
     redirector[12] = 0x90;
 
     // nop nop
@@ -483,7 +482,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
     redirector[15] = 0x90;
 
     
-    printf("Created redirector for %p at %p\n", fcnPtr, redirector);
+    printf("Created redirector for %p at %p, wrapper = %p, %x\n", fcnPtr, redirector, wrapper, wrapper_);
 }
 
 // Store all data for redirectors initialization
@@ -558,21 +557,22 @@ void initWrapperRedirectors( struct RedirectorContext *context/*char** names,uns
 
     // Memory allocation
     size_t allocSize = sizeof(void*)*REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1;
+    size_t i = 0;
 
-//    context->redirectors = (void *)malloc(allocSize);
+  //  context->redirectors = (void *)malloc(allocSize);
     // Aligning by page border
     printf("Before aligment %x, %x\n", context->redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1);
     //printf("Before aligment \n");
-    context->redirectors = (void *)(((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
-    printf("After aligment %x\n", context->redirectors);
+    //context->redirectors = (void *)(((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
+    void * pageStart = (void *)((((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1)) - PAGESIZE);
+    printf("After aligment %x\n", pageStart);
 
     int pagesNum = allocSize/PAGESIZE ;
     printf("Number of memory pages %x\n", pagesNum);
 
-    size_t i = 0;
     for (i = 0; i < pagesNum; i++) {
 	printf("Going to do mprotect\n");
-        if (mprotect(context->redirectors + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
+        if (mprotect(pageStart + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
             printf("Couldn't mprotect");
             //exit(errno);
             return;
@@ -587,4 +587,8 @@ void initWrapperRedirectors( struct RedirectorContext *context/*char** names,uns
     }
 
 
+}
+
+extern void testFunc(char * a){
+	printf("Inside testFunc!!!\n");
 }

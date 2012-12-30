@@ -928,11 +928,9 @@ _dl_fixup (
 
 		_dl_error_printf("Going to initWrapperRedirectors\n");
 		( * (elfperfFuncs->initWrapperRedirectors))(&context);
-//		_dl_error_printf("Setting initialized == 1, curr val = %u\n", initialized);
 		__sync_fetch_and_add(&initialized, 1);
 		_dl_error_printf("After setting initialized , curr val = %u\n", initialized);
 
-	//	initialized = 1;
 
 	}
 
@@ -942,31 +940,33 @@ _dl_fixup (
 		(*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
 		_dl_error_printf("Registration of %s successful.\n", name);
 	}	
+	DL_FIXUP_VALUE_TYPE testFuncAddr= getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "testFunc", l, flags);
+
 	_dl_error_printf("Getting redirector address for  %s \n", name);
-	value = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
-	_dl_error_printf("Got redirector address for %s, addr = %x, storage = %x, fixup result = %x\n", 
-		name, value, elfperfFuncs->storage, elf_machine_fixup_plt (l, result, reloc, rel_addr, value));
-      
+	DL_FIXUP_VALUE_TYPE value1 = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
+	_dl_error_printf("Got redirector address for %s, real_addr+3 = %x, redir_addr = %x, storage = %x, testFunc = %x\n", 
+		name, value+3, value1, elfperfFuncs->storage, testFuncAddr);
+     	value = value1;
 
+	void ** ptr =  ((void*) value1);
+	int j;
 
+	_dl_error_printf("Bytes of redirector:\n");
+	
+	for (j=0 ;j<4; j++){
+	_dl_error_printf("\t%x %x %x %x \n", 
+		(((unsigned int)ptr[j]) ) & 0xFF, (((unsigned int)ptr[j]) >> 8) & 0xFF,
+		(((unsigned int)ptr[j]) >> 16) & 0xFF, (((unsigned int)ptr[j]) >> 24) & 0xFF);
+	}
+
+	//value = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "testFunc", l, flags); 
+
+//getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_ADD_NEW_FUNCTION_SYMBOL, l, flags);
 
 skip_elfperf:
 
-/*	if (strcmp(name, "puts") == 0){
-		char * c ="PUTS CALLLED\n" ;
-		_dl_error_printf("Calling puts with special arg\n");
+  _dl_error_printf("Before returning from dl-fixup_plt\n");
 
-		((void (*)(const char*))value)(c);
-
-		// Studying how to use _dl_lookup_symbol_x
-
-		//DL_FIXUP_VALUE_TYPE value1;
-		//value1 = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "hello", l, flags);
-
-		//if (value1 != NULL) ((void (*)(const char*))value1)("calling hello function from dl_fixup");
-
-	} */
-//  _dl_error_printf("sizeof(DL_FIXUP_VALUE_TYPE) = %u, sizeof(void*) = %u, sizeof(DL_FIXUP_VALUE_TYPE) = %u \n", sizeof(Elf32_Word), sizeof(void*), sizeof(Elf32_Addr));
   return elf_machine_fixup_plt (l, result, reloc, rel_addr, value);
 }
 #endif

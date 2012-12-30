@@ -15,7 +15,7 @@ then
 	template3=");";
 	template4="}";
 
-	echo $template1 > $filename;
+	echo $template1 >  $filename;
 	echo $template2 >> $filename;
 
 	yes "	\"nop\\n\"" | head -n $1 >> $filename;
