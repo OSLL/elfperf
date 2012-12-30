@@ -358,8 +358,8 @@ void  wrapper()
 {
     asm volatile(
 		// Building stack frame
-		"push %ebp\n"
-		"movl %esp,%ebp\n"
+	//	"push %ebp\n"
+	//	"movl %esp,%ebp\n"
 		// By the start of wrapper edx contains jump addres of function, which is wrapped
 		"pushl %edx\n"				// Storing wrappedFunction_addr into stack
 		"movl (%ebp), %ebx\n"			// ebx = old_ebp
