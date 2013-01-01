@@ -42,23 +42,23 @@
 #include <stdint.h>
 
 //Calibrate the number of CPU cycles per nanosecond
-void calibrateTicks();
+//void calibrateTicks();
 
 // Initialize environment for correct using of rdtsc()
-void initRdtsc();
+//void initRdtsc();
 
 // Calculate difference between two timespecs
-struct timespec diffTimeSpec(struct timespec start, struct timespec end);
+//struct timespec diffTimeSpec(struct timespec start, struct timespec end);
 
 // Get elapsed time in timespecs for given time in nanoseconds
-void getTimeSpec(struct timespec* ts, uint64_t nsecs);
+//void getTimeSpec(struct timespec* ts, uint64_t nsecs);
 
 // Get elapsed time in timespecs using time converted from TSC reading
-void getRdtscTime(struct timespec* ts);
+//void getRdtscTime(struct timespec* ts);
 
 // Get number of CPU ticks by the moment
 uint64_t getRdtscTicks();
 
-double getCpuFrequency();
+//double getCpuFrequency();
 
 #endif // _ELFPERF_RDTSC_CNTRS_H_

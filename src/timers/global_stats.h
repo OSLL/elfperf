@@ -39,12 +39,13 @@
 #define _ELFPERF_GLOBAL_STATS_H_
 
 #include <stdint.h>
-#include "../wrappers/cdecl_wrapper.h"
+#include "../libelfperf/libelfperf.h"
 
 struct FunctionStatistic
 {
-    uint64_t totalDiffTime; // Total time of function calls
-    void* realFuncAddr;            // Address of the function
+    uint64_t totalDiffTime;			// Total time of function calls
+    unsigned long long int totalCallsNumber;	// Total number of functions calls
+    void* realFuncAddr;            		// Address of the function
 };
 
 struct FunctionStatistic* getFunctionStatistic(void* realFuncAddr);

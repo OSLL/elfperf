@@ -36,8 +36,7 @@
  * ---------------------------------------------------------------- */
 
 #include "global_stats.h"
-#include "../wrappers/cdecl_wrapper.h"
-#include "hpet_cntrs.h"
+//#include "hpet_cntrs.h"
 #include "rdtsc_cntrs.h"
 
 #include <stdlib.h>
@@ -86,43 +85,55 @@ struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
     return NULL;
 }
 
+// Spinlock for updateStat
+static int updateStatSpinlock=0;
 void updateStat(void* funcAddr, uint64_t diffTime)
 {
     struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
     if (stat != NULL) {
-        /*__time_t result_sec = stat->totalDiffTime.tv_sec;
-        long int result_nsec = stat->totalDiffTime.tv_nsec;
+        __sync_fetch_and_add(&(stat->totalCallsNumber), 1);
 
-        result_sec += diffTime.tv_sec;
-        result_nsec += diffTime.tv_nsec;
-
-        if (result_nsec >= 1000000000) {
-            result_sec += 1;
-            result_nsec = result_nsec - 1000000000;
-        }
-
-        stat->totalDiffTime.tv_sec = result_sec;
-        stat->totalDiffTime.tv_nsec = (long int)result_nsec;*/
+        // Try to lock
+        while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
 
         stat->totalDiffTime += diffTime;
+	
+        // Unlock
+        updateStatSpinlock = 0;
+
+	    printf("Current statistic for function = %p, total tick number = %llu, number of calls = %lld\n",
+			   stat->realFuncAddr, stat->totalDiffTime,
+			   stat->totalCallsNumber);
     } else {
         addNewStat(funcAddr, diffTime);
     }
+
 }
 
 struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime)
 {
-    if (s_statsCount == STATS_LIMIT){
+    if (s_statsCount >= STATS_LIMIT){
         printf("Statistics buffer is full! Exiting\n");
         exit(1);
     }
 
-    s_statsCount += 1;
     struct FunctionStatistic* stat = (struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
 
     stat->realFuncAddr = funcAddr;
     stat->totalDiffTime = diffTime;
-    s_stats[s_statsCount - 1] = stat;
+    stat->totalCallsNumber = 1;
+    s_stats[ __sync_fetch_and_add(&s_statsCount, 1)] = stat;
 
     return stat;
+}
+
+// Print stats for all functions
+void printFunctionStatistics(){
+    int i;
+    for (i = 0; i < s_statsCount; i++){
+        struct FunctionStatistic *stat = s_stats[i];
+        printf("Statistic for function = %p, total tick number = %llu, number of calls = %lld\n",
+                   stat->realFuncAddr, stat->totalDiffTime,
+                   stat->totalCallsNumber);
+    }
 }

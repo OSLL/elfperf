@@ -50,7 +50,7 @@ static inline uint64_t rdtsc()
 }
 
 // This function is used for calibrating the number of CPU cycles per nanosecond
-void calibrateTicks()
+/*void calibrateTicks()
 {
     struct timespec start_ts, end_ts;
     uint64_t start = 0, end = 0;
@@ -100,15 +100,15 @@ void getTimeSpec(struct timespec *ts, uint64_t nsecs)
 void getRdtscTime(struct timespec* ts)
 {
     getTimeSpec(ts, rdtsc()/s_ticksPerNanoSec);
-}
+}*/
 
 uint64_t getRdtscTicks()
 {
     return rdtsc();
 }
-
+/*
 double getCpuFrequency()
 {
 
     return s_ticksPerNanoSec;
-}
+}*/
