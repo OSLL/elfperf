@@ -54,17 +54,8 @@ void record_start_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
-#ifdef TIMING_WITH_HPET
-    printf("LOG: get start time with HPET\n");
-    cont->startTime = get_accurate_time();
-#endif
-
-#ifdef TIMING_WITH_RDTSC
     printf("LOG: get start time with RDTSC\n");
-    initRdtsc();
-    getRdtscTime(&cont->startTime);
-#endif
-
+    cont->startTime = getRdtscTicks();
 }
 
 // Record function end time into context->endTime and
@@ -73,18 +64,11 @@ void record_end_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
-#ifdef TIMING_WITH_HPET
-    printf("LOG: get end time with HPET\n");
-    cont->endTime = get_accurate_time();
-#endif
-
-#ifdef TIMING_WITH_RDTSC
     printf("LOG: get end time with RDTSC\n");
-    getRdtscTime(&cont->endTime);
-#endif
+    cont->endTime = getRdtscTicks();
 
-    struct timespec duration = diff(cont->startTime, cont->endTime);
-    printf("Function duration = %ds %dns\n", duration.tv_sec, duration.tv_nsec);
+    uint64_t duration = cont->endTime - cont->startTime;
+    printf("Function duration = %llu ticks\n", duration);
 
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
@@ -102,11 +86,11 @@ struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
     return NULL;
 }
 
-void updateStat(void* funcAddr, struct timespec diffTime)
+void updateStat(void* funcAddr, uint64_t diffTime)
 {
     struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
     if (stat != NULL) {
-        __time_t result_sec = stat->totalDiffTime.tv_sec;
+        /*__time_t result_sec = stat->totalDiffTime.tv_sec;
         long int result_nsec = stat->totalDiffTime.tv_nsec;
 
         result_sec += diffTime.tv_sec;
@@ -118,13 +102,15 @@ void updateStat(void* funcAddr, struct timespec diffTime)
         }
 
         stat->totalDiffTime.tv_sec = result_sec;
-        stat->totalDiffTime.tv_nsec = (long int)result_nsec;
+        stat->totalDiffTime.tv_nsec = (long int)result_nsec;*/
+
+        stat->totalDiffTime += diffTime;
     } else {
         addNewStat(funcAddr, diffTime);
     }
 }
 
-struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
+struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime)
 {
     if (s_statsCount == STATS_LIMIT){
         printf("Statistics buffer is full! Exiting\n");
@@ -135,8 +121,7 @@ struct FunctionStatistic* addNewStat(void *funcAddr, struct timespec diffTime)
     struct FunctionStatistic* stat = (struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
 
     stat->realFuncAddr = funcAddr;
-    stat->totalDiffTime.tv_sec = diffTime.tv_sec;
-    stat->totalDiffTime.tv_nsec = diffTime.tv_nsec;
+    stat->totalDiffTime = diffTime;
     s_stats[s_statsCount - 1] = stat;
 
     return stat;

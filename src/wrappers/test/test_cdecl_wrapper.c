@@ -223,19 +223,19 @@ int main(){
 
     printf("=== Total statistics ===\n");
     struct FunctionStatistic* stat = getFunctionStatistic(testFunction1);
-    printf("Function1 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    printf("Function1 statistics:\n\tduration = %llu ticks\n", stat->totalDiffTime);
     stat = getFunctionStatistic(testFunction2);
-    printf("Function2 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    printf("Function2 statistics:\n\tduration = %llu ticks\n", stat->totalDiffTime);
     stat = getFunctionStatistic(testFunction3);
-    printf("Function3 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    printf("Function3 statistics:\n\tduration = %llu ticks\n", stat->totalDiffTime);
     stat = getFunctionStatistic(testFunction4);
-    printf("Function4 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    printf("Function4 statistics:\n\tduration = %llu ticks\n", stat->totalDiffTime);
     stat = getFunctionStatistic(testFunction5);
-    printf("Function5 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    printf("Function5 statistics:\n\tduration = %llu ticks\n", stat->totalDiffTime);
     stat = getFunctionStatistic(testFunction6);
-    printf("Function6 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    printf("Function6 statistics:\n\tduration = %llu ticks\n", stat->totalDiffTime);
     stat = getFunctionStatistic(testFunction7);
-    printf("Function7 statistics:\n\tduration = %ds %dns\n", stat->totalDiffTime.tv_sec, stat->totalDiffTime.tv_nsec);
+    printf("Function7 statistics:\n\tduration = %llu ticks\n", stat->totalDiffTime);
 
     return 0;
 }

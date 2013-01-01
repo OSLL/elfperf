@@ -56,6 +56,9 @@ void getTimeSpec(struct timespec* ts, uint64_t nsecs);
 // Get elapsed time in timespecs using time converted from TSC reading
 void getRdtscTime(struct timespec* ts);
 
+// Get number of CPU ticks by the moment
+uint64_t getRdtscTicks();
+
 double getCpuFrequency();
 
 #endif // _ELFPERF_RDTSC_CNTRS_H_
