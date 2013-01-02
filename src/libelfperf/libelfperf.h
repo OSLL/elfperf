@@ -2,6 +2,7 @@
 #define LIBELFPERF_H_
 
 #include <stdbool.h>
+#include "ld-routines.h"
 
 #ifndef PAGESIZE
 #define PAGESIZE 4096
@@ -15,27 +16,6 @@
 
 #define CONTEXT_PREALLOCATED_NUMBER 1000
 
-// FIXME doesnt support recoursive calls  because of global stack variables usage
-struct WrappingContext{
-    // real return address
-    void * realReturnAddr; 		// 4bytes
-    // content of -4(%%old_ebp)
-    void * oldEbpLocVar; 		// 4bytes
-    // function return value
-    void * eax;				// 4bytes
-    double doubleResult;		// 8bytes
-    void * functionPointer;		// 4bytes
-    uint64_t startTime; 		// function starting time
-    uint64_t endTime;			// function ending time
-};
-
-// Store all data for redirectors initialization and
-// libelfperf functions proper work in ld.so runtime
-struct RedirectorContext{
-	char ** names;
-	unsigned int count;
-	void * redirectors;
-};
 
 
 

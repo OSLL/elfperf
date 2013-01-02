@@ -42,18 +42,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define STATS_LIMIT 100000
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
+
 // Global array of functions statistics
 static struct FunctionStatistic* s_stats[STATS_LIMIT];
 // Number of statistics
 static int s_statsCount = 0;
+
 
 // Record function start time into context->startTime
 void record_start_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
-    printf("LOG: get start time with RDTSC\n");
+//    printf("LOG: get start time with RDTSC\n");
     cont->startTime = getRdtscTicks();
 }
 
@@ -63,11 +68,11 @@ void record_end_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
-    printf("LOG: get end time with RDTSC\n");
+//    printf("LOG: get end time with RDTSC\n");
     cont->endTime = getRdtscTicks();
 
     uint64_t duration = cont->endTime - cont->startTime;
-    printf("Function duration = %llu ticks\n", duration);
+//    printf("Function duration = %llu ticks\n", duration);
 
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
@@ -87,6 +92,7 @@ struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
 
 // Spinlock for updateStat
 static int updateStatSpinlock=0;
+
 void updateStat(void* funcAddr, uint64_t diffTime)
 {
     struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
@@ -101,8 +107,8 @@ void updateStat(void* funcAddr, uint64_t diffTime)
         // Unlock
         updateStatSpinlock = 0;
 
-	    printf("Current statistic for function = %p, total tick number = %llu, number of calls = %lld\n",
-			   stat->realFuncAddr, stat->totalDiffTime,
+	    printf("Current statistic for function = %p, call time %lld, total tick number = %llu, number of calls = %lld\n",
+			   stat->realFuncAddr, diffTime, stat->totalDiffTime,
 			   stat->totalCallsNumber);
     } else {
         addNewStat(funcAddr, diffTime);
@@ -110,8 +116,65 @@ void updateStat(void* funcAddr, uint64_t diffTime)
 
 }
 
+
+static bool isSharedMemoryInited = 0;
+
+// Spinlock for shared memory initialization
+static int sharedMemoryInitSpinlock=0;
+
+static void initSharedMemory(){
+
+	if (isSharedMemoryInited) return;
+
+	///// Critical section
+	// Try to lock
+        while(  __sync_fetch_and_add(&sharedMemoryInitSpinlock,1)!=0);
+	
+	if (isSharedMemoryInited) return;
+
+	// Shared memory variables
+
+	int shmid;
+	struct FunctionStatistic *** shm;
+	
+	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
+		perror("Failed to create shared memory segment!\n");
+		exit(1);
+	}
+
+	/*
+	* Now we attach the segment to our data space.
+	*/
+	if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic ***) -1) {
+		perror("Failed to attach at shared memory segment");
+		exit(1);
+	}
+	
+	// Storing s_stats into shared memory
+	*shm = s_stats;
+	// Set flag - shared memory is already inited
+	isSharedMemoryInited = 1;	
+		
+	printf("Shared memory inited successfuly: shm = %p ,s_stats = %p\n", *shm,  s_stats );
+
+	// Unlock
+	sharedMemoryInitSpinlock = 0;
+	///// Critical section ends
+
+	
+
+	
+}
+
 struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime)
 {
+    // Do s_stats pointers writing into the shared memory if it is not performed before
+
+    if (!isSharedMemoryInited) initSharedMemory();
+
+   //////
+
+
     if (s_statsCount >= STATS_LIMIT){
         printf("Statistics buffer is full! Exiting\n");
         exit(1);

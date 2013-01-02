@@ -34,64 +34,7 @@
 #include <stdint.h>
 #include <limits.h>    /* for PAGESIZE */
 
-#define ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE "ELFPERF_PROFILE_FUNCTION"
-#define ELFPERF_ENABLE_VARIABLE "ELFPERF_ENABLE"
-
-
-static bool isElfPerfEnabled()
-{
-    return getenv(ELFPERF_ENABLE_VARIABLE)!=NULL;
-}
-
-// Return list of function names separted by ":" passed from @env_name@ envoironment variable
-// storing number of them into @count@
-static char** get_fn_list(const char* env_name, int* count)
-{
-    char* env_value = getenv(env_name);
-
-    if (env_value == NULL) {
-        *count = 0;
-        return NULL;
-    }
-
-    char** result = NULL;
-    int word_count = 0;
-
-    int i;
-    int k = 0;
-    for (i = 0; i < strlen(env_value); i++) {
-        char c = env_value[i + 1];
-        if (c == ':' || c == '\0') {
-            word_count++;
-            result = (char**)realloc(result, sizeof(*result) * word_count);
-            char* str = strndup(env_value + k, i - k + 1);
-            k = i+2;
-            result[word_count - 1] = str;
-        }
-    }
-
-    *count = word_count;
-    return result;
-}
-
-// Check should function be profiled or not
-static bool isFunctionProfiled(char * name){
-
-	static unsigned int count =0;
-	static char** functions = NULL;
-	if (functions == NULL) 
-		functions = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
-	
-	unsigned int i;
-
-	for (i = 0; i < count; i++){
-		if (strcmp(functions[i],name) == 0) 
-			return true;
-	}
-	
-	return false;
-}
-
+#include "../../src/libelfperf/ld-routines.h"
 //////////////////////////////////////////////////////////////////////////////////
 
 #if (!defined ELF_MACHINE_NO_RELA && !defined ELF_MACHINE_PLT_REL) \
@@ -231,12 +174,6 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 }
 
 
-// Store all data for redirectors initialization
-struct RedirectorContext{
-	char ** names;
-	unsigned int count;
-	void * redirectors;
-};
 
 struct ElfperfFunctions {
 

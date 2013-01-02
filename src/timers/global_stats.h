@@ -40,13 +40,7 @@
 
 #include <stdint.h>
 #include "../libelfperf/libelfperf.h"
-
-struct FunctionStatistic
-{
-    uint64_t totalDiffTime;			// Total time of function calls
-    unsigned long long int totalCallsNumber;	// Total number of functions calls
-    void* realFuncAddr;            		// Address of the function
-};
+#include "../libelfperf/ld-routines.h"
 
 struct FunctionStatistic* getFunctionStatistic(void* realFuncAddr);
 void updateStat(void* funcAddr, uint64_t diffTime);

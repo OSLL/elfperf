@@ -22,6 +22,9 @@
 #include <string.h>
 #include <ldsodefs.h>
 
+#include "../../src/libelfperf/ld-routines.h"
+#include <sys/stat.h> 
+#include <fcntl.h>
 
 /* Type of the constructor functions.  */
 typedef void (*fini_t) (void);
@@ -115,6 +118,70 @@ _dl_sort_fini (struct link_map *l, struct link_map **maps, size_t nmaps,
 }
 
 
+
+// Output of profiling results
+// on console and to file if it can be opened
+static void printElfperfResults(){
+
+  // Going inside shared memory
+  int shmid;
+  struct FunctionStatistic*** shm;
+
+  if( isElfPerfEnabled()) {
+
+	  if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID, sizeof(struct FunctionStatistic***), 0666)) < 0 ) {
+	    _dl_debug_printf("Erorr during shmget");
+	  } else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
+
+	    _dl_debug_printf("Error during shmat\n");
+
+	  } else {
+	    ////
+	
+
+  	    struct FunctionStatistic **stat;
+	    stat = (*shm);
+
+	    _dl_debug_printf("Granted normal access to shared memory\n");
+	    unsigned int i;		
+
+	    int * pFile;
+
+//	    pFile = fopen ("elfperf_results","w");
+	    if ((pFile = open("elfperf_results", O_WRONLY | O_CREAT | O_TRUNC,
+    		S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1)
+	    {
+	      	_dl_debug_printf("Errors during fopen!\n");
+	    } else {
+		_dl_debug_printf("Result file opened sucsessfuly\n");
+	    }
+
+
+	    // Output of results
+	    for (i = 0; i < STATS_LIMIT && stat[i]!=NULL; i++)		
+	    {
+		// Because _dl_debug_printf cant output 64byte numbers
+		// this hack performed
+		uint64_t totalTime = (stat[i])->totalDiffTime;
+		void ** timePtr = (void **)&totalTime;
+
+		// Output to console 
+		_dl_debug_printf("Statistic for %x : total calls number = %u, total ticks number = %u %u\n",
+		(stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
+
+		// Output to file if it is opened
+		if ( pFile != NULL)
+			_dl_dprintf(pFile,"Statistic for %x : total calls number = %u, total ticks number = %u %u\n",
+                	(stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
+
+	    }
+	    close (pFile);
+
+	  }
+  }
+}
+
+
 void
 internal_function
 _dl_fini (void)
@@ -130,6 +197,16 @@ _dl_fini (void)
      using `dlopen' there are possibly several other modules with its
      dependencies to be taken into account.  Therefore we have to start
      determining the order of the modules once again from the beginning.  */
+
+///////////////////////////////////////////////////////////////////////////
+  _dl_debug_printf("Finishing work of ld.so!\n");
+
+  printElfperfResults();
+
+  //
+
+
+///////////////////////////////////////////////////////////////////////////
   struct link_map **maps = NULL;
   size_t maps_size = 0;
 

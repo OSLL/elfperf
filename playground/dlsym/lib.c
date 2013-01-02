@@ -1,7 +1,11 @@
 #include <stdio.h>
 
 void hella(const char *p){
-	printf("Hacked hello for %s arg\n", p);
+	printf("hella for %s arg from so\n", p);
+}
+
+void testFunc(){
+	printf("testFunc from so\n");
 }
 
 void hello(const char *p)
