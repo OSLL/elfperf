@@ -232,6 +232,8 @@ void addNewFunction(char* name, void * functionAddr, struct RedirectorContext co
 // Initialize s_redirectors and s_names
 void initWrapperRedirectors( struct RedirectorContext *context/*char** names,unsigned int count, void * wrapperAddr, void* s_redirectors*/){
 
+    initFunctionInfoStorage();
+
     printf("Starting initWrapperRedirectors %p\n", context);
 
     //s_wrapperAddress = wrapperAddr;

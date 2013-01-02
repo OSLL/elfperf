@@ -349,6 +349,7 @@ _dl_fixup (
 	static struct ElfperfFunctions * elfperfFuncs = NULL;
 	static bool errorDuringElfperfFunctionLoad = 0;
 	static struct RedirectorContext context;
+	static struct FunctionInfo * infos;
 
 	if (isElfPerfEnabled() && isFunctionProfiled(name) && getLibMap(ELFPERF_LIB_NAME, l) != NULL 
 		&& !errorDuringElfperfFunctionLoad) {
@@ -401,11 +402,21 @@ _dl_fixup (
 		__sync_fetch_and_add(&initialized, 1);
 		_dl_error_printf("After setting initialized , curr val = %u\n", initialized);
 
+		infos = getFunctionInfoStorage();
+		_dl_error_printf("After FunctionInfo storage initialization %x\n", infos);
 
 	}
 
 	_dl_error_printf("Doing routines for ELFPERF\n");
 	if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name, context)){
+		struct FunctionInfo* tmp = getInfoByName(name, infos, context.count);
+		
+		if (tmp != NULL){
+			tmp->addr = value;
+		} else {
+			_dl_error_printf("Error - not found function for name by getInfoByName\n");
+		}
+
 		_dl_error_printf("Function %s (%u) not registered, adding\n", name, value);
 		(*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
 		_dl_error_printf("Registration of %s successful.\n", name);

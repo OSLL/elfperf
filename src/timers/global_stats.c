@@ -137,7 +137,7 @@ static void initSharedMemory(){
 	int shmid;
 	struct FunctionStatistic *** shm;
 	
-	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
+	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
 		perror("Failed to create shared memory segment!\n");
 		exit(1);
 	}
