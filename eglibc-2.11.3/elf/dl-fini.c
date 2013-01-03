@@ -142,6 +142,11 @@ static void printElfperfResults(){
   	    struct FunctionStatistic **stat;
 	    stat = (*shm);
 
+	    if (stat == NULL) {
+		_dl_debug_printf("Statistic is empty, exiting!\n");
+		return;
+	    }
+
 	    _dl_debug_printf("Granted normal access to shared memory\n");
 	    unsigned int i;		
 

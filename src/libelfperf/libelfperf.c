@@ -11,7 +11,9 @@
 
 extern void testFunc(char * a);
 
-// Number of contexts will be allocated
+int print_stub(const char* fmt, ...){
+	return 1;
+}
 
 
 // preallocated array of contexts
