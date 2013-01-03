@@ -187,7 +187,7 @@ static struct FunctionInfo* getInfoByName(char* name, struct FunctionInfo* stora
 
 	for (i = 0; i < count ; i++)
 	{
-		if (strcmp(storage[i].name,name) == 0)
+		if ( storage+i != NULL &&  strcmp(storage[i].name,name) == 0)
 			return storage+i;
 
 	}
@@ -212,7 +212,7 @@ static struct FunctionInfo* getInfoByAddr(void* addr, struct FunctionInfo* stora
 	for (i = 0; i < count ; i++)
 	{
 //		_dl_debug_printf("\tChecking match for pair %u %u\n",storage[i].addr, addr);
-		if ( storage[i].addr == addr ){
+		if (  storage[i].addr == addr ){
 			
 			return storage+i;
 		}

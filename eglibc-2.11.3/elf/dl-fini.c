@@ -25,6 +25,7 @@
 #include "../../src/libelfperf/ld-routines.h"
 #include <sys/stat.h> 
 #include <fcntl.h>
+#include <time.h>
 
 /* Type of the constructor functions.  */
 typedef void (*fini_t) (void);
@@ -142,24 +143,32 @@ static void printElfperfResults(){
   	    struct FunctionStatistic **stat;
 	    stat = (*shm);
 
-	    if (stat == NULL) {
-		_dl_debug_printf("Statistic is empty, exiting!\n");
-		return;
-	    }
-
 	    _dl_debug_printf("Granted normal access to shared memory\n");
-	    unsigned int i;		
+
 
 	    int * pFile;
 
-	    if ((pFile = open("elfperf_results", O_WRONLY | O_CREAT | O_TRUNC,
+	    if ((pFile = open("elfperf_results.out", O_WRONLY | O_CREAT | O_TRUNC,
     		S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1)
 	    {
-	      	_dl_debug_printf("Errors during fopen!\n");
+	      	_dl_debug_printf("Errors during open!\n");
 	    } else {
 		_dl_debug_printf("Result file opened sucsessfuly\n");
 	    }
 
+	    // File header
+	    
+	    _dl_dprintf(pFile, "Profiling results for pid=%u\n", getpid());
+
+	    if (stat == NULL ) {
+		_dl_debug_printf("Statistic is empty, exiting!\n");
+		_dl_dprintf(pFile, "Statistic is empty, exiting!\n");
+		close(pFile);
+		return;
+	    }
+	    ////
+
+	    unsigned int i;		
 
 	    // Getting pointer to the function info list
 	    struct FunctionInfo* list = getFunctionInfoStorage();
@@ -168,16 +177,32 @@ static void printElfperfResults(){
 		_dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");
 
 	    }
+	    if (stat == NULL) {
+                _dl_debug_printf("Statistic is empty, exiting!\n");
+                _dl_dprintf(pFile, "Statistic is empty, exiting!\n");
 
+		close(pFile);
+		return;
+	    }
+	
 	    // Output of results
-	    for (i = 0; i < STATS_LIMIT && stat[i]!=NULL; i++)		
+	    for (i = 0; i < STATS_LIMIT && *(stat+i) != NULL; i++)		
 	    {
+		_dl_debug_printf("Printing stats, iteration %u \n",i);
 		// Because _dl_debug_printf cant output 64byte numbers
 		// this hack performed
 		uint64_t totalTime = (stat[i])->totalDiffTime;
 		void ** timePtr = (void **)&totalTime;
-
+		
+		_dl_debug_printf("Try to get FunctionInfo\n");
 		struct FunctionInfo* currentInfo = getInfoByAddr((stat[i])->realFuncAddr, list);
+
+		if (currentInfo == NULL){
+			_dl_debug_printf("getInfoByAddr(...) returned NULL, skipping\n");
+			
+			break ;
+		} 
+
 		char* name = currentInfo->name;
 
 		if (currentInfo == NULL) {
@@ -196,7 +221,8 @@ static void printElfperfResults(){
 
 	    }
 	    close (pFile);
-
+	    shmdt(shm);
+	    shmdt(list);
 	  }
   }
 }
