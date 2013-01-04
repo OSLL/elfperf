@@ -23,6 +23,7 @@
 #endif
 
 //Preventing console output from ld.so
+#ifdef NO_CONSOLE_OUTPUT_LD_SO
 
 #define _dl_debug_printf debug_print_stub
 #define _dl_error_printf debug_print_stub
@@ -30,6 +31,8 @@
 static int debug_print_stub(const char* fmt, ...){
         return 1;
 }
+
+#endif
 
 struct FunctionStatistic
 {
