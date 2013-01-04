@@ -46,6 +46,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include <errno.h>
 
 // Global array of functions statistics
 static struct FunctionStatistic* s_stats[STATS_LIMIT];
@@ -57,8 +58,6 @@ static int s_statsCount = 0;
 void record_start_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
-
-//    printf("LOG: get start time with RDTSC\n");
     cont->startTime = getRdtscTicks();
 }
 
@@ -68,7 +67,6 @@ void record_end_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
 
-//    printf("LOG: get end time with RDTSC\n");
     cont->endTime = getRdtscTicks();
 
     uint64_t duration = cont->endTime - cont->startTime;
@@ -76,6 +74,7 @@ void record_end_time(void * context)
 
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
+    //errno = 0;
 }
 
 // Get statistic for given function

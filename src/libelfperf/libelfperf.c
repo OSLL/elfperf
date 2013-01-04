@@ -46,9 +46,25 @@ struct WrappingContext * getNewContext_(){
 }
 
 
+// Stack structure
+
+/*
+///////top///////
+	old_edx
+	old_ebx
+	old_ecx
+	old_ebp
+
+*/
 void  wrapper()
 {
     asm volatile(
+		// Fix ebp 
+		// Because we placed old registers on the ebp we need to start stack frame from this place
+		// not from current esp
+		"movl %esp, %eax\n"
+		"addl $12, %eax\n"
+		"movl %eax, %ebp\n"
 		// By the start of wrapper edx contains jump addres of function, which is wrapped
 		"pushl %edx\n"				// Storing wrappedFunction_addr into stack
 		"movl (%ebp), %ebx\n"			// ebx = old_ebp
@@ -61,6 +77,11 @@ void  wrapper()
 		"movl %edx, 4(%ebx)\n"			//context->oldEbpLocVar = edx
 		// Extracting wrappedFunction_addr from stack and placing it to context
 		"popl 20(%ebx)\n"			// context->functionPointer = wrappedFunction_addr
+		// Memorization of registers states
+		"pop 24(%ebx)\n"	// context.old_ebx = old_ebx
+		"pop 28(%ebx)\n"	// context.old_edx = old_edx
+		"pop 32(%ebx)\n"	// context.old_ecx = old_ecx
+
 		// Changing return address to wrapper_return_point
 		"movl 4(%ebp), %ecx\n"			// Storing real return_addres
 		"movl %ecx, (%ebx) \n"
@@ -104,6 +125,9 @@ void  wrapper()
 		"wrapper_return_point: movl -4(%ebp), %ebx\n"	// %ebx = & context
 		"movl %eax, 8(%ebx)\n"			// context->eax = %eax
 		"fstpl 0xc(%ebx)\n"			// context->doubleResult = ST0
+		// Saving errno
+//		"movl errno, %edx\n"			// %edx = errno
+//		"movl %edx, 24(%ebx)\n"			// context.errno = %edx
 		// Measuring time of function execution
 
 /* Commented call of record_end_time_ */
@@ -124,24 +148,52 @@ void  wrapper()
 		"movl 4(%ebx), %edx\n"	// restoring -4(old_ebp)
 		"movl %edx, -4(%ebp)\n"	// edx = context->oldEbpLocVar ; -4(%ebp) = edx
 		"movl 8(%ebx), %eax\n"	// restoring eax
-		"fldl 0xc(%ebx)\n"		// restoring ST0
-		"pushl (%ebx)\n"		// returning to caller - pushing return address to stack
+		"fldl 0xc(%ebx)\n"	// restoring ST0
+		// Restoring registers
+		"movl 28(%ebx), %edx\n" // restoring edx
+		"movl 32(%ebx), %ecx\n" // restoring ecx
+		//
+		"pushl (%ebx)\n"	// returning to caller - pushing return address to stack
+		// Restoring %ebx
+		"movl 24(%ebx), %ebx\n" // %ebx = old_ebx
 		"ret\n"// : : :
 		);
 }
 
 // Create set of machine instructions
 /*
+i	push %ebp
+	push %ecx
+	push %edx
+	push %ebx
         mov fcnPtr+3, %edx
 	mov wrapper_addr, %ebx
         jmp *(%ebx)
 */
 // and write them to @destination@
-void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
+void writeRedirectionCode(unsigned char * redir, void * fcnPtr){
     //	 unsigned char* redirector[REDIRECTOR_WORDS_SIZE*sizeof(void*)];
     // mov $number, %%edx
     // ret = 0xc3
     unsigned int functionPointer = (unsigned int )(fcnPtr)+3;
+
+    unsigned char * redirector = redir;
+
+
+/*
+	push %ebp
+	push %ecx
+	push %edx
+	push %ebx
+*/
+
+    redirector[0] = 0x55;
+    redirector[1] = 0x51; 
+    redirector[2] = 0x52; 
+    redirector[3] = 0x53; 
+
+    redirector = redir + 4;
+
     redirector[0]=0xba;//0xb8;
     // reversing byte order
     redirector[4] = (functionPointer >> 24) & 0xFF;
@@ -150,10 +202,10 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
     redirector[1] =  functionPointer        & 0xFF;
     //memcpy(redirector+1, &number, 4);
 
-    // mov $wrapper, %ebx
-    //wrapperAddress = wrapperAddr;
-    //unsigned int wrapper_ = (int)&wrapperAddress;
-    unsigned int wrapper_ = (int)&wrapper;
+    // mov $wrapper+3, %ebx
+    // Skip stack frame construction - because we pass some extra params throw stack
+    // and esp will not be good addr for new stack frame
+    unsigned int wrapper_ = (unsigned int)&wrapper + 3;
     redirector[5] = 0xbb;
     redirector[9] = (wrapper_ >> 24) & 0xFF;
     redirector[8] = (wrapper_ >> 16) & 0xFF;
@@ -163,12 +215,14 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
     // jmp *(%ebx)
     redirector[10] = 0xFF;
     redirector[11] = 0xE3;//0x23;
-    redirector[12] = 0x90;
+
 
     // nop nop
-    redirector[13] = 0x90;
-    redirector[14] = 0x90;
-    redirector[15] = 0x90;
+//    redirector[12] = 0x90;
+
+//    redirector[13] = 0x90;
+//    redirector[14] = 0x90;
+//    redirector[15] = 0x90;
 
     
     printf("Created redirector for %p at %p, wrapper = %p, %x\n", fcnPtr, redirector, wrapper, wrapper_);

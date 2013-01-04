@@ -712,7 +712,7 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
     struct sym_val current_value = { NULL, NULL };
     struct r_scope_elem **scope = symbol_scope;
 
-    _dl_debug_printf("name %s\n",undef_name);
+    //_dl_debug_printf("name %s\n",undef_name);
 
     bump_num_relocations ();
 
@@ -832,7 +832,7 @@ _dl_lookup_symbol_x (const char *undef_name, struct link_map *undef_map,
             && add_dependency (undef_map, current_value.m, flags) < 0){
         /* Something went wrong.  Perhaps the object we tried to reference
      was just removed.  Try finding another definition.  */
-	_dl_error_printf("doing recoursive call of _dl_lookup_symbol_x\n");
+	//_dl_error_printf("doing recoursive call of _dl_lookup_symbol_x\n");
         return _dl_lookup_symbol_x (undef_name, undef_map, ref,
                                     (flags & DL_LOOKUP_GSCOPE_LOCK)
                                     ? undef_map->l_scope : symbol_scope,

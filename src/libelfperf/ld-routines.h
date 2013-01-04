@@ -22,6 +22,13 @@
 #define _dl_debug_printf printf
 #endif
 
+#define _dl_debug_printf debug_print_stub
+#define _dl_error_printf debug_print_stub
+
+static int debug_print_stub(const char* fmt, ...){
+        return 1;
+}
+
 struct FunctionStatistic
 {
     uint64_t totalDiffTime;			// Total time of function calls
@@ -32,13 +39,16 @@ struct FunctionStatistic
 
 struct WrappingContext{
     // real return address
-    void * realReturnAddr; 		// 4bytes
+    void * realReturnAddr; 		// 4bytes	0
     // content of -4(%%old_ebp)
-    void * oldEbpLocVar; 		// 4bytes
+    void * oldEbpLocVar; 		// 4bytes	4
     // function return value
-    void * eax;				// 4bytes
-    double doubleResult;		// 8bytes
-    void * functionPointer;		// 4bytes
+    void * eax;				// 4bytes	8
+    double doubleResult;		// 8bytes	12
+    void * functionPointer;		// 4bytes	20
+    int old_ebx;			// 4bytes	24	
+    int old_edx;			// 4bytes	28
+    int old_ecx;			// 4bytes	32
     uint64_t startTime; 		// function starting time
     uint64_t endTime;			// function ending time
 };
