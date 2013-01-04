@@ -22,6 +22,8 @@
 #define _dl_debug_printf printf
 #endif
 
+//Preventing console output from ld.so
+
 #define _dl_debug_printf debug_print_stub
 #define _dl_error_printf debug_print_stub
 

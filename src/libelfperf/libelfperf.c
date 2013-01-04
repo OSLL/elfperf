@@ -59,12 +59,13 @@ struct WrappingContext * getNewContext_(){
 void  wrapper()
 {
     asm volatile(
-		// Fix ebp 
+		//// Special creation of a stack frame ebp 
 		// Because we placed old registers on the ebp we need to start stack frame from this place
 		// not from current esp
 		"movl %esp, %eax\n"
-		"addl $12, %eax\n"
-		"movl %eax, %ebp\n"
+		"addl $12, %eax\n"			// %ebp = %esp + 12
+		"movl %eax, %ebp\n"			// because 12 is a size of saved old_{ecx,ebx,edx}
+		///////////////////
 		// By the start of wrapper edx contains jump addres of function, which is wrapped
 		"pushl %edx\n"				// Storing wrappedFunction_addr into stack
 		"movl (%ebp), %ebx\n"			// ebx = old_ebp
@@ -162,22 +163,20 @@ void  wrapper()
 
 // Create set of machine instructions
 /*
-i	push %ebp
+	push %ebp
 	push %ecx
 	push %edx
 	push %ebx
         mov fcnPtr+3, %edx
-	mov wrapper_addr, %ebx
+	mov wrapper_addr+3, %ebx
         jmp *(%ebx)
 */
 // and write them to @destination@
-void writeRedirectionCode(unsigned char * redir, void * fcnPtr){
+void writeRedirectionCode(unsigned char * redirector, void * fcnPtr){
     //	 unsigned char* redirector[REDIRECTOR_WORDS_SIZE*sizeof(void*)];
     // mov $number, %%edx
     // ret = 0xc3
     unsigned int functionPointer = (unsigned int )(fcnPtr)+3;
-
-    unsigned char * redirector = redir;
 
 
 /*
@@ -192,37 +191,36 @@ void writeRedirectionCode(unsigned char * redir, void * fcnPtr){
     redirector[2] = 0x52; 
     redirector[3] = 0x53; 
 
-    redirector = redir + 4;
+/*
+        mov fcnPtr+3, %edx
+*/
 
-    redirector[0]=0xba;//0xb8;
+    redirector[4]=0xba;//0xb8;
     // reversing byte order
-    redirector[4] = (functionPointer >> 24) & 0xFF;
-    redirector[3] = (functionPointer >> 16) & 0xFF;
-    redirector[2] = (functionPointer >>  8) & 0xFF;
-    redirector[1] =  functionPointer        & 0xFF;
+    redirector[8] = (functionPointer >> 24) & 0xFF;
+    redirector[7] = (functionPointer >> 16) & 0xFF;
+    redirector[6] = (functionPointer >>  8) & 0xFF;
+    redirector[5] =  functionPointer        & 0xFF;
     //memcpy(redirector+1, &number, 4);
 
-    // mov $wrapper+3, %ebx
+/*
+	mov $wrapper+3, %ebx
+*/
+
     // Skip stack frame construction - because we pass some extra params throw stack
     // and esp will not be good addr for new stack frame
     unsigned int wrapper_ = (unsigned int)&wrapper + 3;
-    redirector[5] = 0xbb;
-    redirector[9] = (wrapper_ >> 24) & 0xFF;
-    redirector[8] = (wrapper_ >> 16) & 0xFF;
-    redirector[7] = (wrapper_ >>  8) & 0xFF;
-    redirector[6] =  wrapper_        & 0xFF;
+    redirector[9] = 0xbb;
+    redirector[13] = (wrapper_ >> 24) & 0xFF;
+    redirector[12] = (wrapper_ >> 16) & 0xFF;
+    redirector[11] = (wrapper_ >>  8) & 0xFF;
+    redirector[10] =  wrapper_        & 0xFF;
 
-    // jmp *(%ebx)
-    redirector[10] = 0xFF;
-    redirector[11] = 0xE3;//0x23;
-
-
-    // nop nop
-//    redirector[12] = 0x90;
-
-//    redirector[13] = 0x90;
-//    redirector[14] = 0x90;
-//    redirector[15] = 0x90;
+/*
+	jmp *(%ebx)
+*/
+    redirector[14] = 0xFF;
+    redirector[15] = 0xE3;//0x23;
 
     
     printf("Created redirector for %p at %p, wrapper = %p, %x\n", fcnPtr, redirector, wrapper, wrapper_);
