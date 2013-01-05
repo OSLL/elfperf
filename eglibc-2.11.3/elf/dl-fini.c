@@ -124,106 +124,108 @@ _dl_sort_fini (struct link_map *l, struct link_map **maps, size_t nmaps,
 // on console and to file if it can be opened
 static void printElfperfResults(){
 
-  // Going inside shared memory
-  int shmid;
-  struct FunctionStatistic*** shm;
-
-  if( isElfPerfEnabled()) {
-
-	  if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), 0666)) < 0 ) {
-	    _dl_debug_printf("Erorr during shmget");
-	  } else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
-
-	    _dl_debug_printf("Error during shmat\n");
-
-	  } else {
-	    ////
-	
-
-  	    struct FunctionStatistic **stat;
-	    stat = (*shm);
-
-	    _dl_debug_printf("Granted normal access to shared memory\n");
-
-
-	    int * pFile;
-
-	    if ((pFile = open("elfperf_results.out", O_WRONLY | O_CREAT | O_TRUNC,
-    		S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1)
-	    {
-	      	_dl_debug_printf("Errors during open!\n");
-	    } else {
-		_dl_debug_printf("Result file opened sucsessfuly\n");
-	    }
-
-	    // File header
-	    
-	    _dl_dprintf(pFile, "Profiling results for pid=%u\n", getpid());
-
-	    if (stat == NULL ) {
-		_dl_debug_printf("Statistic is empty, exiting!\n");
-		_dl_dprintf(pFile, "Statistic is empty, exiting!\n");
-		close(pFile);
-		return;
-	    }
-	    ////
-
 	    unsigned int i;		
+	  // Going inside shared memory
+	  int shmid;
+	  struct FunctionStatistic*** shm;
 
-	    // Getting pointer to the function info list
-	    struct FunctionInfo* list = getFunctionInfoStorage();
+	  if( isElfPerfEnabled()) {
 
-	    if (list == NULL){
-		_dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");
+		  if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), 0666)) < 0 ) {
+		    _dl_debug_printf("Erorr during shmget");
+		  } else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
 
-	    }
-	    if (stat == NULL) {
-                _dl_debug_printf("Statistic is empty, exiting!\n");
-                _dl_dprintf(pFile, "Statistic is empty, exiting!\n");
+		    _dl_debug_printf("Error during shmat\n");
 
-		close(pFile);
-		return;
-	    }
-	
-	    // Output of results
-	    for (i = 0; i < STATS_LIMIT && *(stat+i) != NULL; i++)		
-	    {
-		_dl_debug_printf("Printing stats, iteration %u \n",i);
-		// Because _dl_debug_printf cant output 64byte numbers
-		// this hack performed
-		uint64_t totalTime = (stat[i])->totalDiffTime;
-		void ** timePtr = (void **)&totalTime;
+		  } else {
+		    ////
 		
-		_dl_debug_printf("Try to get FunctionInfo\n");
-		struct FunctionInfo* currentInfo = getInfoByAddr((stat[i])->realFuncAddr, list);
 
-		if (currentInfo == NULL){
-			_dl_debug_printf("getInfoByAddr(...) returned NULL, skipping\n");
+		    struct FunctionStatistic **stat;
+		    stat = (*shm);
+
+		    _dl_debug_printf("Granted normal access to shared memory\n");
+
+
+		    int * pFile;
+
+		    if ((pFile = open("elfperf_results.out", O_WRONLY | O_CREAT | O_TRUNC,
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1)
+		    {
+			_dl_debug_printf("Errors during open!\n");
+		    } else {
+			_dl_debug_printf("Result file opened sucsessfuly\n");
+		    }
+
+		    // File header
+		    
+		    _dl_dprintf(pFile, "Profiling results for pid=%u\n", getpid());
+		    _dl_dprintf(pFile, "Functions: %s\n", getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE));
+
+
+		    if (stat == NULL ) {
+			_dl_debug_printf("Statistic is empty, exiting!\n");
+			_dl_dprintf(pFile, "Statistic is empty, exiting!\n");
+			close(pFile);
+			return;
+		    }
+		    ////
+
+
+		    // Getting pointer to the function info list
+		    struct FunctionInfo* list = getFunctionInfoStorage();
+
+		    if (list == NULL){
+			_dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");
+
+		    }
+		    if (stat == NULL) {
+			_dl_debug_printf("Statistic is empty, exiting!\n");
+			_dl_dprintf(pFile, "Statistic is empty, exiting!\n");
+
+			close(pFile);
+			return;
+		    }
+		
+		    // Output of results
+		    for (i = 0; i < STATS_LIMIT && *(stat+i) != NULL; i++)		
+		    {
+			_dl_debug_printf("Printing stats, iteration %u \n",i);
+			// Because _dl_debug_printf cant output 64byte numbers
+			// this hack performed
+			uint64_t totalTime = (stat[i])->totalDiffTime;
+			void ** timePtr = (void **)&totalTime;
 			
-			break ;
-		} 
+			_dl_debug_printf("Try to get FunctionInfo\n");
+			struct FunctionInfo* currentInfo = getInfoByAddr((stat[i])->realFuncAddr, list);
 
-		char* name = currentInfo->name;
+			if (currentInfo == NULL){
+				_dl_debug_printf("getInfoByAddr(...) returned NULL, skipping\n");
+				
+				break ;
+			} 
 
-		if (currentInfo == NULL) {
-			_dl_debug_printf("Failed at %x\n", (stat[i])->realFuncAddr);
-			return ;
-		}
+			char* name = currentInfo->name;
 
-		// Output to console 
-		_dl_debug_printf("Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
-		name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
+			if (currentInfo == NULL) {
+				_dl_debug_printf("Failed at %x\n", (stat[i])->realFuncAddr);
+				return ;
+			}
 
-		// Output to file if it is opened
-		if ( pFile != NULL)
-			_dl_dprintf(pFile,"Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
-                	name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
+			// Output to console 
+			_dl_debug_printf("Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
+			name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
 
-	    }
-	    close (pFile);
-	    shmdt(shm);
-	    shmdt(list);
-	  }
+			// Output to file if it is opened
+			if ( pFile != NULL)
+				_dl_dprintf(pFile,"Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
+				name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
+
+		    }
+		    close (pFile);
+		    shmdt(shm);
+		    shmdt(list);
+		  }
   }
 }
 

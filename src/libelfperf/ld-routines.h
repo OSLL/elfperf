@@ -69,7 +69,8 @@ struct RedirectorContext{
 
 static bool isElfPerfEnabled()
 {
-    return getenv(ELFPERF_ENABLE_VARIABLE)!=NULL;
+    return getenv(ELFPERF_ENABLE_VARIABLE)!=NULL && 
+		getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE)!=NULL;
 }
 
 // Return list of function names separted by ":" passed from @env_name@ envoironment variable
