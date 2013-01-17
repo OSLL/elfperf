@@ -310,7 +310,6 @@ _dl_fixup (
       RTLD_FINALIZE_FOREIGN_CALL;
 #endif
 
-	_dl_error_printf("dl-runtime2\n");
       /* Currently result contains the base load address (or link map)
 	 of the object that defines sym.  Now add in the symbol
 	 offset.  */
@@ -350,6 +349,12 @@ _dl_fixup (
 	static bool errorDuringElfperfFunctionLoad = 0;
 	static struct RedirectorContext context;
 	static struct FunctionInfo * infos;
+	static int initialized = 0;
+
+	if (isElfPerfEnabled() && !initialized){
+		
+		initFunctionStatisticsStorage();
+	}
 
 	if (isElfPerfEnabled() && isFunctionProfiled(name) && getLibMap(ELFPERF_LIB_NAME, l) != NULL 
 		&& !errorDuringElfperfFunctionLoad) {
@@ -375,7 +380,6 @@ _dl_fixup (
 	_dl_error_printf("Recieved all pointers to functions from libelfperf.so\n");
 
 	//            // ELFPERF
-	static int initialized = 0;
 
 
 	if(0 == initialized)
@@ -401,6 +405,7 @@ _dl_fixup (
 		( * (elfperfFuncs->initWrapperRedirectors))(&context);
 		__sync_fetch_and_add(&initialized, 1);
 		_dl_error_printf("After setting initialized , curr val = %u\n", initialized);
+
 
 		infos = getFunctionInfoStorage();
 		_dl_error_printf("After FunctionInfo storage initialization %x\n", infos);

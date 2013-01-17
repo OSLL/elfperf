@@ -24,6 +24,7 @@
 
 #include "../../src/libelfperf/ld-routines.h"
 #include <sys/stat.h> 
+#include <sys/shm.h>
 #include <fcntl.h>
 #include <time.h>
 
@@ -120,29 +121,20 @@ _dl_sort_fini (struct link_map *l, struct link_map **maps, size_t nmaps,
 
 
 
+
 // Output of profiling results
 // on console and to file if it can be opened
 static void printElfperfResults(){
 
-	    unsigned int i;		
-	  // Going inside shared memory
-	  int shmid;
-	  struct FunctionStatistic*** shm;
+	unsigned int i;		
+	struct FunctionStatistic*** shm;
+	// Going inside shared memory
 
-	  if( isElfPerfEnabled()) {
+	if( isElfPerfEnabled()) {
 
-		  if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), 0666)) < 0 ) {
-		    _dl_debug_printf("Erorr during shmget");
-		  } else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
-
-		    _dl_debug_printf("Error during shmat\n");
-
-		  } else {
 		    ////
 		
 
-		    struct FunctionStatistic **stat;
-		    stat = (*shm);
 
 		    _dl_debug_printf("Granted normal access to shared memory\n");
 
@@ -163,14 +155,8 @@ static void printElfperfResults(){
 		    _dl_dprintf(pFile, "Functions: %s\n", getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE));
 
 
-		    if (stat == NULL ) {
-			_dl_debug_printf("Statistic is empty, exiting!\n");
-			_dl_dprintf(pFile, "Statistic is empty, exiting!\n");
-			close(pFile);
-			return;
-		    }
-		    ////
 
+		    struct FunctionStatistic **stat = *( getFunctionStatisticsStorage());
 
 		    // Getting pointer to the function info list
 		    struct FunctionInfo* list = getFunctionInfoStorage();
@@ -179,13 +165,14 @@ static void printElfperfResults(){
 			_dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");
 
 		    }
-		    if (stat == NULL) {
+
+		    if (stat == NULL ) {
 			_dl_debug_printf("Statistic is empty, exiting!\n");
 			_dl_dprintf(pFile, "Statistic is empty, exiting!\n");
-
 			close(pFile);
 			return;
 		    }
+		    ////
 		
 		    // Output of results
 		    for (i = 0; i < STATS_LIMIT && *(stat+i) != NULL; i++)		
@@ -224,9 +211,11 @@ static void printElfperfResults(){
 		    }
 		    close (pFile);
 		    shmdt(shm);
-		    shmdt(list);
-		  }
-  }
+		    //shmctl( shmid, IPC_RMID,(struct shmid_ds *) NULL); 
+		    //shmctl(shmid, IPC_RMID, (struct shmid_ds *) NULL);
+		    
+		 
+	}
 }
 
 

@@ -49,7 +49,7 @@
 #include <errno.h>
 
 // Global array of functions statistics
-static struct FunctionStatistic* s_stats[STATS_LIMIT];
+static struct FunctionStatistic** s_stats=NULL;
 // Number of statistics
 static int s_statsCount = 0;
 
@@ -121,6 +121,11 @@ static bool isSharedMemoryInited = 0;
 // Spinlock for shared memory initialization
 static int sharedMemoryInitSpinlock=0;
 
+static void initStats(){
+	s_stats = (struct FunctionStatistic**)malloc(sizeof(struct FunctionStatistic*)*STATS_LIMIT);
+	printf("\tInitializing shared memory %p\n", s_stats);
+}
+
 static void initSharedMemory(){
 
 	if (isSharedMemoryInited) return;
@@ -131,23 +136,12 @@ static void initSharedMemory(){
 	
 	if (isSharedMemoryInited) return;
 
+	initStats();
+
 	// Shared memory variables
 
-	int shmid;
-	struct FunctionStatistic *** shm;
+	struct FunctionStatistic *** shm = getFunctionStatisticsStorage();
 	
-	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
-		perror("Failed to create shared memory segment!\n");
-		exit(1);
-	}
-
-	/*
-	* Now we attach the segment to our data space.
-	*/
-	if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic ***) -1) {
-		perror("Failed to attach at shared memory segment");
-		exit(1);
-	}
 	
 	// Storing s_stats into shared memory
 	*shm = s_stats;

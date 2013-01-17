@@ -14,13 +14,15 @@
 
 #define STATS_LIMIT 100000
 
-#define ELFPERF_SHARED_MEMORY_ID_STAT 2701
+#define ELFPERF_SHARED_MEMORY_ID_STAT 2190
 #define ELFPERF_SHARED_MEMORY_ID_INFO 2800
 
 #ifdef LIBELFPERF
 #include <stdio.h>
 #define _dl_debug_printf printf
 #endif
+
+//#define NO_CONSOLE_OUTPUT_LD_SO
 
 //Preventing console output from ld.so
 #ifdef NO_CONSOLE_OUTPUT_LD_SO
@@ -238,5 +240,58 @@ static struct FunctionInfo* getInfoByAddr(void* addr, struct FunctionInfo* stora
 
 }
 
+
+static struct FunctionStatistic*** initFunctionStatisticsStorage(){
+
+
+	// Shared memory variables
+
+	int shmid;
+	struct FunctionStatistic *** shm;
+	
+	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
+		//perror("Failed to create shared memory segment!\n");
+		_dl_debug_printf("initFunctionStatisticsStorage: Erorr during shmget");
+		return NULL;
+	}
+
+	/*
+	* Now we attach the segment to our data space.
+	*/
+	if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic ***) -1) {
+		//perror("Failed to attach at shared memory segment");
+		_dl_debug_printf("initFunctionStatisticsStorage: Error during shmat\n");
+		return NULL;
+	}
+	
+	// Storing s_stats into shared memory
+	*shm = NULL;
+	// Set flag - shared memory is already inited
+		
+	_dl_debug_printf("Shared memory inited successfuly: shm = %x\n", *shm );
+
+	///// Critical section ends
+
+	
+
+	
+}
+
+
+static struct FunctionStatistic*** getFunctionStatisticsStorage(){
+
+	int shmid;
+	struct FunctionStatistic*** shm;
+
+	if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), 0666)) < 0 ) {
+		_dl_debug_printf("getFunctionStatisticsStorage: Erorr during shmget");
+		return NULL;
+	}  else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
+
+		_dl_debug_printf("getFunctionStatisticsStorage: Error during shmat\n");
+		return NULL;
+	}
+	return shm;
+}
 
 #endif
