@@ -16,6 +16,7 @@
 
 #define ELFPERF_SHARED_MEMORY_ID_STAT 2190
 #define ELFPERF_SHARED_MEMORY_ID_INFO 2800
+#define ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT 3000
 
 #ifdef LIBELFPERF
 #include <stdio.h>
@@ -66,6 +67,24 @@ struct RedirectorContext{
 	char ** names;
 	unsigned int count;
 	void * redirectors;
+};
+
+// Store addresses of libelfperf functions
+struct ElfperfFunctions {
+
+	void (* wrapper)();
+	void (* initWrapperRedirectors)(struct RedirectorContext*);
+	void (* addNewFunction)(char* , void *, struct RedirectorContext);
+	bool (* isFunctionRedirectorRegistered)(char*, struct RedirectorContext);
+	bool (* isFunctionInFunctionList)(char*, struct RedirectorContext);
+	void * (* getRedirectorAddressForName)(char*, struct RedirectorContext);
+	void * storage;
+};
+
+// Represent all data needed for using libelfperf.so inside libdl.so
+struct ElfperfContext{
+	struct ElfperfFunctions addresses;
+	struct RedirectorContext context;
 };
 
 
@@ -250,29 +269,18 @@ static struct FunctionStatistic*** initFunctionStatisticsStorage(){
 	struct FunctionStatistic *** shm;
 	
 	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
-		//perror("Failed to create shared memory segment!\n");
 		_dl_debug_printf("initFunctionStatisticsStorage: Erorr during shmget");
 		return NULL;
 	}
 
-	/*
-	* Now we attach the segment to our data space.
-	*/
 	if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic ***) -1) {
-		//perror("Failed to attach at shared memory segment");
 		_dl_debug_printf("initFunctionStatisticsStorage: Error during shmat\n");
 		return NULL;
 	}
 	
-	// Storing s_stats into shared memory
 	*shm = NULL;
-	// Set flag - shared memory is already inited
 		
 	_dl_debug_printf("Shared memory inited successfuly: shm = %x\n", *shm );
-
-	///// Critical section ends
-
-	
 
 	
 }
@@ -289,6 +297,48 @@ static struct FunctionStatistic*** getFunctionStatisticsStorage(){
 	}  else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
 
 		_dl_debug_printf("getFunctionStatisticsStorage: Error during shmat\n");
+		return NULL;
+	}
+	return shm;
+}
+
+//////
+
+static bool initElfperfContextStorage(struct ElfperfContext context){
+
+
+	// Shared memory variables
+
+	int shmid;
+	struct ElfperfContext* shm;
+	
+	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext* ), IPC_CREAT | 0666)) < 0) {
+		_dl_debug_printf("initElfperfContextStorage: Erorr during shmget");
+		return false;
+	}
+
+	if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext*) -1) {
+		_dl_debug_printf("initElfperfContextStorage: Error during shmat\n");
+		return false;
+	}
+	
+	*shm = context;
+		
+	_dl_debug_printf("initElfperfContextStorage: Shared memory inited successfuly: shm = %x\n", *shm );
+
+	return true;
+}
+
+static struct ElfperfContext* getElfperfContextStorage(){
+
+	int shmid;
+	struct ElfperfContext* shm;
+
+	if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext*), 0666)) < 0 ) {
+		_dl_debug_printf("getElfperfContextStorage: Erorr during shmget");
+		return NULL;
+	}  else if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext* ) -1) {
+		_dl_debug_printf("getElfperfContextStorage: Error during shmat\n");
 		return NULL;
 	}
 	return shm;

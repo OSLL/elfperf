@@ -175,23 +175,6 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 
 
 
-struct ElfperfFunctions {
-
-/*	void (* wrapper)();
-	void (* initWrapperRedirectors)(char**, unsigned int, void *);
-	void (* addNewFunction)(char* , void *);
-	bool (* isFunctionRedirectorRegistered)(char*);
-	bool (* isFunctionInFunctionList)(char*);
-	void * (* getRedirectorAddressForName)(char*);*/
-
-	void (* wrapper)();
-	void (* initWrapperRedirectors)(struct RedirectorContext*);
-	void (* addNewFunction)(char* , void *, struct RedirectorContext);
-	bool (* isFunctionRedirectorRegistered)(char*, struct RedirectorContext);
-	bool (* isFunctionInFunctionList)(char*, struct RedirectorContext);
-	void * (* getRedirectorAddressForName)(char*, struct RedirectorContext);
-	void * storage;
-};
 
 #define ELFPERF_WRAPPER_SYMBOL "wrapper"
 #define ELFPERF_GET_REDIRECTOR_ADDRESS_FOR_NAME_SYMBOL "getRedirectorAddressForName"
@@ -403,6 +386,17 @@ _dl_fixup (
 
 		_dl_error_printf("Going to initWrapperRedirectors\n");
 		( * (elfperfFuncs->initWrapperRedirectors))(&context);
+
+
+		// Store ElfperfContext into shared memory
+		// This will allow libdl.so to use functions of libelfperf.so 
+		struct ElfperfContext elfperfContext;
+		elfperfContext.addresses = *elfperfFuncs;
+		elfperfContext.context = context;
+
+		initElfperfContextStorage(elfperfContext);
+		// 
+
 		__sync_fetch_and_add(&initialized, 1);
 		_dl_error_printf("After setting initialized , curr val = %u\n", initialized);
 
