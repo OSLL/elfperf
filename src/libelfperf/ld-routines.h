@@ -85,6 +85,7 @@ struct ElfperfFunctions {
 struct ElfperfContext{
 	struct ElfperfFunctions addresses;
 	struct RedirectorContext context;
+	struct FunctionInfo * infos;
 };
 
 

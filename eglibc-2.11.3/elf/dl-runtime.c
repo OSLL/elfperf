@@ -307,7 +307,6 @@ _dl_fixup (
 	 address) is also known.  */
 //	_dl_error_printf("dl-runtime4\n");
       value = DL_FIXUP_MAKE_VALUE (l, l->l_addr + sym->st_value);
-	_dl_error_printf("dl-runtime5\n");
       result = l;
     }
 
@@ -387,22 +386,21 @@ _dl_fixup (
 		_dl_error_printf("Going to initWrapperRedirectors\n");
 		( * (elfperfFuncs->initWrapperRedirectors))(&context);
 
+		infos = getFunctionInfoStorage();
+		_dl_error_printf("After FunctionInfo storage initialization %x\n", infos);
 
 		// Store ElfperfContext into shared memory
 		// This will allow libdl.so to use functions of libelfperf.so 
 		struct ElfperfContext elfperfContext;
 		elfperfContext.addresses = *elfperfFuncs;
 		elfperfContext.context = context;
+		elfperfContext.infos = infos;
 
 		initElfperfContextStorage(elfperfContext);
 		// 
 
 		__sync_fetch_and_add(&initialized, 1);
 		_dl_error_printf("After setting initialized , curr val = %u\n", initialized);
-
-
-		infos = getFunctionInfoStorage();
-		_dl_error_printf("After FunctionInfo storage initialization %x\n", infos);
 
 	}
 
