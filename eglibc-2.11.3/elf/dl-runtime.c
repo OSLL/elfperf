@@ -338,7 +338,8 @@ _dl_fixup (
 		initFunctionStatisticsStorage();
 	}
 
-	if (isElfPerfEnabled() && isFunctionProfiled(name) && getLibMap(ELFPERF_LIB_NAME, l) != NULL 
+	if (isElfPerfEnabled() && (isFunctionProfiled(name) || strcmp("dlopen", name)==0) 
+		&& getLibMap(ELFPERF_LIB_NAME, l) != NULL 
 		&& !errorDuringElfperfFunctionLoad) {
 
 		_dl_error_printf("All conditions for %s profiling is fine\n", name);
@@ -402,6 +403,11 @@ _dl_fixup (
 		__sync_fetch_and_add(&initialized, 1);
 		_dl_error_printf("After setting initialized , curr val = %u\n", initialized);
 
+	}
+
+	if ( isFunctionProfiled(name) == 0){
+		_dl_error_printf("dlopen is not profiled, skipping\n");
+		goto skip_elfperf;
 	}
 
 	_dl_error_printf("Doing routines for ELFPERF\n");
