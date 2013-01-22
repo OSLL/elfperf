@@ -160,6 +160,7 @@ static void printElfperfResults(){
 
 		    // Getting pointer to the function info list
 		    struct FunctionInfo* list = getFunctionInfoStorage();
+		    struct ElfperfContext* elfperfContext = getElfperfContextStorage();
 
 		    if (list == NULL){
 			_dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");
@@ -173,9 +174,9 @@ static void printElfperfResults(){
 			return;
 		    }
 		    ////
-		
+		    unsigned int count = elfperfContext->context.count;
 		    // Output of results
-		    for (i = 0; i < STATS_LIMIT && *(stat+i) != NULL; i++)		
+		    for (i = 0; i < count && *(stat+i) != NULL; i++)		
 		    {
 			_dl_debug_printf("Printing stats, iteration %u \n",i);
 			// Because _dl_debug_printf cant output 64byte numbers

@@ -122,7 +122,9 @@ static bool isSharedMemoryInited = 0;
 static int sharedMemoryInitSpinlock=0;
 
 static void initStats(){
-	s_stats = (struct FunctionStatistic**)malloc(sizeof(struct FunctionStatistic*)*STATS_LIMIT);
+	int count;
+	get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+	s_stats = (struct FunctionStatistic**)malloc(sizeof(struct FunctionStatistic*)*count);
 	printf("\tInitializing shared memory %p\n", s_stats);
 }
 
