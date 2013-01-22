@@ -73,14 +73,14 @@ static struct link_map* getLibMap(char * libname, struct link_map *l)
 	struct link_map* lib_map = NULL;
 	struct link_map* tmp_map = NULL;
 
-	_dl_error_printf("Doing search for %s linkmap\n", libname);
+	//_dl_error_printf("Doing search for %s linkmap\n", libname);
 	// Finding libhello link_map by string name
 	if (strstr(l->l_name,libname) == NULL){
 		// If l is not the needed lib search in the previous and next libs 
 
 		// Analyze previous libs
 		if (l->l_prev != NULL){
-			_dl_error_printf("Doing search for %s linkmap in PREVIOUS libs\n", libname);
+			//_dl_error_printf("Doing search for %s linkmap in PREVIOUS libs\n", libname);
 
 			tmp_map = l;
 
@@ -97,7 +97,7 @@ static struct link_map* getLibMap(char * libname, struct link_map *l)
 
 		// Analyze next libs if they exists and we didnt found anything else
 		}else if (l->l_next != NULL && lib_map == NULL){
-			_dl_error_printf("Doing search for %s linkmap in NEXT libs\n", libname);
+			//_dl_error_printf("Doing search for %s linkmap in NEXT libs\n", libname);
 
 			tmp_map = l;
 
@@ -146,7 +146,7 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 	if (lib_map != NULL){
 	
 
-		_dl_error_printf("Doing _dl_lookup_symbol_x for %s symbol\n", symbol_name);
+		//_dl_error_printf("Doing _dl_lookup_symbol_x for %s symbol\n", symbol_name);
 		result1 = _dl_lookup_symbol_x (symbol_name, lib_map, &sym1, lib_map->l_scope,
 					    NULL, ELF_RTYPE_CLASS_PLT, flags, NULL);
 		
@@ -449,7 +449,6 @@ _dl_fixup (
 
 skip_elfperf:
 
-  _dl_error_printf("Before returning from dl-fixup_plt\n");
 
   return elf_machine_fixup_plt (l, result, reloc, rel_addr, value);
 }

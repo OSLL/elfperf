@@ -15,7 +15,7 @@
 #define STATS_LIMIT 100000
 
 #define ELFPERF_SHARED_MEMORY_ID_STAT 2190
-#define ELFPERF_SHARED_MEMORY_ID_INFO 2800
+#define ELFPERF_SHARED_MEMORY_ID_INFO 2811
 #define ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT 3000
 
 #ifdef LIBELFPERF
@@ -23,13 +23,14 @@
 #define _dl_debug_printf printf
 #endif
 
-//#define NO_CONSOLE_OUTPUT_LD_SO
+#define NO_CONSOLE_OUTPUT_LD_SO
 
 //Preventing console output from ld.so
 #ifdef NO_CONSOLE_OUTPUT_LD_SO
 
 #define _dl_debug_printf debug_print_stub
 #define _dl_error_printf debug_print_stub
+#define printf debug_print_stub
 
 static int debug_print_stub(const char* fmt, ...){
         return 1;
@@ -189,6 +190,7 @@ static struct FunctionInfo* initFunctionInfoStorage(){
 	}
 
 //	*shm = infos;
+	_dl_debug_printf("Success creation of FunctionInfo shared memory segment!\n");	
 	
 	return shm;
 }
@@ -204,7 +206,7 @@ static struct FunctionInfo* getFunctionInfoStorage(){
 	struct FunctionInfo * shm;
 	
 	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo )*count,  0666)) < 0) {
-		_dl_debug_printf("Failed to create shared memory segment for FunctionInfo at getFunctionInfoStorage(%u)!\n", errno);
+		_dl_debug_printf("Failed to get shared memory segment for FunctionInfo at getFunctionInfoStorage(%u)!\n", errno);
 		return NULL;
 	}
 

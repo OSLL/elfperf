@@ -22,6 +22,7 @@
 #include <string.h>
 #include <ldsodefs.h>
 
+//#define NO_CONSOLE_OUTPUT_LD_SO
 #include "../../src/libelfperf/ld-routines.h"
 #include <sys/stat.h> 
 #include <sys/shm.h>
@@ -164,7 +165,9 @@ static void printElfperfResults(){
 
 		    if (list == NULL){
 			_dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");
-
+			_dl_dprintf(pFile,"Error - recieved null from getFunctionInfoStorage \n");
+			close(pFile);
+			return;
 		    }
 
 		    if (stat == NULL ) {
@@ -187,18 +190,15 @@ static void printElfperfResults(){
 			_dl_debug_printf("Try to get FunctionInfo\n");
 			struct FunctionInfo* currentInfo = getInfoByAddr((stat[i])->realFuncAddr, list);
 
-			if (currentInfo == NULL){
-				_dl_debug_printf("getInfoByAddr(...) returned NULL, skipping\n");
-				
-				break ;
-			} 
-
-			char* name = currentInfo->name;
 
 			if (currentInfo == NULL) {
 				_dl_debug_printf("Failed at %x\n", (stat[i])->realFuncAddr);
-				return ;
+				_dl_dprintf(pFile, "Failed at %x\n", (stat[i])->realFuncAddr);
+				break ;
 			}
+
+			char* name = currentInfo->name;
+
 
 			// Output to console 
 			_dl_debug_printf("Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
