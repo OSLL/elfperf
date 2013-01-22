@@ -155,11 +155,11 @@ static void printElfperfResults(){
 		    _dl_dprintf(pFile, "Functions: %s\n", getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE));
 
 
-
 		    struct FunctionStatistic **stat = *( getFunctionStatisticsStorage());
 
 		    // Getting pointer to the function info list
-		    struct FunctionInfo* list = getFunctionInfoStorage();
+		    struct ElfperfContext* eflperfContext = getElfperfContextStorage();
+		    struct FunctionInfo* list = eflperfContext->infos;
 
 		    if (list == NULL){
 			_dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");

@@ -330,7 +330,7 @@ _dl_fixup (
 	static struct ElfperfFunctions * elfperfFuncs = NULL;
 	static bool errorDuringElfperfFunctionLoad = 0;
 	static struct RedirectorContext context;
-	static struct FunctionInfo * infos;
+	struct ElfperfContext elfperfContext;
 	static int initialized = 0;
 
 	if (isElfPerfEnabled() && !initialized){
@@ -387,15 +387,12 @@ _dl_fixup (
 		_dl_error_printf("Going to initWrapperRedirectors\n");
 		( * (elfperfFuncs->initWrapperRedirectors))(&context);
 
-		infos = getFunctionInfoStorage();
-		_dl_error_printf("After FunctionInfo storage initialization %x\n", infos);
 
 		// Store ElfperfContext into shared memory
 		// This will allow libdl.so to use functions of libelfperf.so 
-		struct ElfperfContext elfperfContext;
 		elfperfContext.addresses = *elfperfFuncs;
 		elfperfContext.context = context;
-		elfperfContext.infos = infos;
+		elfperfContext.infos = initFunctionInfoStorage(context.names, context.count);
 
 		initElfperfContextStorage(elfperfContext);
 		// 
@@ -412,7 +409,7 @@ _dl_fixup (
 
 	_dl_error_printf("Doing routines for ELFPERF\n");
 	if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name, context)){
-		struct FunctionInfo* tmp = getInfoByName(name, infos, context.count);
+		struct FunctionInfo* tmp = getInfoByName(name, elfperfContext.infos, context.count);
 		
 		if (tmp != NULL){
 			tmp->addr = value;

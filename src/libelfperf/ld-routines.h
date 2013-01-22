@@ -156,10 +156,10 @@ struct FunctionInfo{
 
 // Allocates shared memory for array of struct FunctionInfo
 // and fill it with stubs 
-static struct FunctionInfo* initFunctionInfoStorage(){
+static struct FunctionInfo* initFunctionInfoStorage(char ** names, int count){
 	
 	// Get function list from env variables	
-	char ** names;
+/*	char ** names;
 	int count;
 	names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
 
@@ -178,19 +178,20 @@ static struct FunctionInfo* initFunctionInfoStorage(){
 		return NULL;	
 	}
 
-	/// Shared memory successfuly allocated
+	/// Shared memory successfuly allocated*/
 	// Allocating memory on heap
-//	struct FunctionInfo * infos = (struct FunctionInfo *)malloc(sizeof(struct FunctionInfo )*count); 
+	struct FunctionInfo * infos = (struct FunctionInfo *)malloc(sizeof(struct FunctionInfo )*count); 
 	int i;
 	// Creating stubs 
 	for (i = 0 ; i < count; i++)
 	{
-		(shm[i]).name = names[i];
+		(infos[i]).name = names[i];
+		_dl_debug_printf("Do initFunctionInfoStorage for %s %s %x %x\n", names[i], (infos[i]).name, i, count );
 	}
 
 //	*shm = infos;
 	
-	return shm;
+	return infos;
 }
 // Return pointer to array of struct FunctionInfo
 // from shared memory
@@ -225,6 +226,7 @@ static struct FunctionInfo* getInfoByName(char* name, struct FunctionInfo* stora
 
 	for (i = 0; i < count ; i++)
 	{
+		_dl_debug_printf("getInfoByName: checking pair %s %s\n", storage[i].name, name);
 		if ( storage+i != NULL &&  strcmp(storage[i].name,name) == 0)
 			return storage+i;
 
@@ -314,7 +316,7 @@ static bool initElfperfContextStorage(struct ElfperfContext context){
 	struct ElfperfContext* shm;
 	
 	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext* ), IPC_CREAT | 0666)) < 0) {
-		_dl_debug_printf("initElfperfContextStorage: Erorr during shmget");
+		_dl_debug_printf("initElfperfContextStorage: Erorr during shmget\n");
 		return false;
 	}
 
@@ -322,7 +324,7 @@ static bool initElfperfContextStorage(struct ElfperfContext context){
 		_dl_debug_printf("initElfperfContextStorage: Error during shmat\n");
 		return false;
 	}
-	
+		
 	*shm = context;
 		
 	_dl_debug_printf("initElfperfContextStorage: Shared memory inited successfuly: shm = %x\n", *shm );
