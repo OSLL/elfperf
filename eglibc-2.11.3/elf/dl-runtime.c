@@ -287,7 +287,7 @@ _dl_fixup (
 
       /* We are done with the global scope.  */
       if (!RTLD_SINGLE_THREAD_P)
-	THREAD_GSCOPE_RESET_FLAG ();
+        THREAD_GSCOPE_RESET_FLAG ();
 
 #ifdef RTLD_FINALIZE_FOREIGN_CALL
       RTLD_FINALIZE_FOREIGN_CALL;
@@ -327,129 +327,117 @@ _dl_fixup (
 
 /// Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
 
-	static struct ElfperfFunctions * elfperfFuncs = NULL;
-	static bool errorDuringElfperfFunctionLoad = 0;
-	static struct RedirectorContext context;
-	static struct FunctionInfo * infos;
-	static int initialized = 0;
+  static struct ElfperfFunctions * elfperfFuncs = NULL;
+  static bool errorDuringElfperfFunctionLoad = 0;
+  static struct RedirectorContext context;
+  static struct FunctionInfo * infos;
+  static int initialized = 0;
 
-	if (isElfPerfEnabled() && !initialized){
+  _dl_error_printf("Function statistic storage is initialized\n");
+
+  if (isElfPerfEnabled() && !initialized) {
+      initFunctionStatisticsStorage();
+  }
+
+  _dl_error_printf("Function statistic storage is initialized\n");
+
+  if (isElfPerfEnabled() && (isFunctionProfiled(name) || strcmp("dlopen", name)==0) 
+      && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad) {
+      _dl_error_printf("All conditions for %s profiling is fine\n", name);
+  } else {
+      goto skip_elfperf;
+  }
+
+  // Try to get structure with functions
+  // if unsuccess - elfperf routines will be skipped
+  if (elfperfFuncs == NULL) {
+      // Getting pointers to all needed functions
+      _dl_error_printf("Recieving functoins pointers from libelfperf.so\n");
+      elfperfFuncs = getElfperfFunctions(l, flags);
+      // skip elfperf part 
+      if (elfperfFuncs == NULL){
+          _dl_error_printf("Errors during getElfperfFunctions!\n");
+          errorDuringElfperfFunctionLoad = 1;
+          goto skip_elfperf;
+      }
+  }
+  _dl_error_printf("Recieved all pointers to functions from libelfperf.so\n");
+
+  // ELFPERF
+  if (0 == initialized) {
+      _dl_error_printf("Redirectors are not initialized.\n");
+//    char **names = 0;//={"hello"};
+//    unsigned int count = 0;
+
+      context.names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &(context.count));
+      context.redirectors = elfperfFuncs->storage;		
+
+      _dl_error_printf("Initializing redirectors for:\n");
+      unsigned int i = 0;
+      for (i = 0 ; i < context.count; i++) {
+          _dl_error_printf("\t%s\n", context.names[i]);
+      }
+      void *wr = elfperfFuncs->wrapper;
+
+      _dl_error_printf("Going to initWrapperRedirectors\n");
+      ( * (elfperfFuncs->initWrapperRedirectors))(&context);
+
+      infos = getFunctionInfoStorage();
+      
+      // Store ElfperfContext into shared memory
+      // This will allow libdl.so to use functions of libelfperf.so 
+      struct ElfperfContext elfperfContext;
+      elfperfContext.addresses = *elfperfFuncs;
+      elfperfContext.context = context;
+      elfperfContext.infos = infos;
+
+      initElfperfContextStorage(elfperfContext); 
+
+      __sync_fetch_and_add(&initialized, 1);
+      _dl_error_printf("After setting initialized , curr val = %u\n", initialized);
+  }
+
+  if ( isFunctionProfiled(name) == 0) {
+      _dl_error_printf("dlopen is not profiled, skipping\n");
+      goto skip_elfperf;
+  }
+
+  _dl_error_printf("Doing routines for ELFPERF\n");
+  if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name, context)){
+      struct FunctionInfo* tmp = getInfoByName(name, infos, context.count);
 		
-		initFunctionStatisticsStorage();
-	}
+      if (tmp != NULL) {
+        tmp->addr = value;
+      } else {
+        _dl_error_printf("Error - not found function for name by getInfoByName\n");
+      }
 
-	if (isElfPerfEnabled() && (isFunctionProfiled(name) || strcmp("dlopen", name)==0) 
-		&& getLibMap(ELFPERF_LIB_NAME, l) != NULL 
-		&& !errorDuringElfperfFunctionLoad) {
+      _dl_error_printf("Function %s (%u) not registered, adding\n", name, value);
+      (*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
+      _dl_error_printf("Registration of %s successful.\n", name);
+  }
+  DL_FIXUP_VALUE_TYPE testFuncAddr = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "testFunc", l, flags);
 
-		_dl_error_printf("All conditions for %s profiling is fine\n", name);
-	}else{
-		goto skip_elfperf;
-	}
+  _dl_error_printf("Getting redirector address for %s \n", name);
+  DL_FIXUP_VALUE_TYPE value1 = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
+  _dl_error_printf("Got redirector address for %s, real_addr+3 = %x, redir_addr = %x, storage = %x, testFunc = %x\n", 
+      name, value+3, value1, elfperfFuncs->storage, testFuncAddr);
+  value = value1;
 
-	// Try to get structure with functions
-	// if unsuccess - elfperf routines will be skipped
-	if (elfperfFuncs == NULL){
-		// Getting pointers to all needed functions
-		_dl_error_printf("Recieving functoins pointers from libelfperf.so\n");
-		elfperfFuncs = getElfperfFunctions(l, flags);
-		// skip elfperf part 
-		if (elfperfFuncs == NULL){
-			_dl_error_printf("Errors during getElfperfFunctions!\n");
-			errorDuringElfperfFunctionLoad = 1;
-			goto skip_elfperf;
-		}
-	}
-	_dl_error_printf("Recieved all pointers to functions from libelfperf.so\n");
+  void ** ptr =  ((void*) value1);
+  int j;
 
-	//            // ELFPERF
+  _dl_error_printf("Bytes of redirector:\n");
+  for (j = 0; j < 4; j++) {
+      _dl_error_printf("\t%x %x %x %x \n", 
+      (((unsigned int)ptr[j]) ) & 0xFF, (((unsigned int)ptr[j]) >> 8) & 0xFF,
+      (((unsigned int)ptr[j]) >> 16) & 0xFF, (((unsigned int)ptr[j]) >> 24) & 0xFF);
+  }
 
-
-	if(0 == initialized)
-	{
-		_dl_error_printf("Redirectors are not initialized.\n");
-//		char **names = 0;//={"hello"};
-//		unsigned int count = 0;
-
-
-		context.names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &(context.count));
-		context.redirectors = elfperfFuncs->storage;		
-
-		_dl_error_printf("Initializing redirectors for:\n");
-		unsigned int i = 0;
-		for ( i =0 ; i < context.count; i++){
-			_dl_error_printf("\t%s\n", context.names[i]);
-		}
-		void *wr = elfperfFuncs->wrapper;
-
-		
-
-		_dl_error_printf("Going to initWrapperRedirectors\n");
-		( * (elfperfFuncs->initWrapperRedirectors))(&context);
-
-		infos = getFunctionInfoStorage();
-		_dl_error_printf("After FunctionInfo storage initialization %x\n", infos);
-
-		// Store ElfperfContext into shared memory
-		// This will allow libdl.so to use functions of libelfperf.so 
-		struct ElfperfContext elfperfContext;
-		elfperfContext.addresses = *elfperfFuncs;
-		elfperfContext.context = context;
-		elfperfContext.infos = infos;
-
-		initElfperfContextStorage(elfperfContext);
-		// 
-
-		__sync_fetch_and_add(&initialized, 1);
-		_dl_error_printf("After setting initialized , curr val = %u\n", initialized);
-
-	}
-
-	if ( isFunctionProfiled(name) == 0){
-		_dl_error_printf("dlopen is not profiled, skipping\n");
-		goto skip_elfperf;
-	}
-
-	_dl_error_printf("Doing routines for ELFPERF\n");
-	if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name, context)){
-		struct FunctionInfo* tmp = getInfoByName(name, infos, context.count);
-		
-		if (tmp != NULL){
-			tmp->addr = value;
-		} else {
-			_dl_error_printf("Error - not found function for name by getInfoByName\n");
-		}
-
-		_dl_error_printf("Function %s (%u) not registered, adding\n", name, value);
-		(*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
-		_dl_error_printf("Registration of %s successful.\n", name);
-	}	
-	DL_FIXUP_VALUE_TYPE testFuncAddr= getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "testFunc", l, flags);
-
-	_dl_error_printf("Getting redirector address for  %s \n", name);
-	DL_FIXUP_VALUE_TYPE value1 = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
-	_dl_error_printf("Got redirector address for %s, real_addr+3 = %x, redir_addr = %x, storage = %x, testFunc = %x\n", 
-		name, value+3, value1, elfperfFuncs->storage, testFuncAddr);
-     	value = value1;
-
-	void ** ptr =  ((void*) value1);
-	int j;
-
-	_dl_error_printf("Bytes of redirector:\n");
-	
-	for (j=0 ;j<4; j++){
-	_dl_error_printf("\t%x %x %x %x \n", 
-		(((unsigned int)ptr[j]) ) & 0xFF, (((unsigned int)ptr[j]) >> 8) & 0xFF,
-		(((unsigned int)ptr[j]) >> 16) & 0xFF, (((unsigned int)ptr[j]) >> 24) & 0xFF);
-	}
-
-	//value = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "testFunc", l, flags); 
-
-//getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_ADD_NEW_FUNCTION_SYMBOL, l, flags);
+  //value = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "testFunc", l, flags); 
+  //getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_ADD_NEW_FUNCTION_SYMBOL, l, flags);
 
 skip_elfperf:
-
-
   return elf_machine_fixup_plt (l, result, reloc, rel_addr, value);
 }
 #endif

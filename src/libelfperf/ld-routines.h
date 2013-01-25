@@ -32,68 +32,72 @@
 #define _dl_error_printf debug_print_stub
 #define printf debug_print_stub
 
-static int debug_print_stub(const char* fmt, ...){
-        return 1;
+static int debug_print_stub(const char* fmt, ...) 
+{
+    return 1;
 }
 
 #endif
 
 struct FunctionStatistic
 {
-    uint64_t totalDiffTime;			// Total time of function calls
-    unsigned long long int totalCallsNumber;	// Total number of functions calls
-    void* realFuncAddr;            		// Address of the function
+    uint64_t totalDiffTime;                   // Total time of function calls
+    unsigned long long int totalCallsNumber;  // Total number of functions calls
+    void* realFuncAddr;                       // Address of the function
 };
 
-
-struct WrappingContext{
+struct WrappingContext 
+{
     // real return address
-    void * realReturnAddr; 		// 4bytes	0
+    void * realReturnAddr;      // 4bytes   0
     // content of -4(%%old_ebp)
-    void * oldEbpLocVar; 		// 4bytes	4
+    void * oldEbpLocVar; 		// 4bytes   4
     // function return value
-    void * eax;				// 4bytes	8
-    double doubleResult;		// 8bytes	12
-    void * functionPointer;		// 4bytes	20
-    int old_ebx;			// 4bytes	24	
-    int old_edx;			// 4bytes	28
-    int old_ecx;			// 4bytes	32
-    uint64_t startTime; 		// function starting time
-    uint64_t endTime;			// function ending time
+    void * eax;                 // 4bytes   8
+    double doubleResult;        // 8bytes   12
+    void * functionPointer;     // 4bytes   20
+    int old_ebx;                // 4bytes   24	
+    int old_edx;                // 4bytes   28
+    int old_ecx;                // 4bytes   32
+    uint64_t startTime;         // function starting time
+    uint64_t endTime;           // function ending time
 };
 
 // Store all data for redirectors initialization and
 // libelfperf functions proper work in ld.so runtime
-struct RedirectorContext{
-	char ** names;
-	unsigned int count;
-	void * redirectors;
+struct RedirectorContext 
+{
+    char ** names;
+    unsigned int count;
+    void * redirectors;
 };
 
 // Store addresses of libelfperf functions
-struct ElfperfFunctions {
-
-	void (* wrapper)();
-	void (* initWrapperRedirectors)(struct RedirectorContext*);
-	void (* addNewFunction)(char* , void *, struct RedirectorContext);
-	bool (* isFunctionRedirectorRegistered)(char*, struct RedirectorContext);
-	bool (* isFunctionInFunctionList)(char*, struct RedirectorContext);
-	void * (* getRedirectorAddressForName)(char*, struct RedirectorContext);
-	void * storage;
+struct ElfperfFunctions 
+{
+    void (* wrapper)();
+    void (* initWrapperRedirectors)(struct RedirectorContext*);
+    void (* addNewFunction)(char* , void *, struct RedirectorContext);
+    bool (* isFunctionRedirectorRegistered)(char*, struct RedirectorContext);
+    bool (* isFunctionInFunctionList)(char*, struct RedirectorContext);
+    void * (* getRedirectorAddressForName)(char*, struct RedirectorContext);
+    void * storage;
 };
 
 // Represent all data needed for using libelfperf.so inside libdl.so
-struct ElfperfContext{
-	struct ElfperfFunctions addresses;
-	struct RedirectorContext context;
-	struct FunctionInfo * infos;
+struct ElfperfContext
+{
+    struct ElfperfFunctions addresses;
+    struct RedirectorContext context;
+    struct FunctionInfo * infos;
 };
 
 
 static bool isElfPerfEnabled()
 {
-    return getenv(ELFPERF_ENABLE_VARIABLE)!=NULL && 
-		getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE)!=NULL;
+    return getenv(ELFPERF_ENABLE_VARIABLE) != NULL 
+           && 
+           getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE) != NULL;
 }
 
 // Return list of function names separted by ":" passed from @env_name@ envoironment variable
@@ -130,221 +134,207 @@ static char** get_fn_list(const char* env_name, int* count)
 }
 
 // Check should function be profiled or not
-static bool isFunctionProfiled(char * name){
+static bool isFunctionProfiled(char * name)
+{
 
-	static unsigned int count =0;
-	static char** functions = NULL;
-	if (functions == NULL) 
-		functions = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+    static unsigned int count =0;
+    static char** functions = NULL;
+    if (functions == NULL) 
+        functions = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
 	
-	unsigned int i;
+    unsigned int i;
 
-	for (i = 0; i < count; i++){
-		if (strcmp(functions[i],name) == 0) 
-			return true;
-	}
+    for (i = 0; i < count; i++) {
+        if (strcmp(functions[i],name) == 0) 
+            return true;
+    }
 	
-	return false;
+    return false;
 }
 
 ////// Function info - store function name-addr pairs
 
 // Store information about function
-struct FunctionInfo{
-	char* name;
-	void* addr;
+struct FunctionInfo
+{
+    char* name;
+    void* addr;
 };
 
 // Allocates shared memory for array of struct FunctionInfo
 // and fill it with stubs 
-static struct FunctionInfo* initFunctionInfoStorage(){
-	
+static struct FunctionInfo* initFunctionInfoStorage()
+{
 	// Get function list from env variables	
-	char ** names;
-	int count;
-	names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+    char ** names;
+    int count;
+    names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
 
 	// Shared memory variables
-
-	int shmid;
-	struct FunctionInfo * shm;
+    int shmid;
+    struct FunctionInfo * shm;
 	
-	if ( (shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo )*count , IPC_CREAT | 0666) ) < 0) {
-		_dl_debug_printf("Failed to create shared memory segment for FunctionInfo!(%u)\n", errno);
-		return NULL;
-	}
+    if ( (shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo )*count , IPC_CREAT | 0666) ) < 0) {
+	    _dl_debug_printf("Failed to create shared memory segment for FunctionInfo!(%u)\n", errno);
+	    return NULL;
+    }
 
-	if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionInfo *) -1) {
-		_dl_debug_printf("Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
-		return NULL;	
-	}
+    if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionInfo *) -1) {
+        _dl_debug_printf("Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
+        return NULL;	
+    }
 
-	/// Shared memory successfuly allocated
+    /// Shared memory successfuly allocated
 	// Allocating memory on heap
 //	struct FunctionInfo * infos = (struct FunctionInfo *)malloc(sizeof(struct FunctionInfo )*count); 
-	int i;
-	// Creating stubs 
-	for (i = 0 ; i < count; i++)
-	{
-		(shm[i]).name = names[i];
+    int i;
+    // Creating stubs 
+    for (i = 0 ; i < count; i++) {
+        (shm[i]).name = names[i];
 	}
 
-//	*shm = infos;
-	_dl_debug_printf("Success creation of FunctionInfo shared memory segment!\n");	
+//  *shm = infos;
+    _dl_debug_printf("Success creation of FunctionInfo shared memory segment!\n");	
 	
-	return shm;
+    return shm;
 }
 // Return pointer to array of struct FunctionInfo
 // from shared memory
-static struct FunctionInfo* getFunctionInfoStorage(){
-	// Get function list from env variables	
-	char ** names;
-	int count;
-	names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+static struct FunctionInfo* getFunctionInfoStorage()
+{
+    // Get function list from env variables	
+    char ** names;
+    int count;
+    names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
 
-	int shmid;
-	struct FunctionInfo * shm;
+    int shmid;
+    struct FunctionInfo * shm;
 	
-	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo )*count,  0666)) < 0) {
-		_dl_debug_printf("Failed to get shared memory segment for FunctionInfo at getFunctionInfoStorage(%u)!\n", errno);
-		return NULL;
-	}
+    if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo )*count,  0666)) < 0) {
+        _dl_debug_printf("Failed to get shared memory segment for FunctionInfo at getFunctionInfoStorage(%u)!\n", errno);
+        return NULL;
+    }
 
-	if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionInfo *) -1) {
-		_dl_debug_printf("Failed to attach at shared memory segment for FunctionInfo at getFunctionInfoStorage(%u)!\n", errno);
-		return NULL;	
-	}
-	_dl_debug_printf("Successfuly got addres of info storage %x \n", shm);	
+    if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionInfo *) -1) {
+        _dl_debug_printf("Failed to attach at shared memory segment for FunctionInfo at getFunctionInfoStorage(%u)!\n", errno);
+        return NULL;
+    }
+    _dl_debug_printf("Successfuly got address of info storage %x \n", shm);	
 
-	return shm;
+    return shm;
 }
 
 // Return pointer to info for name @name@ at storage
-static struct FunctionInfo* getInfoByName(char* name, struct FunctionInfo* storage, int count){
+static struct FunctionInfo* getInfoByName(char* name, struct FunctionInfo* storage, int count)
+{
+    if (storage == NULL) return NULL;
+    int i;
 
-	if (storage == NULL) return NULL;
-	int i;
+    for (i = 0; i < count ; i++) {
+        if ( storage+i != NULL &&  strcmp(storage[i].name,name) == 0) {
+            return storage+i;
+        }
+    }
 
-	for (i = 0; i < count ; i++)
-	{
-		if ( storage+i != NULL &&  strcmp(storage[i].name,name) == 0)
-			return storage+i;
-
-	}
-
-	return NULL;
+    return NULL;
 }
 
 // Return pointer to info for addr @addr@ at storage
-static struct FunctionInfo* getInfoByAddr(void* addr, struct FunctionInfo* storage){
+static struct FunctionInfo* getInfoByAddr(void* addr, struct FunctionInfo* storage)
+{
+    if (storage == NULL) return NULL;
 
-	if (storage == NULL) return NULL;
+    static int count = -1;
 
-	static int count = -1;
+    if (count < 0) {
+        get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+    }
 
-	if (count < 0){
-		get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
-	}
-
-	int i;
-
-
-	for (i = 0; i < count ; i++)
-	{
-//		_dl_debug_printf("\tChecking match for pair %u %u\n",storage[i].addr, addr);
-		if (  storage[i].addr == addr ){
-			
-			return storage+i;
-		}
-	}
-
-	return NULL;
-
+    int i;
+	for (i = 0; i < count ; i++) {
+    //	_dl_debug_printf("\tChecking match for pair %u %u\n",storage[i].addr, addr);
+        if (  storage[i].addr == addr ) {
+            return storage+i;
+        }
+    }
+    return NULL;
 }
 
 
-static struct FunctionStatistic*** initFunctionStatisticsStorage(){
-
-
-	// Shared memory variables
-
-	int shmid;
-	struct FunctionStatistic *** shm;
+static struct FunctionStatistic*** initFunctionStatisticsStorage()
+{
+    // Shared memory variables
+    int shmid;
+    struct FunctionStatistic *** shm;
 	
-	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
-		_dl_debug_printf("initFunctionStatisticsStorage: Erorr during shmget");
-		return NULL;
-	}
+    if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
+        _dl_debug_printf("initFunctionStatisticsStorage: Error during shmget");
+        return NULL;
+    }
 
-	if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic ***) -1) {
-		_dl_debug_printf("initFunctionStatisticsStorage: Error during shmat\n");
-		return NULL;
-	}
+    if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic ***) -1) {
+	    _dl_debug_printf("initFunctionStatisticsStorage: Error during shmat\n");
+	    return NULL;
+    }
 	
-	*shm = NULL;
+    *shm = NULL;
 		
-	_dl_debug_printf("Shared memory inited successfuly: shm = %x\n", *shm );
-
-	
+    _dl_debug_printf("Shared memory inited successfuly: shm = %x\n", *shm );
 }
 
 
-static struct FunctionStatistic*** getFunctionStatisticsStorage(){
+static struct FunctionStatistic*** getFunctionStatisticsStorage() 
+{
+    int shmid;
+    struct FunctionStatistic*** shm;
 
-	int shmid;
-	struct FunctionStatistic*** shm;
-
-	if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), 0666)) < 0 ) {
-		_dl_debug_printf("getFunctionStatisticsStorage: Erorr during shmget");
-		return NULL;
-	}  else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
-
-		_dl_debug_printf("getFunctionStatisticsStorage: Error during shmat\n");
-		return NULL;
-	}
-	return shm;
+    if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), 0666)) < 0 ) {
+        _dl_debug_printf("getFunctionStatisticsStorage: Erorr during shmget");
+        return NULL;
+	} else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
+        _dl_debug_printf("getFunctionStatisticsStorage: Error during shmat\n");
+        return NULL;
+    }
+    return shm;
 }
 
-//////
 
-static bool initElfperfContextStorage(struct ElfperfContext context){
-
-
-	// Shared memory variables
-
-	int shmid;
-	struct ElfperfContext* shm;
+static bool initElfperfContextStorage(struct ElfperfContext context)
+{
+    // Shared memory variables
+    int shmid;
+    struct ElfperfContext* shm;
 	
-	if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext* ), IPC_CREAT | 0666)) < 0) {
-		_dl_debug_printf("initElfperfContextStorage: Erorr during shmget");
-		return false;
-	}
+    if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext* ), IPC_CREAT | 0666)) < 0) {
+        _dl_debug_printf("initElfperfContextStorage: Erorr during shmget");
+        return false;
+    }
 
-	if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext*) -1) {
-		_dl_debug_printf("initElfperfContextStorage: Error during shmat\n");
-		return false;
+    if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext*) -1) {
+        _dl_debug_printf("initElfperfContextStorage: Error during shmat\n");
+        return false;
 	}
 	
-	*shm = context;
+    *shm = context;
 		
-	_dl_debug_printf("initElfperfContextStorage: Shared memory inited successfuly: shm = %x\n", *shm );
+    _dl_debug_printf("initElfperfContextStorage: Shared memory inited successfuly: shm = %x\n", *shm );
 
-	return true;
+    return true;
 }
 
-static struct ElfperfContext* getElfperfContextStorage(){
+static struct ElfperfContext* getElfperfContextStorage()
+{
+    int shmid;
+    struct ElfperfContext* shm;
 
-	int shmid;
-	struct ElfperfContext* shm;
-
-	if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext*), 0666)) < 0 ) {
-		_dl_debug_printf("getElfperfContextStorage: Erorr during shmget");
-		return NULL;
-	}  else if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext* ) -1) {
-		_dl_debug_printf("getElfperfContextStorage: Error during shmat\n");
-		return NULL;
-	}
-	return shm;
+    if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext*), 0666)) < 0 ) {
+        _dl_debug_printf("getElfperfContextStorage: Erorr during shmget");
+        return NULL;
+    } else if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext* ) -1) {
+        _dl_debug_printf("getElfperfContextStorage: Error during shmat\n");
+        return NULL;
+    }
+    return shm;
 }
 
 #endif
