@@ -9,6 +9,7 @@
 #include <sys/shm.h>
 #include <errno.h>
 
+
 #define ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE "ELFPERF_PROFILE_FUNCTION"
 #define ELFPERF_ENABLE_VARIABLE "ELFPERF_ENABLE"
 
@@ -23,7 +24,7 @@
 #define _dl_debug_printf printf
 #endif
 
-#define NO_CONSOLE_OUTPUT_LD_SO
+#include "config.h"
 
 //Preventing console output from ld.so
 #ifdef NO_CONSOLE_OUTPUT_LD_SO

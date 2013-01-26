@@ -11,9 +11,6 @@
 
 extern void testFunc(char * a);
 
-int print_stub(const char* fmt, ...){
-	return 1;
-}
 
 
 // preallocated array of contexts

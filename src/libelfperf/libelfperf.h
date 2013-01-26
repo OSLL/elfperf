@@ -16,13 +16,6 @@
 
 #define CONTEXT_PREALLOCATED_NUMBER 1000
 
-#ifdef ELFPERF_NO_PRINTF
-#define printf print_stub
-
-
-#endif
-
-int print_stub(const char* fmt, ...);
 
 struct WrappingContext * getNewContext_();
 
