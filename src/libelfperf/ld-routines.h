@@ -161,6 +161,7 @@ struct FunctionInfo
     void* addr;
 };
 
+
 // Allocates shared memory for array of struct FunctionInfo
 // and fill it with stubs 
 static struct FunctionInfo* initFunctionInfoStorage()
@@ -172,32 +173,35 @@ static struct FunctionInfo* initFunctionInfoStorage()
 
 	// Shared memory variables
     int shmid;
-    struct FunctionInfo * shm;
-	
-    if ( (shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo )*count , IPC_CREAT | 0666) ) < 0) {
+    struct FunctionInfo** shm;
+
+    shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo**), IPC_CREAT | 0666);
+    if (shmid < 0) {
 	    _dl_debug_printf("Failed to create shared memory segment for FunctionInfo!(%u)\n", errno);
 	    return NULL;
     }
 
-    if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionInfo *) -1) {
+    shm = shmat(shmid, NULL, 0);
+    if (shm == (struct FunctionInfo**) -1) {
         _dl_debug_printf("Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
-        return NULL;	
+        return NULL;
     }
 
-    /// Shared memory successfuly allocated
-	// Allocating memory on heap
-//	struct FunctionInfo * infos = (struct FunctionInfo *)malloc(sizeof(struct FunctionInfo )*count); 
-    int i;
-    // Creating stubs 
-    for (i = 0 ; i < count; i++) {
-        (shm[i]).name = names[i];
-	}
+    // Shared memory successfully allocated
+    // Allocating memory on heap
+    struct FunctionInfo* infos = (struct FunctionInfo*)malloc(sizeof(struct FunctionInfo)*count);
+    int i = 0;
+    for (i = 0; i < count; i++) {
+        (infos[i]).name = names[i];
+    }
 
-//  *shm = infos;
+    *shm = infos;
     _dl_debug_printf("Success creation of FunctionInfo shared memory segment!\n");	
 	
-    return shm;
+    return *shm;
 }
+
+
 // Return pointer to array of struct FunctionInfo
 // from shared memory
 static struct FunctionInfo* getFunctionInfoStorage()
@@ -206,23 +210,27 @@ static struct FunctionInfo* getFunctionInfoStorage()
     char ** names;
     int count;
     names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
-
+    
+    // Shared memory variables
     int shmid;
-    struct FunctionInfo * shm;
-	
-    if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo )*count,  0666)) < 0) {
-        _dl_debug_printf("Failed to get shared memory segment for FunctionInfo at getFunctionInfoStorage(%u)!\n", errno);
-        return NULL;
+    struct FunctionInfo** shm;
+
+    shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo**), IPC_CREAT | 0666);
+    if (shmid < 0) {
+	    _dl_debug_printf("Failed to get shared memory segment for FunctionInfo!(%u)\n", errno);
+	    return NULL;
     }
 
-    if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionInfo *) -1) {
-        _dl_debug_printf("Failed to attach at shared memory segment for FunctionInfo at getFunctionInfoStorage(%u)!\n", errno);
+    shm = shmat(shmid, NULL, 0);
+    if (shm == (struct FunctionInfo**) -1) {
+        _dl_debug_printf("Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
         return NULL;
     }
     _dl_debug_printf("Successfuly got address of info storage %x \n", shm);	
 
-    return shm;
+    return *shm;
 }
+
 
 // Return pointer to info for name @name@ at storage
 static struct FunctionInfo* getInfoByName(char* name, struct FunctionInfo* storage, int count)
