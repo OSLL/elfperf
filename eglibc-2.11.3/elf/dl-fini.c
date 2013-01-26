@@ -28,7 +28,6 @@
 #include <sys/shm.h>
 #include <fcntl.h>
 #include <time.h>
-
 /* Type of the constructor functions.  */
 typedef void (*fini_t) (void);
 
@@ -120,6 +119,46 @@ _dl_sort_fini (struct link_map *l, struct link_map **maps, size_t nmaps,
       }
 }
 
+#define FILENAME_TEMPLATE "elfperf_results_"
+#define PID_SIZE 10
+#define RESULT_NAME_SIZE PID_SIZE+strlen(FILENAME_TEMPLATE) 
+
+void reverse(char *s)
+{
+	int i, j;
+	char c;
+
+	for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
+		c = s[i];
+		s[i] = s[j];
+		s[j] = c;
+	}
+}
+
+// We use our realization because there is linking bugs with using built-in
+void itoa(int n, char *s)
+{
+	int i, sign;
+
+	i = 0;
+	do {      
+		s[i++] = n % 10 + '0'; 
+	} while ((n /= 10) > 0);     
+	s[i] = '\0';
+	reverse(s);
+}
+
+// Generate filename containing PID
+char* getFileNameWithPid(){
+
+	char * result = (char*)malloc(sizeof(char)*(RESULT_NAME_SIZE));
+	strcpy(result,FILENAME_TEMPLATE); 
+	itoa((int)getpid(), result+strlen(FILENAME_TEMPLATE));
+	
+	return result;
+}
+
+
 // Output of profiling results
 // on console and to file if it can be opened
 static void printElfperfResults()
@@ -134,7 +173,7 @@ static void printElfperfResults()
 
         int * pFile;
         
-        if ((pFile = open("elfperf_results.out", O_WRONLY | O_CREAT | O_TRUNC,
+        if ((pFile = open(getFileNameWithPid(), O_WRONLY | O_CREAT | O_TRUNC,
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1) {
             _dl_debug_printf("Errors during open!\n");
         } else {
