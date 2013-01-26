@@ -3,6 +3,9 @@ all: clean lib exe
 linked_exe: lib
 	gcc -m32 -g3 main_linked_exe.c  -o linked_exe -L. -lhello 
 
+big_test: lib
+	gcc -m32 -g3 main_big_test.c -o big_test -L. -lhello 	   
+
 lib: lib.c
 	gcc -m32 -g3 lib.c -shared -o libhello.so
 
@@ -14,4 +17,6 @@ deploy:
 
 clean:
 	-rm libhello.so
-	-rm exe	
+	-rm exe
+	-rm linked_exe
+	-rm big_test
