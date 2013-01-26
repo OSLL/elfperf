@@ -120,105 +120,89 @@ _dl_sort_fini (struct link_map *l, struct link_map **maps, size_t nmaps,
       }
 }
 
-
-
-
 // Output of profiling results
 // on console and to file if it can be opened
-static void printElfperfResults(){
-
+static void printElfperfResults()
+{
 	unsigned int i;		
 	struct FunctionStatistic*** shm;
 	// Going inside shared memory
 
-	if( isElfPerfEnabled()) {
+	if(isElfPerfEnabled()) {
+    ////
+        _dl_debug_printf("Granted normal access to shared memory\n");
 
-		    ////
-		
+        int * pFile;
+        
+        if ((pFile = open("elfperf_results.out", O_WRONLY | O_CREAT | O_TRUNC,
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1) {
+            _dl_debug_printf("Errors during open!\n");
+        } else {
+            _dl_debug_printf("Result file opened sucsessfuly\n");
+        }
 
+        // File header  
+        _dl_dprintf(pFile, "Profiling results for pid=%u\n", getpid());
+        _dl_dprintf(pFile, "Functions: %s\n", getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE));
 
-		    _dl_debug_printf("Granted normal access to shared memory\n");
+        struct FunctionStatistic **stat = *(getFunctionStatisticsStorage());
 
+        // Getting pointer to the function info list
+        struct FunctionInfo* list = getFunctionInfoStorage();
+        struct ElfperfContext* elfperfContext = getElfperfContextStorage();
 
-		    int * pFile;
+        if (list == NULL) {
+            _dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");
+            _dl_dprintf(pFile,"Error - recieved null from getFunctionInfoStorage \n");
+            close(pFile);
+            return;
+        }
 
-		    if ((pFile = open("elfperf_results.out", O_WRONLY | O_CREAT | O_TRUNC,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1)
-		    {
-			_dl_debug_printf("Errors during open!\n");
-		    } else {
-			_dl_debug_printf("Result file opened sucsessfuly\n");
-		    }
-
-		    // File header
-		    
-		    _dl_dprintf(pFile, "Profiling results for pid=%u\n", getpid());
-		    _dl_dprintf(pFile, "Functions: %s\n", getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE));
-
-
-
-		    struct FunctionStatistic **stat = *( getFunctionStatisticsStorage());
-
-		    // Getting pointer to the function info list
-		    struct FunctionInfo* list = getFunctionInfoStorage();
-		    struct ElfperfContext* elfperfContext = getElfperfContextStorage();
-
-		    if (list == NULL){
-			_dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");
-			_dl_dprintf(pFile,"Error - recieved null from getFunctionInfoStorage \n");
-			close(pFile);
-			return;
-		    }
-
-		    if (stat == NULL ) {
-			_dl_debug_printf("Statistic is empty, exiting!\n");
-			_dl_dprintf(pFile, "Statistic is empty, exiting!\n");
-			close(pFile);
-			return;
-		    }
-		    ////
-		    unsigned int count = elfperfContext->context.count;
-		    // Output of results
-		    for (i = 0; i < count && *(stat+i) != NULL; i++)		
-		    {
-			_dl_debug_printf("Printing stats, iteration %u \n",i);
-			// Because _dl_debug_printf cant output 64byte numbers
-			// this hack performed
-			uint64_t totalTime = (stat[i])->totalDiffTime;
-			void ** timePtr = (void **)&totalTime;
+        if (stat == NULL ) {
+            _dl_debug_printf("Statistic is empty, exiting!\n");
+            _dl_dprintf(pFile, "Statistic is empty, exiting!\n");
+            close(pFile);
+            return;
+        }
+        ////
+        unsigned int count = elfperfContext->context.count;
+		// Output of results
+        for (i = 0; i < count && *(stat+i) != NULL; i++)		
+		{
+            _dl_debug_printf("Printing stats, iteration %u \n",i);
+            // Because _dl_debug_printf cant output 64byte numbers
+            // this hack performed
+            uint64_t totalTime = (stat[i])->totalDiffTime;
+            void ** timePtr = (void **)&totalTime;
 			
-			_dl_debug_printf("Try to get FunctionInfo\n");
-			struct FunctionInfo* currentInfo = getInfoByAddr((stat[i])->realFuncAddr, list);
+            _dl_debug_printf("Try to get FunctionInfo\n");
+            struct FunctionInfo* currentInfo = getInfoByAddr((stat[i])->realFuncAddr, list);
 
-
-			if (currentInfo == NULL) {
-				_dl_debug_printf("Failed at %x\n", (stat[i])->realFuncAddr);
-				_dl_dprintf(pFile, "Failed at %x\n", (stat[i])->realFuncAddr);
-				break ;
+            if (currentInfo == NULL) {
+                _dl_debug_printf("Failed at %x\n", (stat[i])->realFuncAddr);
+                _dl_dprintf(pFile, "Failed at %x\n", (stat[i])->realFuncAddr);
+                break ;
 			}
 
-			char* name = currentInfo->name;
+            char* name = currentInfo->name;
 
-
-			// Output to console 
+            // Output to console 
 			_dl_debug_printf("Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
-			name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
+                             name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
 
 			// Output to file if it is opened
-			if ( pFile != NULL)
-				_dl_dprintf(pFile,"Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
-				name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
-
-		    }
-		    close (pFile);
-		    shmdt(shm);
-		    //shmctl( shmid, IPC_RMID,(struct shmid_ds *) NULL); 
-		    //shmctl(shmid, IPC_RMID, (struct shmid_ds *) NULL);
-		    
+            if ( pFile != NULL) {
+                _dl_dprintf(pFile,"Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
+                            name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
+            }
+        }
+        close (pFile);
+        shmdt(shm);
+        //shmctl( shmid, IPC_RMID,(struct shmid_ds *) NULL); 
+        //shmctl(shmid, IPC_RMID, (struct shmid_ds *) NULL);    
 		 
-	}
+    }
 }
-
 
 void
 internal_function

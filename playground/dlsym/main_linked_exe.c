@@ -16,7 +16,11 @@ int main(int argc, char** argv){
 		sprintf(buf, "caller %d\n", i);	
 		printf("Calling hello(buf):\t");
 		hello(buf);
-		hella(buf);
+        hello1();
+        hello2();
+        hello3();
+        hello4();
+        hello5();
 		testFunc();
 	}
 
