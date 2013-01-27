@@ -293,20 +293,20 @@ void initWrapperRedirectors( struct RedirectorContext *context/*char** names,uns
     size_t allocSize = sizeof(void*)*REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1;
     size_t i = 0;
 
-  //  context->redirectors = (void *)malloc(allocSize);
+    context->redirectors = (void *)malloc(allocSize);
     // Aligning by page border
     printf("Before aligment %x, %x\n", context->redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1);
     //printf("Before aligment \n");
-    //context->redirectors = (void *)(((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
-    void * pageStart = (void *)((((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1)) - PAGESIZE);
-    printf("After aligment %x\n", pageStart);
+    context->redirectors = (void *)(((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
+//    void * pageStart = (void *)((((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1)) - PAGESIZE);
+//    printf("After aligment %x\n", pageStart);
 
     int pagesNum = allocSize/PAGESIZE ;
     printf("Number of memory pages %x\n", pagesNum);
 
     for (i = 0; i < pagesNum; i++) {
 	printf("Going to do mprotect\n");
-        if (mprotect(pageStart + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
+        if (mprotect(context->redirectors + PAGESIZE*i, PAGESIZE, PROT_READ | PROT_WRITE | PROT_EXEC)) {
             printf("Couldn't mprotect");
             //exit(errno);
             return;
