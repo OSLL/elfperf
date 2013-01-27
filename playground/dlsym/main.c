@@ -25,8 +25,6 @@ void * threadFunction(int* threadNum){
 
 int main()
 {
-	printf("Sizeof(time_t) = %d, sizeof(long int) = %d, sizeof(unsigned long long int) = %d \n", 
-		sizeof(time_t), sizeof(long int), sizeof(unsigned long long int) );
 	
 
 	sin(1.0);
@@ -53,5 +51,6 @@ int main()
 	printf("Valid number of calls should be 3x%d = %d\n", REPEATS_NUMBER, 3*REPEATS_NUMBER);
 
 	dlclose(p);
+	printf("PID == %d \n", getpid() );
 	return 0;
 }

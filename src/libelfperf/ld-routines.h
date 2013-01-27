@@ -82,7 +82,6 @@ struct ElfperfFunctions
     bool (* isFunctionRedirectorRegistered)(char*, struct RedirectorContext);
     bool (* isFunctionInFunctionList)(char*, struct RedirectorContext);
     void * (* getRedirectorAddressForName)(char*, struct RedirectorContext);
-    void * storage;
 };
 
 // Represent all data needed for using libelfperf.so inside libdl.so

@@ -182,7 +182,6 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 #define ELFPERF_IS_FUNCTION_IN_FUNCTION_LIST_SYMBOL "isFunctionInFunctionList"
 #define ELFPERF_ADD_NEW_FUNCTION_SYMBOL "addNewFunction"
 #define ELFPERF_INIT_WRAPPER_REDIRECTORS_SYMBOL "initWrapperRedirectors"
-#define ELFPERF_STORAGE "storage"
 
 /*
   Return pointer to struct ElfperfFunctions with pointers to the all needed routines.
@@ -201,7 +200,6 @@ static struct ElfperfFunctions * getElfperfFunctions(struct link_map* l, int fla
 	result->isFunctionRedirectorRegistered =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_IS_FUNCTION_REDIRECTOR_REGISTERED_SYMBOL, l, flags);
 	result->getRedirectorAddressForName =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_GET_REDIRECTOR_ADDRESS_FOR_NAME_SYMBOL, l, flags);
 
-	result->storage = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_STORAGE, l, flags);
 
 	// Something went wrong - symbol not found
 	if ( result->wrapper == NULL || result->initWrapperRedirectors == NULL 
@@ -366,11 +364,8 @@ _dl_fixup (
   // ELFPERF
   if (0 == initialized) {
       _dl_error_printf("Redirectors are not initialized.\n");
-//    char **names = 0;//={"hello"};
-//    unsigned int count = 0;
 
       context.names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &(context.count));
-      context.redirectors = elfperfFuncs->storage;		
 
       _dl_error_printf("Initializing redirectors for:\n");
       unsigned int i = 0;
@@ -420,8 +415,6 @@ _dl_fixup (
 
   _dl_error_printf("Getting redirector address for %s \n", name);
   DL_FIXUP_VALUE_TYPE value1 = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
-  _dl_error_printf("Got redirector address for %s, real_addr+3 = %x, redir_addr = %x, storage = %x, testFunc = %x\n", 
-      name, value+3, value1, elfperfFuncs->storage, testFuncAddr);
   value = value1;
 
   void ** ptr =  ((void*) value1);

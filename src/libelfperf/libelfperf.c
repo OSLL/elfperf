@@ -287,8 +287,6 @@ void initWrapperRedirectors( struct RedirectorContext *context/*char** names,uns
 
     printf("Starting initWrapperRedirectors %p\n", context);
 
-    //s_wrapperAddress = wrapperAddr;
-
     // Memory allocation
     size_t allocSize = sizeof(void*)*REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1;
     size_t i = 0;
@@ -298,8 +296,6 @@ void initWrapperRedirectors( struct RedirectorContext *context/*char** names,uns
     printf("Before aligment %x, %x\n", context->redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1);
     //printf("Before aligment \n");
     context->redirectors = (void *)(((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1));
-//    void * pageStart = (void *)((((int) context->redirectors + PAGESIZE-1) & ~(PAGESIZE-1)) - PAGESIZE);
-//    printf("After aligment %x\n", pageStart);
 
     int pagesNum = allocSize/PAGESIZE ;
     printf("Number of memory pages %x\n", pagesNum);

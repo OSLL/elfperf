@@ -8,7 +8,7 @@ int main(int argc, char** argv){
 	void * ptr = &hello;
 
 	printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Linked exe started <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< \n" );
-	printf("hello = %x\n", ptr);
+	printf(" hello = %x\n", ptr);
 
 
 	for (i=0; i<10; i++){
@@ -23,6 +23,8 @@ int main(int argc, char** argv){
         hello5();
 		testFunc();
 	}
+
+	printf("PID == %d\n", getpid());
 
 	return 0;
 }
