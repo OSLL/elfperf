@@ -1,3 +1,40 @@
+/*
+ * Copyright © 2012 OSLL osll@osll.spb.ru
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * 3. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior written
+ *    permission.
+ *
+ * The advertising clause requiring mention in adverts must never be included.
+ */
+/*! ---------------------------------------------------------------
+ * \file ld-routines.h
+ * \brief Common functions and data structures for glibc and libelfperf
+ *
+ * PROJ: OSLL/elfperf
+ * ---------------------------------------------------------------- */
+
 #ifndef LD_ROUTINES_H_
 #define LD_ROUTINES_H_
 
@@ -64,7 +101,8 @@ struct WrappingContext
     uint64_t endTime;           // function ending time
 };
 
-// Store all data for redirectors initialization and
+
+// Stores all data for redirectors initialization and
 // libelfperf functions proper work in ld.so runtime
 struct RedirectorContext 
 {
@@ -73,7 +111,8 @@ struct RedirectorContext
     void * redirectors;
 };
 
-// Store addresses of libelfperf functions
+
+// Stores addresses of libelfperf functions
 struct ElfperfFunctions 
 {
     void (* wrapper)();
@@ -84,7 +123,8 @@ struct ElfperfFunctions
     void * (* getRedirectorAddressForName)(char*, struct RedirectorContext);
 };
 
-// Represent all data needed for using libelfperf.so inside libdl.so
+
+// Represents all data needed for using libelfperf.so inside libdl.so
 struct ElfperfContext
 {
     struct ElfperfFunctions addresses;
@@ -93,6 +133,17 @@ struct ElfperfContext
 };
 
 
+// Stores function's name-address pair
+struct FunctionInfo
+{
+    char* name;
+    void* addr;
+};
+
+
+/*
+ * Returns 1 if evnvironment variables ELFPERF_ENABLE and ELFPERF_PROFILE_FUNCTION are set
+ */
 static bool isElfPerfEnabled()
 {
     return getenv(ELFPERF_ENABLE_VARIABLE) != NULL 
@@ -100,8 +151,11 @@ static bool isElfPerfEnabled()
            getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE) != NULL;
 }
 
-// Return list of function names separted by ":" passed from @env_name@ envoironment variable
-// storing number of them into @count@
+
+/* 
+ * Returns list of function names separted by ":" passed from @env_name@ envoironment variable
+ * storing number of them into @count@
+ */
 static char** get_fn_list(const char* env_name, int* count)
 {
     char* env_value = getenv(env_name);
@@ -122,7 +176,7 @@ static char** get_fn_list(const char* env_name, int* count)
             word_count++;
             result = (char**)realloc(result, sizeof(*result) * word_count);
             char* str = strndup(env_value + k, i - k + 1);
-            k = i+2;
+            k = i + 2;
             result[word_count - 1] = str;
         }
     }
@@ -133,17 +187,19 @@ static char** get_fn_list(const char* env_name, int* count)
     return result;
 }
 
-// Check should function be profiled or not
+
+/*
+ * Checks should function be profiled or not
+ */ 
 static bool isFunctionProfiled(char * name)
 {
-
     static unsigned int count =0;
     static char** functions = NULL;
-    if (functions == NULL) 
+    if (functions == NULL) {
         functions = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+    }
 	
     unsigned int i;
-
     for (i = 0; i < count; i++) {
         if (strcmp(functions[i],name) == 0) 
             return true;
@@ -152,18 +208,11 @@ static bool isFunctionProfiled(char * name)
     return false;
 }
 
-////// Function info - store function name-addr pairs
 
-// Store information about function
-struct FunctionInfo
-{
-    char* name;
-    void* addr;
-};
-
-
-// Allocates shared memory for array of struct FunctionInfo
-// and fill it with stubs 
+/*
+ * Allocates shared memory for array of struct FunctionInfo
+ * and fill it with stubs 
+ */
 static struct FunctionInfo* initFunctionInfoStorage()
 {
 	// Get function list from env variables	
@@ -177,8 +226,8 @@ static struct FunctionInfo* initFunctionInfoStorage()
 
     shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo**), IPC_CREAT | 0666);
     if (shmid < 0) {
-	    _dl_debug_printf("Failed to create shared memory segment for FunctionInfo!(%u)\n", errno);
-	    return NULL;
+        _dl_debug_printf("Failed to create shared memory segment for FunctionInfo!(%u)\n", errno);
+        return NULL;
     }
 
     shm = shmat(shmid, NULL, 0);
@@ -202,8 +251,10 @@ static struct FunctionInfo* initFunctionInfoStorage()
 }
 
 
-// Return pointer to array of struct FunctionInfo
-// from shared memory
+/*
+ * Returns pointer to array of struct FunctionInfo
+ * from shared memory
+ */
 static struct FunctionInfo* getFunctionInfoStorage()
 {
     // Get function list from env variables	
@@ -217,8 +268,8 @@ static struct FunctionInfo* getFunctionInfoStorage()
 
     shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo**), IPC_CREAT | 0666);
     if (shmid < 0) {
-	    _dl_debug_printf("Failed to get shared memory segment for FunctionInfo!(%u)\n", errno);
-	    return NULL;
+        _dl_debug_printf("Failed to get shared memory segment for FunctionInfo!(%u)\n", errno);
+        return NULL;
     }
 
     shm = shmat(shmid, NULL, 0);
@@ -232,7 +283,9 @@ static struct FunctionInfo* getFunctionInfoStorage()
 }
 
 
-// Return pointer to info for name @name@ at storage
+/*
+ * Returns pointer to info for name @name@ at storage
+ */
 static struct FunctionInfo* getInfoByName(char* name, struct FunctionInfo* storage, int count)
 {
     if (storage == NULL) return NULL;
@@ -247,7 +300,10 @@ static struct FunctionInfo* getInfoByName(char* name, struct FunctionInfo* stora
     return NULL;
 }
 
-// Return pointer to info for addr @addr@ at storage
+
+/* 
+ * Returns pointer to info for addr @addr@ at storage
+ */
 static struct FunctionInfo* getInfoByAddr(void* addr, struct FunctionInfo* storage)
 {
     if (storage == NULL) return NULL;
@@ -269,6 +325,10 @@ static struct FunctionInfo* getInfoByAddr(void* addr, struct FunctionInfo* stora
 }
 
 
+/*
+ * Allocates shared memory for storing of Function Statistics
+ * and fill it with stubs 
+ */
 static struct FunctionStatistic*** initFunctionStatisticsStorage()
 {
     // Shared memory variables
@@ -281,8 +341,8 @@ static struct FunctionStatistic*** initFunctionStatisticsStorage()
     }
 
     if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic ***) -1) {
-	    _dl_debug_printf("initFunctionStatisticsStorage: Error during shmat\n");
-	    return NULL;
+        _dl_debug_printf("initFunctionStatisticsStorage: Error during shmat\n");
+        return NULL;
     }
 	
     *shm = NULL;
@@ -290,7 +350,10 @@ static struct FunctionStatistic*** initFunctionStatisticsStorage()
     _dl_debug_printf("Shared memory inited successfuly: shm = %x\n", *shm );
 }
 
-
+/*
+ * Returns pointer to array of struct FunctionStatistic
+ * from shared memory
+ */
 static struct FunctionStatistic*** getFunctionStatisticsStorage() 
 {
     int shmid;
@@ -307,6 +370,9 @@ static struct FunctionStatistic*** getFunctionStatisticsStorage()
 }
 
 
+/*
+ * Allocates shared memory for ElfperfContext
+ */
 static bool initElfperfContextStorage(struct ElfperfContext context)
 {
     // Shared memory variables
@@ -330,6 +396,10 @@ static bool initElfperfContextStorage(struct ElfperfContext context)
     return true;
 }
 
+/*
+ * Returns pointer on ElfperfContext
+ * from shared memory
+ */
 static struct ElfperfContext* getElfperfContextStorage()
 {
     int shmid;
@@ -345,4 +415,4 @@ static struct ElfperfContext* getElfperfContextStorage()
     return shm;
 }
 
-#endif
+#endif //  LD_ROUTINES_H_
