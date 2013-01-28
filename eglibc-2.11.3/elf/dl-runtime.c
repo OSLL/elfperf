@@ -411,7 +411,6 @@ _dl_fixup (
       (*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
       _dl_error_printf("Registration of %s successful.\n", name);
   }
-  DL_FIXUP_VALUE_TYPE testFuncAddr = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "testFunc", l, flags);
 
   _dl_error_printf("Getting redirector address for %s \n", name);
   DL_FIXUP_VALUE_TYPE value1 = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
