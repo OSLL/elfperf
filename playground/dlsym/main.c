@@ -4,10 +4,10 @@
 #include <pthread.h> 
 #include <math.h>
 
-void * p;
-void * f;
+void *p, *f;
 
-#define REPEATS_NUMBER 10
+#define REPEATS_NUMBER 100
+#define THREAD_COUNT 4 
 
 void * threadFunction(int* threadNum){
 	int i=0;
@@ -23,11 +23,13 @@ void * threadFunction(int* threadNum){
 }
 
 
+
+
 int main()
 {
-	
+	srand(time(NULL));	
 
-	sin(1.0);
+
 	int i=0;
 	p = dlopen("./libhello.so",RTLD_LAZY);
 	printf("handle=%p\n",p);
@@ -35,20 +37,23 @@ int main()
 	f = dlsym(p,"hello");
 	printf("f=%p\n",f);
 	
-	pthread_t thread_0, thread_1, thread_2;
-	int num0=0, num1=1, num2=2;
+	pthread_t threads[THREAD_COUNT];
+	int threadNumbers[THREAD_COUNT];
 
-	// Create 3 threads
-	pthread_create(&thread_0, NULL, threadFunction, &num0);
-	pthread_create(&thread_1, NULL, threadFunction, &num1);
-	pthread_create(&thread_2, NULL, threadFunction, &num2);
+	// Creating threads
+	for( i=0 ; i < THREAD_COUNT; i++ ){
+		threadNumbers[i] = i;
+		pthread_create(threads+i, NULL, threadFunction, threadNumbers+i);
+	} 
+
 	
 	// Waiting for all threads exiting
-	pthread_join(thread_0, NULL);
-	pthread_join(thread_1, NULL);
-	pthread_join(thread_2, NULL);
+	
+	for( i=0 ; i < THREAD_COUNT; i++ ){
+		pthread_join(threads[i], NULL);
+	}
 
-	printf("Valid number of calls should be 3x%d = %d\n", REPEATS_NUMBER, 3*REPEATS_NUMBER);
+	printf("Valid number of calls should be %dx%d = %d\n", THREAD_COUNT, REPEATS_NUMBER, THREAD_COUNT*REPEATS_NUMBER);
 
 	dlclose(p);
 	printf("PID == %d \n", getpid() );

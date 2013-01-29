@@ -1,7 +1,10 @@
 #include <stdio.h>
+#include <time.h>
+#include <unistd.h>
 
 void hello1()
 {
+
     printf("hello1 from so\n");
 }
 
@@ -271,6 +274,10 @@ void testFunc(){
 
 void hello(const char *p)
 {
+/*	unsigned int usec = rand()%900 + 1; 
+    	printf("inside hello(const char *p), random sleep for %u\n", usec);
+
+   	usleep(usec);    */
 	printf("hello from so: %s\n",p);
 }
 
