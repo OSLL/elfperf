@@ -331,13 +331,11 @@ _dl_fixup (
   static struct FunctionInfo * infos;
   static int initialized = 0;
 
-  _dl_error_printf("Function statistic storage is initialized\n");
 
   if (isElfPerfEnabled() && !initialized) {
       initFunctionStatisticsStorage();
   }
 
-  _dl_error_printf("Function statistic storage is initialized\n");
 
   if (isElfPerfEnabled() && (isFunctionProfiled(name) || strcmp("dlopen", name)==0) 
       && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad) {

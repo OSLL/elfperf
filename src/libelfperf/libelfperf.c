@@ -11,20 +11,48 @@
 
 extern void testFunc(char * a);
 
-
+#define REAL_RETURN_ADDR_STUB 1
 
 // preallocated array of contexts
 static struct WrappingContext contextArray[CONTEXT_PREALLOCATED_NUMBER];
 // number of first not used context
 static int freeContextNumber = 0 ;
 
+static int getNewContextSpinlock=0;
+
 // This function returns address of currently free context
 struct WrappingContext * getNewContext_(){
 
-    struct WrappingContext * context;
+//    struct WrappingContext * context;
 
+    unsigned int i = 0;
+    bool isFreeContextFound = 0;
+    /// Critical section start
+    while(  __sync_fetch_and_add(&getNewContextSpinlock,1)!=0);
+//    printf("Inside critical section\n");
+    // Search for not used Contexts - the ones which has contextArray[i].realReturnAddr == NULL
+    for (i = 0 ; i < CONTEXT_PREALLOCATED_NUMBER; i++){
+	printf("%u : %p\n", i,  contextArray[i].realReturnAddr);
+	// Free context found - mark it as used
+	// i contains number of free context
+	if (contextArray[i].realReturnAddr == NULL){
+		contextArray[i].realReturnAddr = REAL_RETURN_ADDR_STUB;
+		isFreeContextFound = 1;
+		break;
+	}
+    }
+    getNewContextSpinlock = 0;
+    /// Critical section ends
+    
+    // No free contexts - terminating app
+    if ( !isFreeContextFound ){
+	printf("Context buffer is full!!! Exiting\n");
+	exit(1);
+    }
 
-    //pthread_mutex_lock(&freeContextNumberLock);
+    return contextArray+i;
+
+/*    //pthread_mutex_lock(&freeContextNumberLock);
     // Check freeContextNumber
     // atomicly increment the freeContextNumber
     // check if it is greater than CONTEXT_PREALLOCATED_NUMBER
@@ -39,7 +67,7 @@ struct WrappingContext * getNewContext_(){
     }
 
     //pthread_mutex_unlock(&freeContextNumberLock);
-    return context;
+    return context;*/
 }
 
 
@@ -152,8 +180,10 @@ void  wrapper()
 		"movl 32(%ebx), %ecx\n" // restoring ecx
 		//
 		"pushl (%ebx)\n"	// returning to caller - pushing return address to stack
-		// Restoring %ebx
-		"movl 24(%ebx), %ebx\n" // %ebx = old_ebx
+		// Marking context as free and Restoring %ebx
+		"pushl 24(%ebx)\n" 	// old_ebx to stack
+		"movl $0, (%ebx)\n" 	// context.realReturnAddr = 0
+		"popl %ebx\n" 		// %ebx = old_ebx
 		"ret\n"// : : :
 		);
 }
