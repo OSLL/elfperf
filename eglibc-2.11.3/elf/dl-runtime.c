@@ -60,7 +60,8 @@
 #endif
 
 #define ELFPERF_LIB_NAME "libelfperf.so"
-
+#define LIBDL_NAME "libdl.so"
+#define LIBC_NAME "libc.so"
 /*
   Search for library @libname@'s link_map, and if it exists return pointer to it,
   otherwise return NULL.
@@ -135,7 +136,9 @@ static struct link_map* getLibMap(char * libname, struct link_map *l)
 static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbol_name, 
 	struct link_map *l, int flags){
 
-	ElfW(Sym) * sym1 = (ElfW(Sym) *)malloc(sizeof(ElfW(Sym) ));
+	ElfW(Sym) * sym1 = 
+		(ElfW(Sym) *)mmap(0, sizeof(ElfW(Sym) ), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+		//(ElfW(Sym) *)malloc(sizeof(ElfW(Sym) ));
 	lookup_t result1;
 	DL_FIXUP_VALUE_TYPE value1 = 0;
 //	char* name1 = "hello";
@@ -190,7 +193,9 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 static struct ElfperfFunctions * getElfperfFunctions(struct link_map* l, int flags){
 
 	struct ElfperfFunctions * result = 
-		(struct ElfperfFunctions *)malloc(sizeof(struct ElfperfFunctions));
+		(struct ElfperfFunctions *)mmap(0, sizeof(struct ElfperfFunctions), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+//		(struct ElfperfFunctions *)malloc(sizeof(struct ElfperfFunctions));
+		
 	
 
 	result->wrapper =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_WRAPPER_SYMBOL, l, flags);
@@ -243,6 +248,8 @@ _dl_fixup (
   char* name = 0;
   int flags;
 
+
+
   /* Sanity check that we're really looking at a PLT relocation.  */
   assert (ELFW(R_TYPE)(reloc->r_info) == ELF_MACHINE_JMP_SLOT);
 
@@ -278,6 +285,7 @@ _dl_fixup (
 //	_dl_error_printf("dl-runtime1\n");
       name = strtab + sym->st_name;
 
+	_dl_debug_printf("\tCurrrent linkmap name = %s, symbol name = %s\n", l->l_name, name );
 //      _dl_error_printf("Doing _dl_lookup_symbol_x for %s\n",name);
 
       result = _dl_lookup_symbol_x (strtab + sym->st_name, l, &sym, l->l_scope,
@@ -337,8 +345,22 @@ _dl_fixup (
   }
 
 
-  if (isElfPerfEnabled() && (isFunctionProfiled(name) || strcmp("dlopen", name)==0) 
-      && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad) {
+  bool isDlopen = strcmp("dlopen", name)==0;
+  bool isNotLibElfperf = strstr(l->l_name, ELFPERF_LIB_NAME)==NULL;
+  bool isNotLibdl = strstr(l->l_name, LIBDL_NAME) == NULL;
+  bool isNotLibc= strstr(l->l_name, LIBC_NAME) == NULL;
+
+
+  if (isElfPerfEnabled() 
+      // Check is current function profiled or if it is dlopen - 
+      // This need for initializing before profiling any dynamic loaded function
+      //&& ( ( !isLibdl && isFunctionProfiled(name) )  ||  ( isLibdl && isDlopen ) ) 
+      && (isFunctionProfiled(name) || isDlopen)
+      // Check that there are not any problems with loading libelfperf.so
+      && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad 
+      // Check if current place for relocation is not libelfperf.so|libdl.so
+      // Do not replace profiled functions inside libelfperf.so|libdl.so by redirector
+      && isNotLibElfperf && isNotLibdl && isNotLibc){
       _dl_error_printf("All conditions for %s profiling is fine\n", name);
   } else {
       goto skip_elfperf;
