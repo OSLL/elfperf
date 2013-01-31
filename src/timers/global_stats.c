@@ -95,17 +95,15 @@ static int updateStatSpinlock=0;
 
 void updateStat(void* funcAddr, uint64_t diffTime)
 {
+        // Try to lock
+    while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
+
     struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
     if (stat != NULL) {
-        __sync_fetch_and_add(&(stat->totalCallsNumber), 1);
-
-        // Try to lock
-        while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
+	stat->totalCallsNumber++;
 
         stat->totalDiffTime += diffTime;
 	
-        // Unlock
-        updateStatSpinlock = 0;
 
 	    printf("Current statistic for function = %p, call time %lld, total tick number = %llu, number of calls = %lld\n",
 			   stat->realFuncAddr, diffTime, stat->totalDiffTime,
@@ -113,6 +111,9 @@ void updateStat(void* funcAddr, uint64_t diffTime)
     } else {
         addNewStat(funcAddr, diffTime);
     }
+
+    // Unlock
+    updateStatSpinlock = 0;
 
 }
 
@@ -125,7 +126,8 @@ static int sharedMemoryInitSpinlock=0;
 static void initStats(){
 	int count;
 	get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
-	s_stats = (struct FunctionStatistic**)malloc(sizeof(struct FunctionStatistic*)*count);
+	s_stats = (struct FunctionStatistic**)mmap(0, sizeof(struct FunctionStatistic*)*count, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	//(struct FunctionStatistic**)malloc(sizeof(struct FunctionStatistic*)*count);
 	printf("\tInitializing shared memory %p\n", s_stats);
 }
 
@@ -135,9 +137,9 @@ static void initSharedMemory(){
 
 	///// Critical section
 	// Try to lock
-        while(  __sync_fetch_and_add(&sharedMemoryInitSpinlock,1)!=0);
+        //while(  __sync_fetch_and_add(&sharedMemoryInitSpinlock,1)!=0);
 	
-	if (isSharedMemoryInited) return;
+	//if (isSharedMemoryInited) return;
 
 	initStats();
 
@@ -154,7 +156,7 @@ static void initSharedMemory(){
 	printf("Shared memory inited successfuly: shm = %p ,s_stats = %p\n", *shm,  s_stats );
 
 	// Unlock
-	sharedMemoryInitSpinlock = 0;
+	//sharedMemoryInitSpinlock = 0;
 	///// Critical section ends
 
 	
@@ -176,7 +178,9 @@ struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime)
         exit(1);
     }
 
-    struct FunctionStatistic* stat = (struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
+    struct FunctionStatistic* stat = 
+	(struct FunctionStatistic*)mmap(0, sizeof(struct FunctionStatistic), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	//(struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
 
     stat->realFuncAddr = funcAddr;
     stat->totalDiffTime = diffTime;

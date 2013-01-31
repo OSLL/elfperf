@@ -445,7 +445,9 @@ void initWrapperRedirectors(struct RedirectorContext *context)
     // Memory allocation
     size_t allocSize = sizeof(void*) * REDIRECTOR_WORDS_SIZE * context->count + PAGESIZE - 1;
     size_t i = 0;
-    context->redirectors = (void *)malloc(allocSize);
+    context->redirectors = 
+	mmap(0, allocSize, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	//(void *)malloc(allocSize);
 
     // Aligning by page border
     printf("Before aligment %x, %x\n", context->redirectors, sizeof(void*) * REDIRECTOR_WORDS_SIZE*context->count + PAGESIZE-1);
