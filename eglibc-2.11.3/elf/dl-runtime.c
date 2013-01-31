@@ -335,11 +335,15 @@ _dl_fixup (
   static bool errorDuringElfperfFunctionLoad = 0;
   static struct RedirectorContext context;
   static struct FunctionInfo * infos;
-  static int initialized = 0;
+  static bool initialized = 0;
+  static bool functionStorageInited = 0;
+  // Spinlock
+  static int elfperfInitSpinlock = 0; 
 
 
-  if (isElfPerfEnabled() && !initialized) {
+  if (isElfPerfEnabled() && !(initialized || functionStorageInited) ) {
       initFunctionStatisticsStorage();
+      functionStorageInited = 1;
   }
 
   bool isNotLibelfperf = (strstr(l->l_name, ELFPERF_LIB_NAME) == NULL);
@@ -370,8 +374,19 @@ _dl_fixup (
   }
   _dl_error_printf("Recieved all pointers to functions from libelfperf.so\n");
 
+
   // ELFPERF
-  if (0 == initialized) {
+  if (initialized == 0) {
+
+      // Critical section - prevent miltiple initialization of elfperf 
+      while(  __sync_fetch_and_add(&elfperfInitSpinlock,1)!=0);
+      // If somebody already inited all stuff while we were at queue 
+      // skip initialization
+      if (initialized) {
+        elfperfInitSpinlock = 0; 
+	goto do_elfperf_routines;
+      }
+
       _dl_error_printf("Redirectors are not initialized.\n");
 
       context.names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &(context.count));
@@ -397,9 +412,13 @@ _dl_fixup (
 
       initElfperfContextStorage(elfperfContext); 
 
-      __sync_fetch_and_add(&initialized, 1);
+      initialized = 1;
       _dl_error_printf("After setting initialized , curr val = %u\n", initialized);
+
+      elfperfInitSpinlock = 0;
   }
+
+do_elfperf_routines:  
 
   if ( isFunctionProfiled(name) == 0) {
       _dl_error_printf("dlopen is not profiled, skipping\n");
