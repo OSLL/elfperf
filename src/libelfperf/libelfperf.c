@@ -329,6 +329,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     // and esp will not be good addr for new stack frame
     unsigned int wrapper_;
 
+    // Check first 3 bytes of function and choose appropriate wrapper.
     printf("First 3 bytes of function: \n");
     printf("\t%x %x %x\n",
         ((unsigned int)((void**)fcnPtr)[0]) & 0xFF,
@@ -336,11 +337,11 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
         (((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF
     );
 
-    if ( (((unsigned int)((void**)fcnPtr)[0]) & 0xFF) == 0x55
+    if ( (((unsigned int)((void**)fcnPtr)[0]) & 0xFF) == 0x55           // 1st byte
          &&
-         ((((unsigned int)((void**)fcnPtr)[0]) >> 8) & 0xFF) == 0x89
+         ((((unsigned int)((void**)fcnPtr)[0]) >> 8) & 0xFF) == 0x89    // 2nd byte
          &&
-         ((((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF) == 0xe5 ) 
+         ((((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF) == 0xe5 ) // 3rd byte
     {
         printf("ELFPERF_DEBUG: Chosen 1st wrapper for redirector\n");
         wrapper_ = (unsigned int)&wrapper + 3;

@@ -5,4 +5,4 @@ ELFPERF_PROFILE_FUNCTION=\
 hello\
 :strlen\
 :strcmp\
-:eee /tools/lib/ld.so ./test'
+:eee /tools/lib/ld-2.11.3.so ./test'
