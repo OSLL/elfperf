@@ -176,7 +176,7 @@ static void printElfperfResults()
          S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1) {
       _dl_debug_printf("Errors during open!\n");
     } else {
-      _dl_debug_printf("Result file opened sucsessfuly\n");
+      _dl_debug_printf("Result file opened successfully\n");
     }
 
     // File header  

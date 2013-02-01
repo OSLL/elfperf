@@ -61,36 +61,36 @@ static int freeContextNumber = 0 ;
 static int getNewContextSpinlock=0;
 
 // This function returns address of currently free context
-struct WrappingContext * getNewContext_(){
-
-//    struct WrappingContext * context;
+struct WrappingContext * getNewContext_()
+{
+    struct WrappingContext * context;
 
     unsigned int i = 0;
     bool isFreeContextFound = 0;
     /// Critical section start
     while(  __sync_fetch_and_add(&getNewContextSpinlock,1)!=0);
-//    printf("Inside critical section\n");
+    // printf("Inside critical section\n");
     // Search for not used Contexts - the ones which has contextArray[i].realReturnAddr == NULL
-    for (i = 0 ; i < CONTEXT_PREALLOCATED_NUMBER; i++){
-	printf("%u : %p\n", i,  contextArray[i].realReturnAddr);
-	// Free context found - mark it as used
-	// i contains number of free context
-	if (contextArray[i].realReturnAddr == NULL){
-		contextArray[i].realReturnAddr = REAL_RETURN_ADDR_STUB;
-		isFreeContextFound = 1;
-		break;
-	}
+    for (i = 0; i < CONTEXT_PREALLOCATED_NUMBER; i++) {
+        printf("%u : %p\n", i,  contextArray[i].realReturnAddr);
+        // Free context found - mark it as used
+        // i contains number of free context
+        if (contextArray[i].realReturnAddr == NULL) {
+            contextArray[i].realReturnAddr = (void*)REAL_RETURN_ADDR_STUB;
+            isFreeContextFound = 1;
+            break;
+        }
     }
     getNewContextSpinlock = 0;
-    /// Critical section ends
+    // Critical section ends
     
     // No free contexts - terminating app
-    if ( !isFreeContextFound ){
-	printf("Context buffer is full!!! Exiting\n");
-	exit(1);
+    if (!isFreeContextFound) {
+        printf("Context buffer is full!!! Exiting\n");
+        exit(1);
     }
 
-    return contextArray+i;
+    return contextArray + i;
 
 /*    //pthread_mutex_lock(&freeContextNumberLock);
     // Check freeContextNumber
@@ -117,8 +117,8 @@ void wrapper()
 {
     /* Stack structure
      * /////top/////
-     *    old_edx
      *    old_ebx
+     *    old_edx
      *    old_ecx
      *	  old_ebp
      */
@@ -190,23 +190,102 @@ void wrapper()
     // Getting context address
     // restoring value of eax and st0
     // returning to caller
-    asm volatile(
-		"movl -4(%ebp), %ebx\n"	// get context address
-		"movl 4(%ebx), %edx\n"	// restoring -4(old_ebp)
-		"movl %edx, -4(%ebp)\n"	// edx = context->oldEbpLocVar ; -4(%ebp) = edx
-		"movl 8(%ebx), %eax\n"	// restoring eax
-		"fldl 0xc(%ebx)\n"	// restoring ST0
-		// Restoring registers
-		"movl 28(%ebx), %edx\n" // restoring edx
-		"movl 32(%ebx), %ecx\n" // restoring ecx
-		//
-		"pushl (%ebx)\n"	// returning to caller - pushing return address to stack
-		// Marking context as free and Restoring %ebx
-		"pushl 24(%ebx)\n" 	// old_ebx to stack
-		"movl $0, (%ebx)\n" 	// context.realReturnAddr = 0
-		"popl %ebx\n" 		// %ebx = old_ebx
-		"ret\n"// : : :
-		);
+    asm volatile (
+        "movl -4(%ebp), %ebx\n"	// get context address
+        "movl 4(%ebx), %edx\n"	// restoring -4(old_ebp)
+        "movl %edx, -4(%ebp)\n"	// edx = context->oldEbpLocVar ; -4(%ebp) = edx
+        "movl 8(%ebx), %eax\n"	// restoring eax
+        "fldl 0xc(%ebx)\n"	// restoring ST0
+        // Restoring registers
+        "movl 28(%ebx), %edx\n" // restoring edx
+        "movl 32(%ebx), %ecx\n" // restoring ecx
+        //
+        "pushl (%ebx)\n"        // returning to caller - pushing return address to stack
+        // Marking context as free and Restoring %ebx
+        "pushl 24(%ebx)\n" 	    // old_ebx to stack
+        "movl $0, (%ebx)\n"     // context.realReturnAddr = 0
+    	"popl %ebx\n"           // %ebx = old_ebx
+        "ret\n"
+    );
+}
+
+/* 
+ * Code of wrapper for optimized functions which doesn't create new stack frame.
+ */
+void wrapper2()
+{
+    /* Stack structure
+     * /////top/////
+     *    old_ebx
+     *    old_edx
+     *    old_ecx
+     *	  old_ebp
+     */
+    // In this wrapper we don't need to create new stack frame
+
+    // Allocating memory for new context and filling it.
+    asm volatile (
+      	"pushl  %edx\n"    
+        "call   getNewContext_\n"       // %eax = getNewContext()
+        "popl   %edx\n"
+        "movl   %eax, %ebx\n"           // %ebx = &context
+        "movl   %edx, 20(%ebx)\n"       // context.functionPointer = wrapperFunction_addr
+        "popl   24(%ebx)\n"             // context.old_ebx = old_ebx
+        "popl   28(%ebx)\n"             // context.old_edx = old_edx
+        "popl   32(%ebx)\n"             // context.old_ecx = old_ecx
+        "popl   4(%ebx)\n"              // context.oldEbpLocVar = old_ebp
+    );
+
+    // Saving real return address in memory and changing it with fake address inside of wrapper.
+    // Address of %ebp will be stored inside of context.
+    // And address of context will be inserted instead of %ebp.
+    asm volatile (  // Calculate address of WrappingContext
+        "movl   %ebp, 4(%ebx)\n"        // context.oldEbpLocVar = %ebp
+        "movl   %ebx, %ebp\n"           // %ebp = &context
+        "popl   (%ebx)\n"               // pop (return value) >> context.realReturnAddr 
+
+        "pushl  %ebx\n"                 // pushing context address into stack
+        "call   record_start_time\n"    // calculating of start time and storing it inside of context
+        "popl   %ebx\n"                 // restoring %ebx value
+ 
+        "pushl  $wrapper2_ret_point\n"  // adding new return value for wrapped function 
+        "movl   20(%ebx), %edx\n"       // %edx = functionPointer
+        "subl   $3, %edx\n"             // %edx = %edx - 3 -- because wrapped function don't create stack frame
+                                        // and we don't need pass 3 first bytes of function
+        "jmp    %edx\n"                 // jumping to wrapper function
+    );
+
+    // Restoring of %ebp state and saving return values inside of context.
+    asm volatile (
+        "wrapper2_ret_point:\n"
+      
+        // Restoring %ebp value
+        "movl   %ebp, %ebx\n"           // %ebx = %context from %ebp
+        "movl   4(%ebx), %ebp\n"        // %ebp = context.oldEbpLocVar
+        "movl   %eax, 8(%ebx)\n"        // context->eax = %eax
+        "fstpl  0xc(%ebx)\n"            // context->doubleResult = ST0
+        
+        // Measuring time of function execution
+        "pushl  %ebx\n"                 // pushing context address to stack
+        "call   record_end_time\n"      // calling record_end_time
+        "popl   %ebx\n"                 // restoring %ebx value 
+    );
+
+    // Restoring value of %eax and st0.
+    // Restoring real return address and returning to caller
+    asm volatile (
+        "movl   8(%ebx), %eax\n"	// restoring eax
+        "fldl   0xc(%ebx)\n"        // restoring ST0
+        // Restoring registers
+        "movl   28(%ebx), %edx\n"   // restoring edx
+        "movl   32(%ebx), %ecx\n"   // restoring ecx    
+        "pushl  (%ebx)\n"           // returning to caller - pushing return address to stack
+        // Marking context as free and restoring %ebx
+        "pushl  24(%ebx)\n" 	    // old_ebx to stack
+        "movl   $0, (%ebx)\n"       // context.realReturnAddr = 0
+        "popl   %ebx\n"             // %ebx = old_ebx
+        "ret\n"
+    );
 }
 
 
