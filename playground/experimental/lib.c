@@ -3,6 +3,13 @@
 void dummyFunction()
 {
     int a = 10;
+    if (a == 10) {
+        printf("Yammy!\n");
+
+    } else {
+        printf("Dummy!!!\n");
+    }
+    
     return;
 }
 

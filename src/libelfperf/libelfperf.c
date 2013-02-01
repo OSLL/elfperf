@@ -327,7 +327,28 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     // mov $wrapper+3, %ebx
     // Skip stack frame construction - because we pass some extra params throw stack
     // and esp will not be good addr for new stack frame
-    unsigned int wrapper_ = (unsigned int)&wrapper + 3;
+    unsigned int wrapper_;
+
+    printf("First 3 bytes of function: \n");
+    printf("\t%x %x %x\n",
+        ((unsigned int)((void**)fcnPtr)[0]) & 0xFF,
+        (((unsigned int)((void**)fcnPtr)[0]) >> 8) & 0xFF,
+        (((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF
+    );
+
+    if ( (((unsigned int)((void**)fcnPtr)[0]) & 0xFF) == 0x55
+         &&
+         ((((unsigned int)((void**)fcnPtr)[0]) >> 8) & 0xFF) == 0x89
+         &&
+         ((((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF) == 0xe5 ) 
+    {
+        printf("ELFPERF_DEBUG: Chosen 1st wrapper for redirector\n");
+        wrapper_ = (unsigned int)&wrapper + 3;
+    } else {
+        wrapper_ = (unsigned int)&wrapper2 + 3;
+        printf("ELFPERF_DEBUG: Chosen 2nd wrapper for redirector\n");
+    }
+
     redirector[9] = 0xbb;
     redirector[13] = (wrapper_ >> 24) & 0xFF;
     redirector[12] = (wrapper_ >> 16) & 0xFF;
