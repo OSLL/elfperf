@@ -301,12 +301,13 @@ void wrapper()
      */
     asm volatile (   
        // Pass 3 values on top of the stack
-       "movq %rsp, %rax\n"
-       "addq $24, %rax\n"
-       "movq %rax, %rbp\n" 
+       "mov %rsp, %rax\n"
+       "add $24, %rax\n"
+       "mov %rax, %rbp\n" 
        // %rdx contains return jump address of function
-       "movq $wrapper_ret_point, -8(%rbp)\n"
-       "jmpq %rdx\n"
+       "mov wrapper_ret_point(%rip), %rbx\n"
+       "mov %rbx, -8(%rbp)\n"
+       "jmp %rdx\n"
     );
 
 
