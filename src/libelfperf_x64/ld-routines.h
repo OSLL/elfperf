@@ -45,7 +45,8 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <errno.h>
-
+#include <stdlib.h>
+#include <unistd.h>
 
 #define ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE "ELFPERF_PROFILE_FUNCTION"
 #define ELFPERF_ENABLE_VARIABLE "ELFPERF_ENABLE"
@@ -62,7 +63,7 @@
 #endif
 
 #include "config.h"
-
+#define ELFPERF_ARCH_64
 //Preventing console output from ld.so
 #ifdef NO_CONSOLE_OUTPUT_LD_SO
 
@@ -150,12 +151,42 @@ struct FunctionInfo
     void* addr;
 };
 
+#ifdef ELFPERF_ARCH_64
+
+extern char **environ;
+
+/*
+ * Our realization of getenv. For some reasons getenv doesnt work for x64
+ */
+static char* our_getenv_(char* name){
+
+    char** env = environ;
+    for (; *env; ++env){
+        // Find variable which starts with @name@ str
+        if (strstr(*env, name) == *env ){
+            // Locate position of '=' in the string
+            char * dataPosition = strchr(*env, '=');
+            if ( dataPosition != NULL ){
+                return dataPosition+1;
+            }else{
+                // No '=' occurs in the *env - return NULL
+                return NULL;
+            }
+        }
+    }
+        
+    return NULL;
+}
+#define getenv our_getenv_
+#endif
+
 
 /*
  * Returns 1 if evnvironment variables ELFPERF_ENABLE and ELFPERF_PROFILE_FUNCTION are set
  */
 static bool isElfPerfEnabled()
 {
+    //_dl_debug_printf("Getting env vars: %x %x\n", getenv(ELFPERF_ENABLE_VARIABLE), getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE));
     return getenv(ELFPERF_ENABLE_VARIABLE) != NULL 
            && 
            getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE) != NULL;

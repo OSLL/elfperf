@@ -2,5 +2,6 @@
 #define ELFPERF_CONFIG_H_
 
 Parameters
+Architecture
 
 #endif
