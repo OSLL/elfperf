@@ -61,7 +61,7 @@ static int freeContextNumber = 0 ;
 static int getNewContextSpinlock=0;
 
 // This function returns address of currently free context
-struct WrappingContext * getNewContext_()
+static struct WrappingContext * getNewContext_()
 {
     struct WrappingContext * context;
 
@@ -107,6 +107,10 @@ struct WrappingContext * getNewContext_()
     //pthread_mutex_unlock(&freeContextNumberLock);
     return context;*/
 }
+
+//struct WrappingContext* getNewContext_(void) __attribute__((visibility("hidden")));
+//void record_start_time(void*) __attribute__((visibility("hidden")));
+//void record_end_time(void*) __attribute__((visibility("hidden")));
 
 
 
@@ -224,8 +228,9 @@ void wrapper()
         "push   %r8\n"
         "push   %r9\n"
         // Get new context for call
+       // "mov    getNewContext_(%rip), %rax\n"
         "call   getNewContext_\n"   // rax = getNewContext
-        "mov %  rax, %r15\n"        // r15 = &context
+        "mov    %rax, %r15\n"        // r15 = &context
         // Restore registers state
         "pop    %r9\n"
         "pop    %r8\n"
@@ -245,7 +250,8 @@ void wrapper()
         "mov    %rax, 32(%r15)\n"   // context->callerLocalVar = rax
         "mov    %r15, -8(%rbx)\n"   // caller 1st local var = &context
         // Change real return address on label inside of wrapper
-        "movq   $wrapper_ret_point, 0x8(%rbp)\n"
+        "mov    wrapper_ret_point(%rip), %rax\n"
+        "mov    %rax, 0x8(%rbp)\n"
     );
 
     asm volatile (
@@ -260,7 +266,9 @@ void wrapper()
         "push   %r15\n"
         // Call record_start_time
         "mov    %r15, %rdi\n"       // arg0 for record_start_time in rdi
-        "call   record_start_time\n"
+       // "mov    record_start_time(%rip), %rax\n"
+       // "callq   %rax\n"
+        "call record_start_time\n"
         // Restore registers state
         "pop    %r15\n"
         "pop    %r9\n"
@@ -310,7 +318,8 @@ void wrapper()
         "push   %r15\n"
         // Call record_end_time
         "mov    %r15, %rdi\n"       // %rdi = &context (arg0 for record_end_time)
-        "call   record_end_time\n"
+       // "call   record_end_time(%rip)\n"
+        "call record_end_time\n"
         // Restore registers state
         "pop    %r15\n"
         // Preparing to exit from wrapper

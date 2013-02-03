@@ -47,9 +47,12 @@ void updateStat(void* funcAddr, uint64_t diffTime);
 struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime);
 
 // Record function start time into context->startTime
-void record_start_time(void * context);
+//void record_start_time(void * context);
 // Record function end time into context->endTime and
 // print the duration of function execution
-void record_end_time(void * context);
+//void record_end_time(void * context);
+
+void record_start_time(void*) __attribute__((visibility("hidden")));
+void record_end_time(void*) __attribute__((visibility("hidden")));
 
 #endif // _ELFPERF_GLOBAL_STATS_H_

@@ -64,6 +64,8 @@
 
 #include "config.h"
 #define ELFPERF_ARCH_64
+#define NO_CONSOLE_OUTPUT_LD_SO
+
 //Preventing console output from ld.so
 #ifdef NO_CONSOLE_OUTPUT_LD_SO
 

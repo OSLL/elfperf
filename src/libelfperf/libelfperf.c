@@ -61,7 +61,7 @@ static int freeContextNumber = 0 ;
 static int getNewContextSpinlock=0;
 
 // This function returns address of currently free context
-struct WrappingContext * getNewContext_()
+static struct WrappingContext * getNewContext_()
 {
     struct WrappingContext * context;
 

@@ -53,7 +53,7 @@
 
 #define CONTEXT_PREALLOCATED_NUMBER 1000
 
-struct WrappingContext * getNewContext_();
+static struct WrappingContext * getNewContext_();
 
 void wrapper();
 
