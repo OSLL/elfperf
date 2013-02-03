@@ -34,7 +34,7 @@
 #include <stdint.h>
 #include <limits.h>    /* for PAGESIZE */
 
-#include "../../src/libelfperf/ld-routines.h"
+#include "../../src/libelfperf_x64/ld-routines.h"
 //////////////////////////////////////////////////////////////////////////////////
 
 #if (!defined ELF_MACHINE_NO_RELA && !defined ELF_MACHINE_PLT_REL) \
@@ -330,6 +330,7 @@ _dl_fixup (
   static struct RedirectorContext context;
   static struct FunctionInfo * infos;
   static int initialized = 0;
+
 
 
   if (isElfPerfEnabled() && !initialized) {
