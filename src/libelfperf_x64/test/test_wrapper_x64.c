@@ -12,58 +12,58 @@
 #define FUNCTION_3_RESULT 4
 #define FUNCTION_4_RESULT 3
 
-
 #define FUNCTION_5_RESULT 5.5
 #define FUNCTION_6_RESULT 6.6
+
+#define FUNCTION_8_RESULT 25
 
 #define STRUCT_A_VALUE 1
 #define STRUCT_B_VALUE 2
 #define STRUCT_C_VALUE 3
 
-typedef void (func)();
-
-// Test structure, with size > 8byte
-struct testStruct{
+struct testStruct
+{
     int a;
     int b;
     int c;
 };
 
-// Test functions
-void testFunction1() {
-    printf("in testFunction1\n");
+void testFunction1() 
+{
+    printf("Inside of testFunction1(void)\n");
 }
 
-void testFunction2(int arg0, int arg1) {
-    printf("in testFunction2( %d, %d)\n", arg0, arg1);
+void testFunction2(int arg0, int arg1) 
+{
+    printf("Inside of testFunction2(%d, %d)\n", arg0, arg1);
 }
 
-int testFunction3() {
-    printf("in testFunction3\n");
+int testFunction3() 
+{
+    printf("Inside of testFunction3(void)\n");
     return FUNCTION_3_RESULT;
 }
 
 int testFunction4(int arg0, int arg1) {
-    printf("in testFunction4(%d, %d)\n", arg0, arg1);
+    printf("Inside of testFunction4(%d, %d)\n", arg0, arg1);
     return arg0 + arg1;
 }
 
-float testFunction5() {
-    printf("in testFunction5()\n");
+float testFunction5() 
+{
+    printf("Inside of testFunction5(void)\n");
     return FUNCTION_5_RESULT;
 }
 
-double testFunction6() {
-    printf("in testFunction6()\n");
+double testFunction6() 
+{
+    printf("Inside of testFunction6(void)\n");
     return (double)FUNCTION_6_RESULT;
 }
 
-struct testStruct testFunction7(){
-//	void * addr;
-//	asm("movl 0x8(%%ebp),%0":"=r"(addr));
-//	printf("in testFunction7(hidden_parameter = %x)\n",addr);
-
-    printf("in testFunction7()\n");
+struct testStruct testFunction7()
+{
+    printf("Inside of testFunction7(void)\n");
 
     struct testStruct result;
     result.a = STRUCT_A_VALUE;
@@ -73,24 +73,16 @@ struct testStruct testFunction7(){
     return result;
 }
 
-char * testFuncNames[1]= {"testFunction1"};//,"testFunction2","testFunction3","testFunction4",
-//    "testFunction5","testFunction6","testFunction7"};
+int testFunction8(int arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, int arg7, int arg8, int arg9)
+{
+    printf("Inside of testFunction8(%d, %d, %d, %d, %d, %d, %d, %d, %d, %d)\n", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 
-void * funcPointers[7] = {testFunction1, testFunction2, testFunction3, testFunction4, 
-    testFunction5, testFunction6,testFunction7};
-
-//#define REDIRECTOR_WORDS_SIZE 4
-//#define PAGESIZE 4096
+    return FUNCTION_8_RESULT;
+}
 
 int main()
 {
-    int intResult = 0;
-    float floatResult=0.;
-    double doubleResult=0.;
-
-    struct testStruct * structResult=NULL;
-
-    int count = 7;
+    int count = 8;
     size_t allocSize = sizeof(void*) * REDIRECTOR_WORDS_SIZE * count + PAGESIZE - 1;
     size_t i = 0;
     void* redirectors = (void *)malloc(allocSize);
@@ -115,12 +107,16 @@ int main()
 
     printf("\n===== Start of test for wrappers and redirectors ======\n");
 
+    int functionIndex;
+    void* redirectorAddress;
+
     printf("\nTest #1:\n");
-    int functionIndex = 0;
-    void* redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
+    functionIndex = 0;
+    redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
     writeRedirectionCode(redirectorAddress, testFunction1);
     void(*func1)() = redirectorAddress;
     (*func1)();
+    printf("\tTest #1 finished\n");
 
     printf("\nTest #2:\n");
     functionIndex = 1;
@@ -128,6 +124,61 @@ int main()
     writeRedirectionCode(redirectorAddress, testFunction2);    
     void(*func2)(int, int) = redirectorAddress;
     (*func2)(128, 256);
+    printf("\tTest #2 finished\n");
+
+    printf("\nTest #3:\n");
+    functionIndex = 2;
+    redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
+    writeRedirectionCode(redirectorAddress, testFunction3);
+    int(*func3)() = redirectorAddress;
+    int resultFn3 = (*func3)();
+    assert(resultFn3 == FUNCTION_3_RESULT);
+    printf("\tTest #3 finished with result: %d\n", resultFn3);
+
+    printf("\nTest #4:\n");
+    functionIndex = 3;
+    redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
+    writeRedirectionCode(redirectorAddress, testFunction4);    
+    int(*func4)(int, int) = redirectorAddress;
+    int resultFn4 = (*func4)(1024, -64);
+    assert(resultFn4 = FUNCTION_4_RESULT);
+    printf("\tTest #4 finished with result: %d\n", resultFn4);
+
+    printf("\nTest #5:\n");
+    functionIndex = 4;
+    redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
+    writeRedirectionCode(redirectorAddress, testFunction5);    
+    float(*func5)() = redirectorAddress;
+    float resultFn5 = (*func5)();
+    //assert();
+    printf("\tTest #5 finished with result: %f\n", resultFn5);
+   
+    printf("\nTest #6:\n");
+    functionIndex = 5;
+    redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
+    writeRedirectionCode(redirectorAddress, testFunction6);    
+    double(*func6)() = redirectorAddress;
+    double resultFn6 = (*func6)();
+    //assert();
+    printf("\tTest #6 finished with result: %f\n", resultFn6);
+
+    printf("\nTest #7:\n");
+    functionIndex = 6;
+    redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
+    writeRedirectionCode(redirectorAddress, testFunction7);    
+    struct testStruct(*func7)() = redirectorAddress;
+    struct testStruct resultFn7 = (*func7)();
+    //assert();
+    printf("\tTest #7 finished with result: testStruct(%d, %d, %d)\n", resultFn7.a, resultFn7.b, resultFn7.c);
+
+    printf("\nTest #8:\n");
+    functionIndex = 8;
+    redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
+    writeRedirectionCode(redirectorAddress, testFunction8);    
+    int(*func8)(int, int, int, int, int, int, int, int, int, int) = redirectorAddress;
+    int resultFn8 = (*func8)(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5);
+    assert(resultFn8 == FUNCTION_8_RESULT);
+    printf("\tTest #7 finished with result: %d\n", resultFn8);
 
     return 0;
 }
