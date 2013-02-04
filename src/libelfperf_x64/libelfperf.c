@@ -228,7 +228,6 @@ void wrapper()
         "push   %r8\n"
         "push   %r9\n"
         // Get new context for call
-       // "mov    getNewContext_(%rip), %rax\n"
         "call   getNewContext_\n"   // rax = getNewContext
         "mov    %rax, %r15\n"        // r15 = &context
         // Restore registers state
@@ -250,8 +249,8 @@ void wrapper()
         "mov    %rax, 32(%r15)\n"   // context->callerLocalVar = rax
         "mov    %r15, -8(%rbx)\n"   // caller 1st local var = &context
         // Change real return address on label inside of wrapper
-        "mov    wrapper_ret_point(%rip), %rax\n"
-        "mov    %rax, 0x8(%rbp)\n"
+        "movq    wrapper_ret_point(%rip), %rax\n"
+        "movq    %rax, 0x8(%rbp)\n"
     );
 
     asm volatile (
@@ -266,8 +265,6 @@ void wrapper()
         "push   %r15\n"
         // Call record_start_time
         "mov    %r15, %rdi\n"       // arg0 for record_start_time in rdi
-       // "mov    record_start_time(%rip), %rax\n"
-       // "callq   %rax\n"
         "call record_start_time\n"
         // Restore registers state
         "pop    %r15\n"
@@ -318,7 +315,6 @@ void wrapper()
         "push   %r15\n"
         // Call record_end_time
         "mov    %r15, %rdi\n"       // %rdi = &context (arg0 for record_end_time)
-       // "call   record_end_time(%rip)\n"
         "call record_end_time\n"
         // Restore registers state
         "pop    %r15\n"

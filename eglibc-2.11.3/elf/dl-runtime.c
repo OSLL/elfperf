@@ -60,6 +60,8 @@
 #endif
 
 #define ELFPERF_LIB_NAME "libelfperf.so"
+#define ELFPERF_LIBC_NAME "libc.so"
+#define ELFPERF_LIBDL_NAME "libdl.so"
 
 /*
   Search for library @libname@'s link_map, and if it exists return pointer to it,
@@ -135,7 +137,9 @@ static struct link_map* getLibMap(char * libname, struct link_map *l)
 static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbol_name, 
 	struct link_map *l, int flags){
 
-	ElfW(Sym) * sym1 = (ElfW(Sym) *)malloc(sizeof(ElfW(Sym) ));
+	ElfW(Sym) * sym1 = 
+	(ElfW(Sym) *)mmap(0, sizeof(ElfW(Sym) ), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	//(ElfW(Sym) *)malloc(sizeof(ElfW(Sym) ));
 	lookup_t result1;
 	DL_FIXUP_VALUE_TYPE value1 = 0;
 //	char* name1 = "hello";
@@ -190,7 +194,8 @@ static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbo
 static struct ElfperfFunctions * getElfperfFunctions(struct link_map* l, int flags){
 
 	struct ElfperfFunctions * result = 
-		(struct ElfperfFunctions *)malloc(sizeof(struct ElfperfFunctions));
+		(struct ElfperfFunctions *)mmap(0, sizeof(struct ElfperfFunctions), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+		//(struct ElfperfFunctions *)malloc(sizeof(struct ElfperfFunctions));
 	
 
 	result->wrapper =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_WRAPPER_SYMBOL, l, flags);
@@ -324,22 +329,31 @@ _dl_fixup (
 
 
 /// Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
+  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
 
   static struct ElfperfFunctions * elfperfFuncs = NULL;
   static bool errorDuringElfperfFunctionLoad = 0;
   static struct RedirectorContext context;
   static struct FunctionInfo * infos;
-  static int initialized = 0;
+  static bool initialized = 0;
+  static bool functionStorageInited = 0;
+  // Spinlock
+  static int elfperfInitSpinlock = 0; 
 
 
-
-  if (isElfPerfEnabled() && !initialized) {
+  if (isElfPerfEnabled() && !(initialized || functionStorageInited) ) {
       initFunctionStatisticsStorage();
+      functionStorageInited = 1;
   }
 
+  bool isNotLibelfperf = (strstr(l->l_name, ELFPERF_LIB_NAME) == NULL);
+  bool isNotLibC = (strstr(l->l_name, ELFPERF_LIBC_NAME) == NULL);
+  bool isDlopen = (strcmp("dlopen", name)==0);
+  bool isLibDl = (strstr(l->l_name, ELFPERF_LIBDL_NAME) != NULL); 
 
-  if (isElfPerfEnabled() && (isFunctionProfiled(name) || strcmp("dlopen", name)==0) 
-      && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad) {
+  if (isElfPerfEnabled() && ( (isFunctionProfiled(name) && !isLibDl) || (isDlopen && isLibDl) ) 
+      && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad
+	&& isNotLibC && isNotLibelfperf) {
       _dl_error_printf("All conditions for %s profiling is fine\n", name);
   } else {
       goto skip_elfperf;
@@ -360,8 +374,19 @@ _dl_fixup (
   }
   _dl_error_printf("Recieved all pointers to functions from libelfperf.so\n");
 
+
   // ELFPERF
-  if (0 == initialized) {
+  if (initialized == 0) {
+
+      // Critical section - prevent miltiple initialization of elfperf 
+      while(  __sync_fetch_and_add(&elfperfInitSpinlock,1)!=0);
+      // If somebody already inited all stuff while we were at queue 
+      // skip initialization
+      if (initialized) {
+        elfperfInitSpinlock = 0; 
+	goto do_elfperf_routines;
+      }
+
       _dl_error_printf("Redirectors are not initialized.\n");
 
       context.names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &(context.count));
@@ -387,9 +412,13 @@ _dl_fixup (
 
       initElfperfContextStorage(elfperfContext); 
 
-      __sync_fetch_and_add(&initialized, 1);
+      initialized = 1;
       _dl_error_printf("After setting initialized , curr val = %u\n", initialized);
+
+      elfperfInitSpinlock = 0;
   }
+
+do_elfperf_routines:  
 
   if ( isFunctionProfiled(name) == 0) {
       _dl_error_printf("dlopen is not profiled, skipping\n");

@@ -3,6 +3,8 @@
 #include <time.h>
 #include <pthread.h> 
 #include <math.h>
+#include <string.h>
+#include <stdlib.h>
 
 void *p, *f;
 
@@ -25,10 +27,9 @@ void * threadFunction(int* threadNum){
 
 
 
-int main()
+int main(int argc, char** argv)
 {
 	srand(time(NULL));	
-
 
 	int i=0;
 	p = dlopen("./libhello.so",RTLD_LAZY);
