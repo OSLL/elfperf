@@ -49,9 +49,9 @@ int testFunction4(int arg0, int arg1) {
     return arg0 + arg1;
 }
 
-float testFunction5() 
+float testFunction5(double arg0)
 {
-    printf("Inside of testFunction5(void)\n");
+    printf("Inside of testFunction5(%f)\n", arg0);
     return FUNCTION_5_RESULT;
 }
 
@@ -110,7 +110,7 @@ int main()
     int functionIndex;
     void* redirectorAddress;
 
-/*    printf("\nTest #1:\n");
+    printf("\nTest #1:\n");
     functionIndex = 0;
     redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
     writeRedirectionCode(redirectorAddress, testFunction1);
@@ -142,14 +142,17 @@ int main()
     int(*func4)(int, int) = redirectorAddress;
     int resultFn4 = (*func4)(1024, -64);
     assert(resultFn4 = FUNCTION_4_RESULT);
-    printf("\tTest #4 finished with result: %d\n", resultFn4); */
+    printf("\tTest #4 finished with result: %d\n", resultFn4);
 
     printf("\nTest #5:\n");
     functionIndex = 4;
     redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
     writeRedirectionCode(redirectorAddress, testFunction5);    
-    float(*func5)() = redirectorAddress;
-    float resultFn5 = (*func5)();
+
+    float resultF5 = testFunction5(0.5);
+
+    float(*func5)(double) = redirectorAddress;
+    float resultFn5 = (*func5)(0.5);
     //assert();
     printf("\tTest #5 finished with result: %f\n", resultFn5);
 
@@ -164,7 +167,7 @@ int main()
     double resultFn6 = (*func6)();
     //assert();
     printf("\tTest #6 finished with result: %f\n", resultFn6);
-/*
+
     printf("\nTest #7:\n");
     functionIndex = 6;
     redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
@@ -181,7 +184,7 @@ int main()
     int(*func8)(int, int, int, int, int, int, int, int, int, int) = redirectorAddress;
     int resultFn8 = (*func8)(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5);
     assert(resultFn8 == FUNCTION_8_RESULT);
-    printf("\tTest #7 finished with result: %d\n", resultFn8);*/
+    printf("\tTest #7 finished with result: %d\n", resultFn8);
 
     return 0;
 }
