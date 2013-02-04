@@ -84,21 +84,31 @@ struct FunctionStatistic
     void* realFuncAddr;                       // Address of the function
 };
 
-struct WrappingContext          // Size     Offset          | Size      Offset
+struct WrappingContext          // Size     | Offset
 {
-    // real return address
-    void * realReturnAddr;      // 4bytes   0               | 8bytes    0
-    // content of -4(%%old_ebp)                             |
-    void * oldEbpLocVar; 		// 4bytes   4               | 8bytes    8
-    // function return value                                |
-    void * eax;                 // 4bytes   8               | 8bytes    16
-    double doubleResult;        // 8bytes   12              | 8bytes    24
-    void * functionPointer;     // 4bytes   20              | 8bytes    32
-    uint64_t old_ebx;           // 4bytes   24	            | 8bytes    40
-    uint64_t old_edx;           // 4bytes   28              | 8bytes    48
-    uint64_t old_ecx;           // 4bytes   32              | 8bytes    56
-    uint64_t startTime;         // function starting time   |
-    uint64_t endTime;           // function ending time     |
+    // Real return address
+    void * realReturnAddr;      // 8bytes   | 0
+    // Wrapperd function pointer
+    void * functionPointer;     // 8bytes   | 8
+    // Function return values
+    void * integerResult;       // 8bytes   | 16
+    double doubleResult;        // 8bytes   | 24
+    // Address of local variable of caller
+    uint64_t callerLocVar;      // 8bytes   | 32
+    // Registers storage
+    uint64_t rbp;               // 8bytes   | 40 
+    uint64_t rax;               // 8bytes   | 48
+    uint64_t rbx;               // 8bytes   | 56
+    uint64_t rcx;               // 8bytes   | 64
+    uint64_t rdx;               // 8bytes   | 72
+    uint64_t rdi;               // 8bytes   | 80
+    uint64_t rsi;               // 8bytes   | 88
+    uint64_t r8;                // 8bytes   | 96
+    uint64_t r9;                // 8bytes   | 104
+    // Function start time
+    uint64_t startTime;         // 8bytes   | 112
+    // Function end time
+    uint64_t endTime;           // 8bytes   | 120
 };
 
 

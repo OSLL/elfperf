@@ -4,6 +4,8 @@
 #include "../ld-routines.h"
 #include "../libelfperf.h"
 #include "sys/mman.h"
+#include <assert.h>
+
 
 #define ARG0 1
 #define ARG1 2
@@ -88,7 +90,7 @@ int main()
 
     struct testStruct * structResult=NULL;
 
-    int count = 1;
+    int count = 7;
     size_t allocSize = sizeof(void*) * REDIRECTOR_WORDS_SIZE * count + PAGESIZE - 1;
     size_t i = 0;
     void* redirectors = (void *)malloc(allocSize);
@@ -111,35 +113,21 @@ int main()
         *((unsigned int*)(redirectors+i)) = 0;
     }
 
-    // Getting redirector
+    printf("\n===== Start of test for wrappers and redirectors ======\n");
+
+    printf("\nTest #1:\n");
     int functionIndex = 0;
     void* redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
+    writeRedirectionCode(redirectorAddress, testFunction1);
+    void(*func1)() = redirectorAddress;
+    (*func1)();
 
-    // Writing redirection code
-    writeRedirectionCode(redirectorAddress, testFunction4);
+    printf("\nTest #2:\n");
+    functionIndex = 1;
+    redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
+    writeRedirectionCode(redirectorAddress, testFunction2);    
+    void(*func2)(int, int) = redirectorAddress;
+    (*func2)(128, 256);
 
-    // Executing    
-    int(*func4)(int, int) = redirectorAddress;
-    int result = (*func4)(1, 2);
-
-    printf("== Result %d\n", result);
-
-//    struct WrappingContext* context =  getNewContext_();
-//    printf("Wrapping context: %x\n", context);
-//    context->realReturnAddr = 0x124;
-   /* asm volatile (
-        "push $label\n"
-        "push %rbp\n"
-        "push %rcx\n"
-        "push %rdx\n"
-        "push %rbx\n"
-        "movq $testFunction1, %rdx\n"
-        "add $4, %rdx\n"
-        "mov $wrapper, %rbx\n"
-        "add $4, %rbx\n"
-        "jmpq %rbx\n"
-        "label:\n"
-    );*/
-   
     return 0;
 }

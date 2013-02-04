@@ -57,8 +57,8 @@ static int s_statsCount = 0;
 // Record function start time into context->startTime
 void record_start_time(void * context)
 {
-    //printf("ELFPERF_DEBUG: record_start_time\n ");
     struct WrappingContext * cont = (struct WrappingContext *)context;
+    printf("ELFPERF_DEBUG: record_start_time for context: %x\n", context);
     cont->startTime = getRdtscTicks();
 }
 
@@ -67,11 +67,12 @@ void record_start_time(void * context)
 void record_end_time(void * context)
 {
     struct WrappingContext * cont = (struct WrappingContext *)context;
-
+    printf("ELFPERF_DEBUG: record_end_time for context: %x\n", context);
+ 
     cont->endTime = getRdtscTicks();
 
     uint64_t duration = cont->endTime - cont->startTime;
-    //printf("Function duration = %llu ticks\n", duration);
+    printf("Function duration = %llu ticks\n", duration);
 
     // Updating statistic for function
     updateStat(cont->functionPointer - 3, duration);
