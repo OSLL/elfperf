@@ -105,6 +105,23 @@ struct WrappingContext          // Size     | Offset
     uint64_t rsi;               // 8bytes   | 88
     uint64_t r8;                // 8bytes   | 96
     uint64_t r9;                // 8bytes   | 104
+    // XMM registers
+    uint64_t hi_xmm0;           // 8bytes   | 112
+    uint64_t lo_xmm0;           // 8bytes   | 120
+    uint64_t hi_xmm1;           // 8bytes   | 128
+    uint64_t lo_xmm1;           // 8bytes   | 136
+    uint64_t hi_xmm2;           // 8bytes   | 144
+    uint64_t lo_xmm2;           // 8bytes   | 152
+    uint64_t hi_xmm3;           // 8bytes   | 160
+    uint64_t lo_xmm3;           // 8bytes   | 168
+    uint64_t hi_xmm4;           // 8bytes   | 176
+    uint64_t lo_xmm4;           // 8bytes   | 184
+    uint64_t hi_xmm5;           // 8bytes   | 192
+    uint64_t lo_xmm5;           // 8bytes   | 200
+    uint64_t hi_xmm6;           // 8bytes   | 208
+    uint64_t lo_xmm6;           // 8bytes   | 216
+    uint64_t hi_xmm7;           // 8bytes   | 224
+    uint64_t lo_xmm7;           // 8bytes   | 232
     // Function start time
     uint64_t startTime;         // 8bytes   | 112
     // Function end time
