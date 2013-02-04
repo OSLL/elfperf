@@ -75,7 +75,7 @@ void record_end_time(void * context)
     printf("Function duration = %llu ticks\n", duration);
 
     // Updating statistic for function
-    updateStat(cont->functionPointer - 3, duration);
+    //updateStat(cont->functionPointer - 3, duration);
     //errno = 0;
 }
 

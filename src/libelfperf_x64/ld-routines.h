@@ -92,7 +92,7 @@ struct WrappingContext          // Size     | Offset
     void * functionPointer;     // 8bytes   | 8
     // Function return values
     void * integerResult;       // 8bytes   | 16
-    double doubleResult;        // 8bytes   | 24
+    double floatingPointResult; // 8bytes   | 24
     // Address of local variable of caller
     uint64_t callerLocVar;      // 8bytes   | 32
     // Registers storage

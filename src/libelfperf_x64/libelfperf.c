@@ -293,8 +293,9 @@ void wrapper()
         "mov    32(%r15), %rbx\n"   // %rbx = saved value of 1st local var of caller
         "mov    %rbx, -8(%rbp)\n"   // 1st local var of caller = old value
         // Save return values of wrapped function
-        "mov    %rax, 15(%r15)\n"   // context->integerResult = %rax
-        // TODO double result
+        "mov    %rax, 16(%r15)\n"   // context->integerResult = %rax
+        // TODO floating point result
+        "movsd  %xmm0, 24(%r15)\n"
 
         // Restore registers' state from context
         //"mov    48(%r15), %rax\n"   // %rax = context->rax
@@ -314,9 +315,10 @@ void wrapper()
         "pop    %r15\n"
         // Preparing to exit from wrapper
         "mov    15(%r15), %rax\n"   // %rax = context->integerResult
-        // TODO double result
+        // TODO floating point result
         "push   (%r15)\n"           // restore real return address, i.e. push context->realReturnAddr
         "movq   $0, (%r15)\n"       // context->realReturnAddr = 0
+        "movsd  24(%r15), %xmm0\n"
         "ret\n"
     );
 }
