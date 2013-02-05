@@ -39,14 +39,26 @@
 #define LIBELFPERF_H_
 
 #include <stdbool.h>
+#include <unistd.h>
 #include "ld-routines.h"
 
 #ifndef PAGESIZE
-#define PAGESIZE 4096
+//#define PAGESIZE 4096
 #endif
 
-#define REDIRECTOR_WORDS_SIZE 4
-#define REDIRECTOR_SIZE 16
+#ifdef ELFPERF_ARCH_32
+
+    #define REDIRECTOR_WORDS_SIZE 4
+    #define REDIRECTOR_SIZE 16
+    #define FCN_PTR_OFFSET 3
+
+#elif defined ELFPERF_ARCH_64  
+
+    #define REDIRECTOR_WORDS_SIZE 3 
+    #define REDIRECTOR_SIZE 22 
+    #define FCN_PTR_OFFSET 4 
+
+#endif
 
 #define ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE "ELFPERF_PROFILE_FUNCTION"
 #define ELFPERF_ENABLE_VARIABLE "ELFPERF_ENABLE"
@@ -55,7 +67,7 @@
 
 static struct WrappingContext * getNewContext_();
 
-void wrapper();
+void wrapper() __attribute__((visibility("hidden")));
 
 void writeRedirectionCode(unsigned char * redirector, void * fcnPtr);
 

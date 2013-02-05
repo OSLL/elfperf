@@ -1,6 +1,10 @@
-all_with_console_output: enable_console_output libelfperf glibc_patch
+all_with_console_output_32: enable_console_output libelfperf_32 glibc_patch
 
-all_without_console_output: disable_console_output libelfperf glibc_patch
+all_without_console_output_32: disable_console_output libelfperf_32 glibc_patch
+
+all_with_console_output_64: enable_console_output libelfperf_64 glibc_patch
+
+all_without_console_output_64: disable_console_output libelfperf_64 glibc_patch
 
 disable_console_output: 
 	cp src/libelfperf/config.h_template src/libelfperf/config.h
@@ -16,11 +20,12 @@ set_arch_32:
 set_arch_64:
 	sed -i "s/Architecture/#define ELFPERF_ARCH_64/g" src/libelfperf/config.h
 
-libelfperf:
-	make -C src/libelfperf/ lib 
 
-libelfperf_x64:
-	make -C src/libelfperf_x64/ lib 
+libelfperf_32: set_arch_32
+	make -C src/libelfperf/ lib_32
+
+libelfperf_64: set_arch_64
+	make -C src/libelfperf/ lib_64 
 
 glibc_patch:
 	cd build/ && ./build_glibc.sh && make -j5 install

@@ -46,6 +46,7 @@
 #include <sys/shm.h>
 #include <sys/mman.h>
 #include <errno.h>
+#include "config.h"
 
 
 #define ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE "ELFPERF_PROFILE_FUNCTION"
@@ -62,7 +63,6 @@
 #define _dl_debug_printf printf
 #endif
 
-#include "config.h"
 
 //Preventing console output from ld.so
 #ifdef NO_CONSOLE_OUTPUT_LD_SO
@@ -85,6 +85,8 @@ struct FunctionStatistic
     void* realFuncAddr;                       // Address of the function
 };
 
+#ifdef ELFPERF_ARCH_32
+
 struct WrappingContext 
 {
     // real return address
@@ -102,6 +104,53 @@ struct WrappingContext
     uint64_t endTime;           // function ending time
 };
 
+#elif defined ELFPERF_ARCH_64
+
+struct WrappingContext          // Size     | Offset
+{
+    // Real return address
+    void * realReturnAddr;      // 8bytes   | 0
+    // Wrapperd function pointer
+    void * functionPointer;     // 8bytes   | 8
+    // Function return values
+    void * integerResult;       // 8bytes   | 16
+    double floatingPointResult; // 8bytes   | 24
+    // Address of local variable of caller
+    uint64_t callerLocVar;      // 8bytes   | 32
+    // Registers storage
+    uint64_t rbp;               // 8bytes   | 40 
+    uint64_t rax;               // 8bytes   | 48
+    uint64_t rbx;               // 8bytes   | 56
+    uint64_t rcx;               // 8bytes   | 64
+    uint64_t rdx;               // 8bytes   | 72
+    uint64_t rdi;               // 8bytes   | 80
+    uint64_t rsi;               // 8bytes   | 88
+    uint64_t r8;                // 8bytes   | 96
+    uint64_t r9;                // 8bytes   | 104
+    // XMM registers
+    uint64_t hi_xmm0;           // 8bytes   | 112
+    uint64_t lo_xmm0;           // 8bytes   | 120
+    uint64_t hi_xmm1;           // 8bytes   | 128
+    uint64_t lo_xmm1;           // 8bytes   | 136
+    uint64_t hi_xmm2;           // 8bytes   | 144
+    uint64_t lo_xmm2;           // 8bytes   | 152
+    uint64_t hi_xmm3;           // 8bytes   | 160
+    uint64_t lo_xmm3;           // 8bytes   | 168
+    uint64_t hi_xmm4;           // 8bytes   | 176
+    uint64_t lo_xmm4;           // 8bytes   | 184
+    uint64_t hi_xmm5;           // 8bytes   | 192
+    uint64_t lo_xmm5;           // 8bytes   | 200
+    uint64_t hi_xmm6;           // 8bytes   | 208
+    uint64_t lo_xmm6;           // 8bytes   | 216
+    uint64_t hi_xmm7;           // 8bytes   | 224
+    uint64_t lo_xmm7;           // 8bytes   | 232
+    // Function start time
+    uint64_t startTime;         // 8bytes   | 112
+    // Function end time
+    uint64_t endTime;           // 8bytes   | 120
+};
+
+#endif
 
 // Stores all data for redirectors initialization and
 // libelfperf functions proper work in ld.so runtime
@@ -141,6 +190,34 @@ struct FunctionInfo
     void* addr;
 };
 
+#ifdef ELFPERF_ARCH_64
+
+extern char **environ;
+
+/*
+ * Our realization of getenv. For some reasons getenv doesnt work for x64
+ */
+static char* our_getenv_(char* name){
+
+    char** env = environ;
+    for (; *env; ++env){
+        // Find variable which starts with @name@ str
+        if (strstr(*env, name) == *env ){
+            // Locate position of '=' in the string
+            char * dataPosition = strchr(*env, '=');
+            if ( dataPosition != NULL ){
+                return dataPosition+1;
+            }else{
+                // No '=' occurs in the *env - return NULL
+                return NULL;
+            }
+        }
+    }
+        
+    return NULL;
+}
+#define getenv our_getenv_
+#endif
 
 /*
  * Returns 1 if evnvironment variables ELFPERF_ENABLE and ELFPERF_PROFILE_FUNCTION are set
