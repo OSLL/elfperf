@@ -252,7 +252,7 @@ int main()
     int(*func8)(int, int, int, int, int, int, int, int, int, int) = redirectorAddress;
     int resultFn8 = (*func8)(TEST8_ARG0, TEST8_ARG1, TEST8_ARG2, TEST8_ARG3, TEST8_ARG4, TEST8_ARG5, TEST8_ARG6, TEST8_ARG7, TEST8_ARG8, TEST8_ARG9);
     assert(resultFn8 == TEST8_RESULT);
-    printf("\nTest #7 is successfull!!! Result = %d\n", resultFn8);
+    printf("\nTest #8 is successfull!!! Result = %d\n", resultFn8);
 
     return 0;
 }

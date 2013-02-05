@@ -44,7 +44,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <stdbool.h>
-#include "../timers/global_stats.h"
+#include "global_stats.h"
 
 extern void testFunc(char * a);
 
