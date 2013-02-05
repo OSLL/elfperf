@@ -47,6 +47,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/mman.h>
 
 #define ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE "ELFPERF_PROFILE_FUNCTION"
 #define ELFPERF_ENABLE_VARIABLE "ELFPERF_ENABLE"
@@ -62,7 +63,7 @@
 #define _dl_debug_printf printf
 #endif
 
-#include "config.h"
+//#include "config.h"
 #define ELFPERF_ARCH_64
 //#define NO_CONSOLE_OUTPUT_LD_SO
 

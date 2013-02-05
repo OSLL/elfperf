@@ -39,8 +39,8 @@
 #define _ELFPERF_GLOBAL_STATS_H_
 
 #include <stdint.h>
-#include "../libelfperf/libelfperf.h"
-#include "../libelfperf/ld-routines.h"
+#include "../libelfperf_x64/libelfperf.h"
+#include "../libelfperf_x64/ld-routines.h"
 
 struct FunctionStatistic* getFunctionStatistic(void* realFuncAddr);
 void updateStat(void* funcAddr, uint64_t diffTime);

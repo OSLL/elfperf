@@ -285,7 +285,10 @@ void wrapper()
         "movdqu %xmm6, 208(%r15)\n" // context->xmm0 = xmm0;
         "movdqu %xmm7, 224(%r15)\n" // context->xmm0 = xmm0;
         // Change real return address on label inside of wrapper
-        "movq   $wrapper_ret_point, 0x8(%rbp)\n"
+        //"leaq   7(%rip), %rbx\n"
+        "leaq   wrapper_ret_point(%rip), %rax\n"
+        //"addq   %rbx, %rax\n"
+        "mov   %rax, 0x8(%rbp)\n"
     );
 
     asm volatile (

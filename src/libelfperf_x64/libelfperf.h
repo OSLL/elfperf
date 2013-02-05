@@ -55,7 +55,7 @@
 
 static struct WrappingContext * getNewContext_();
 
-void wrapper();
+void wrapper() __attribute__((visibility("hidden")));
 
 void writeRedirectionCode(unsigned char * redirector, void * fcnPtr);
 
