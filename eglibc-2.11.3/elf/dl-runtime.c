@@ -198,7 +198,7 @@ static struct ElfperfFunctions * getElfperfFunctions(struct link_map* l, int fla
 		//(struct ElfperfFunctions *)malloc(sizeof(struct ElfperfFunctions));
 	
 
-	result->wrapper =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_WRAPPER_SYMBOL, l, flags);
+//	result->wrapper =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_WRAPPER_SYMBOL, l, flags);
 	result->initWrapperRedirectors =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_INIT_WRAPPER_REDIRECTORS_SYMBOL, l, flags);
 	result->addNewFunction =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_ADD_NEW_FUNCTION_SYMBOL, l, flags);
 	result->isFunctionInFunctionList = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_IS_FUNCTION_IN_FUNCTION_LIST_SYMBOL, l, flags);
@@ -207,7 +207,7 @@ static struct ElfperfFunctions * getElfperfFunctions(struct link_map* l, int fla
 
 
 	// Something went wrong - symbol not found
-	if ( result->wrapper == NULL || result->initWrapperRedirectors == NULL 
+	if ( /*result->wrapper == NULL || */result->initWrapperRedirectors == NULL 
 		|| result->addNewFunction == NULL || result->isFunctionRedirectorRegistered == NULL 
 		|| result->getRedirectorAddressForName == NULL || result->isFunctionInFunctionList == NULL)
 	return NULL;
@@ -396,7 +396,7 @@ _dl_fixup (
       for (i = 0 ; i < context.count; i++) {
           _dl_error_printf("\t%s\n", context.names[i]);
       }
-      void *wr = elfperfFuncs->wrapper;
+//      void *wr = elfperfFuncs->wrapper;
 
       _dl_error_printf("Going to initWrapperRedirectors\n");
       ( * (elfperfFuncs->initWrapperRedirectors))(&context);
