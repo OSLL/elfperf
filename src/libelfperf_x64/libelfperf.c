@@ -221,6 +221,7 @@ void wrapper()
         "push   %r8\n"
         "push   %r9\n"
         // push xmm0-7 on stack
+        "sub    $16, %rsp\n"
         "movdqu %xmm0, (%rsp)\n"
         "sub    $16, %rsp\n"
         "movdqu %xmm1, (%rsp)\n"
@@ -236,12 +237,10 @@ void wrapper()
         "movdqu %xmm6, (%rsp)\n"
         "sub    $16, %rsp\n"
         "movdqu %xmm7, (%rsp)\n"
-        "sub    $16, %rsp\n"
         // Get new context for call
         "call   getNewContext_\n"   // rax = getNewContext
         "mov    %rax, %r15\n"        // r15 = &context
         // pop xmm7-0 from stack
-        "add    $16, %rsp\n"
         "movdqu (%rsp), %xmm7\n"
         "add    $16, %rsp\n"
         "movdqu (%rsp), %xmm6\n"
@@ -257,6 +256,7 @@ void wrapper()
         "movdqu (%rsp), %xmm1\n"
         "add    $16, %rsp\n"
         "movdqu (%rsp), %xmm0\n"
+        "add    $16, %rsp\n"
         // Restore registers state
         "pop    %r9\n"
         "pop    %r8\n"
@@ -285,10 +285,8 @@ void wrapper()
         "movdqu %xmm6, 208(%r15)\n" // context->xmm0 = xmm0;
         "movdqu %xmm7, 224(%r15)\n" // context->xmm0 = xmm0;
         // Change real return address on label inside of wrapper
-        //"leaq   7(%rip), %rbx\n"
         "leaq   wrapper_ret_point(%rip), %rax\n"
-        //"addq   %rbx, %rax\n"
-        "mov   %rax, 0x8(%rbp)\n"
+        "mov   %rax, 0x8(%rbp)\n"       
     );
 
     asm volatile (
@@ -313,16 +311,6 @@ void wrapper()
         "pop    %rdi\n"
         "pop    %rsi\n"
         "pop    %rax\n"
-        // Save registers inside of context
-        //"mov    %rbp, 40(%r15)\n"   // context->rbp = %rbp
-        //"mov    %rax, 48(%r15)\n"   // context->rax = %rax
-        "mov    %rbx, 56(%r15)\n"   // context->rbx = %rbx
-        "mov    %rcx, 64(%r15)\n"   // context->rcx = %rcx
-        "mov    %rdx, 72(%r15)\n"   // context->rdx = %rdx
-        "mov    %rdi, 80(%r15)\n"   // context->rdi = %rdi
-        "mov    %rsi, 88(%r15)\n"   // context->rsi = %rsi
-        "mov    %r8, 96(%r15)\n"    // context->r8 = %r8
-        "mov    %r9, 104(%r15)\n"   // context->r9 = %r9
         // Restore XMM registers
         "movdqu 112(%r15), %xmm0\n"
         "movdqu 128(%r15), %xmm1\n"
@@ -346,24 +334,16 @@ void wrapper()
         "mov    %rbx, -8(%rbp)\n"   // 1st local var of caller = old value
         // Save return values of wrapped function
         "mov    %rax, 16(%r15)\n"   // context->integerResult = %rax
-        "movsd  %xmm0, 24(%r15)\n"
-
-        // Restore registers' state from context
-        //"mov    48(%r15), %rax\n"   // %rax = context->rax
-        "mov    56(%r15), %rbx\n"   // %rbx = context->rbx
-        "mov    64(%r15), %rcx\n"   // %rcx = context->rcx
-        "mov    72(%r15), %rdx\n"   // %rdx = context->rdx
-        "mov    80(%r15), %rdi\n"   // %rdi = context->rdi
-        "mov    88(%r15), %rsi\n"   // %rsi = context->rsi
-        "mov    96(%r15), %r8\n"    // %r8 = context->r8
-        "mov    104(%r15), %r9\n"   // %r9 = context->r9
+        "movsd  %xmm0, 24(%r15)\n"  // context->floatingPointResult = %xmm0
         // Save registers before record_end_time call
+        "push   %rdx\n"
         "push   %r15\n"
         // Call record_end_time
         "mov    %r15, %rdi\n"       // %rdi = &context (arg0 for record_end_time)
         "call   record_end_time\n"
         // Restore registers state
         "pop    %r15\n"
+        "pop    %rdx\n"
         // Preparing to exit from wrapper
         "mov    16(%r15), %rax\n"   // %rax = context->integerResult
         "push   (%r15)\n"           // restore real return address, i.e. push context->realReturnAddr
@@ -388,7 +368,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     
     uint64_t functionPointer = (uint64_t)(fcnPtr)+4;
 
-    // mov fcnPtr+3, %eax     48 b8 ...
+    // mov fcnPtr+4, %eax     48 b8 ...
     redirector[0] = 0x48;
     redirector[1] = 0xb8;
     
