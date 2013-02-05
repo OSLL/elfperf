@@ -221,6 +221,7 @@ void wrapper()
         "push   %r8\n"
         "push   %r9\n"
         // push xmm0-7 on stack
+        "sub    $16, %rsp\n"
         "movdqu %xmm0, (%rsp)\n"
         "sub    $16, %rsp\n"
         "movdqu %xmm1, (%rsp)\n"
@@ -236,12 +237,10 @@ void wrapper()
         "movdqu %xmm6, (%rsp)\n"
         "sub    $16, %rsp\n"
         "movdqu %xmm7, (%rsp)\n"
-        "sub    $16, %rsp\n"
         // Get new context for call
         "call   getNewContext_\n"   // rax = getNewContext
         "mov    %rax, %r15\n"        // r15 = &context
         // pop xmm7-0 from stack
-        "add    $16, %rsp\n"
         "movdqu (%rsp), %xmm7\n"
         "add    $16, %rsp\n"
         "movdqu (%rsp), %xmm6\n"
@@ -257,6 +256,7 @@ void wrapper()
         "movdqu (%rsp), %xmm1\n"
         "add    $16, %rsp\n"
         "movdqu (%rsp), %xmm0\n"
+        "add    $16, %rsp\n"
         // Restore registers state
         "pop    %r9\n"
         "pop    %r8\n"
@@ -285,10 +285,8 @@ void wrapper()
         "movdqu %xmm6, 208(%r15)\n" // context->xmm0 = xmm0;
         "movdqu %xmm7, 224(%r15)\n" // context->xmm0 = xmm0;
         // Change real return address on label inside of wrapper
-        //"leaq   7(%rip), %rbx\n"
         "leaq   wrapper_ret_point(%rip), %rax\n"
-        //"addq   %rbx, %rax\n"
-        "mov   %rax, 0x8(%rbp)\n"
+        "mov   %rax, 0x8(%rbp)\n"       
     );
 
     asm volatile (
@@ -388,7 +386,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     
     uint64_t functionPointer = (uint64_t)(fcnPtr)+4;
 
-    // mov fcnPtr+3, %eax     48 b8 ...
+    // mov fcnPtr+4, %eax     48 b8 ...
     redirector[0] = 0x48;
     redirector[1] = 0xb8;
     

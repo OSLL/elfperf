@@ -110,7 +110,7 @@ int main()
     int functionIndex;
     void* redirectorAddress;
 
-    printf("\nTest #1:\n");
+/*    printf("\nTest #1:\n");
     functionIndex = 0;
     redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);
     writeRedirectionCode(redirectorAddress, testFunction1);
@@ -134,7 +134,7 @@ int main()
     int resultFn3 = (*func3)();
     assert(resultFn3 == FUNCTION_3_RESULT);
     printf("\tTest #3 finished with result: %d\n", resultFn3);
-
+*/
     printf("\nTest #4:\n");
     functionIndex = 3;
     redirectorAddress = redirectors + REDIRECTOR_WORDS_SIZE * functionIndex*sizeof(void*);   
