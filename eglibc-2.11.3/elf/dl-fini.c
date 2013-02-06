@@ -23,7 +23,7 @@
 #include <ldsodefs.h>
 
 //#define NO_CONSOLE_OUTPUT_LD_SO
-#include "../../src/libelfperf_x64/ld-routines.h"
+#include "../../src/libelfperf/ld-routines.h"
 #include <sys/stat.h> 
 #include <sys/shm.h>
 #include <fcntl.h>

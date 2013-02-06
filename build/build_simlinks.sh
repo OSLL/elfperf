@@ -10,3 +10,4 @@ ln -s /tools/lib/libc-2.11.3.so /tools/lib/libc.so.6
 
 # Short simlink allows to replace real loader
 ln -s /tools/lib/ld-2.11.3.so /tools/lib/ld-2.so
+ln -s /tools/lib/ld-2.11.3.so /tools/lib/ld-2.11.3_x64.so

@@ -34,7 +34,7 @@
 #include <stdint.h>
 #include <limits.h>    /* for PAGESIZE */
 
-#include "../../src/libelfperf_x64/ld-routines.h"
+#include "../../src/libelfperf/ld-routines.h"
 //////////////////////////////////////////////////////////////////////////////////
 
 #if (!defined ELF_MACHINE_NO_RELA && !defined ELF_MACHINE_PLT_REL) \
