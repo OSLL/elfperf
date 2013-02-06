@@ -158,9 +158,9 @@ struct WrappingContext          // Size     | Offset
     uint64_t hi_xmm7;           // 8bytes   | 224
     uint64_t lo_xmm7;           // 8bytes   | 232
     // Function start time
-    uint64_t startTime;         // 8bytes   | 112
+    uint64_t startTime;         // 8bytes   | 240
     // Function end time
-    uint64_t endTime;           // 8bytes   | 120
+    uint64_t endTime;           // 8bytes   | 248
 };
 
 #endif
