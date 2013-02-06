@@ -63,6 +63,19 @@
 #define _dl_debug_printf printf
 #endif
 
+#ifdef ELFPERF_ARCH_32
+
+    #define REDIRECTOR_WORDS_SIZE 4
+    #define REDIRECTOR_SIZE 16
+    #define FCN_PTR_OFFSET 3
+
+#elif defined ELFPERF_ARCH_64  
+
+    #define REDIRECTOR_WORDS_SIZE 3 
+    #define REDIRECTOR_SIZE 24 
+    #define FCN_PTR_OFFSET 4 
+
+#endif
 
 //Preventing console output from ld.so
 #ifdef NO_CONSOLE_OUTPUT_LD_SO

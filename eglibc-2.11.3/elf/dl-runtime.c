@@ -351,9 +351,9 @@ _dl_fixup (
   bool isDlopen = (strcmp("dlopen", name)==0);
   bool isLibDl = (strstr(l->l_name, ELFPERF_LIBDL_NAME) != NULL); 
 
-  if (isElfPerfEnabled() && ( (isFunctionProfiled(name) && !isLibDl) || (isDlopen && isLibDl) ) 
+  if (isElfPerfEnabled() &&  (isFunctionProfiled(name) || isDlopen )  
       && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad
-	&& isNotLibC && isNotLibelfperf) {
+	&& isNotLibC && isNotLibelfperf && !isLibDl) {
       _dl_error_printf("All conditions for %s profiling is fine\n", name);
   } else {
       goto skip_elfperf;

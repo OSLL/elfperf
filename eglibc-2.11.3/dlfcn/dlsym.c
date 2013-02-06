@@ -26,7 +26,7 @@
 
 
 #define _dl_debug_printf printf
-#define NO_CONSOLE_OUTPUT_LD_SO
+//#define NO_CONSOLE_OUTPUT_LD_SO
 #include "../../src/libelfperf/ld-routines.h"
 
 #if !defined SHARED && defined IS_IN_libdl

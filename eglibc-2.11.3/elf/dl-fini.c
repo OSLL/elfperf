@@ -207,10 +207,6 @@ static void printElfperfResults()
     // Output of results
     for (i = 0; i < count && *(stat+i) != NULL; i++) {
       _dl_debug_printf("Printing stats, iteration %u \n",i);
-      // Because _dl_debug_printf cant output 64byte numbers
-      // this hack performed
-      uint64_t totalTime = (stat[i])->totalDiffTime;
-      void ** timePtr = (void **)&totalTime;
 			
       _dl_debug_printf("Try to get FunctionInfo\n");
       struct FunctionInfo* currentInfo = getInfoByAddr((stat[i])->realFuncAddr, list);
@@ -223,7 +219,13 @@ static void printElfperfResults()
 
       char* name = currentInfo->name;
 
-      // Output to console 
+      // Because _dl_debug_printf cant output 64byte numbers
+      // this hack performed
+      uint64_t totalTime = (stat[i])->totalDiffTime;
+
+      #ifdef ELFPERF_ARCH_32
+      void ** timePtr = (void **)&totalTime;
+     // Output to console 
       _dl_debug_printf("Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
                         name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
 
@@ -232,6 +234,18 @@ static void printElfperfResults()
         _dl_dprintf(pFile,"Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
                     name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
       }
+      #elif defined ELFPERF_ARCH_64
+      // Output to console 
+      _dl_debug_printf("Statistic for %s(%x) : total calls number = %u, total ticks number = %u \n",
+                        name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, totalTime );
+
+      // Output to file if it is opened
+      if ( pFile != NULL) {
+        _dl_dprintf(pFile,"Statistic for %s(%x) : total calls number = %u, total ticks number = %u \n",
+                    name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, totalTime );
+      }
+      #endif
+
     }
     close (pFile);
     shmdt(shm);

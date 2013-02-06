@@ -75,7 +75,7 @@ void record_end_time(void * context)
     printf("Function duration = %llu ticks\n", duration);
 
     // Updating statistic for function
-    //updateStat(cont->functionPointer - 3, duration);
+    updateStat(cont->functionPointer - FCN_PTR_OFFSET, duration);
     //errno = 0;
 }
 
@@ -129,7 +129,7 @@ static void initStats(){
 	get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
 	s_stats = (struct FunctionStatistic**)mmap(0, sizeof(struct FunctionStatistic*)*count, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 	//(struct FunctionStatistic**)malloc(sizeof(struct FunctionStatistic*)*count);
-	printf("\tInitializing shared memory %p\n", s_stats);
+	printf("\tInitializing shared memory for FunctionStatistic%p\n", s_stats);
 }
 
 static void initSharedMemory(){
@@ -154,7 +154,7 @@ static void initSharedMemory(){
 	// Set flag - shared memory is already inited
 	isSharedMemoryInited = 1;	
 		
-	printf("Shared memory inited successfuly: shm = %p ,s_stats = %p\n", *shm,  s_stats );
+	printf("Shared memory for FunctionStorage inited successfuly: shm = %p ,s_stats = %p\n", *shm,  s_stats );
 
 	// Unlock
 	//sharedMemoryInitSpinlock = 0;
