@@ -8,7 +8,7 @@
 
 void *p, *f;
 
-#define REPEATS_NUMBER 100
+#define REPEATS_NUMBER 4
 #define THREAD_COUNT 4 
 
 void * threadFunction(int* threadNum){
