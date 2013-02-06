@@ -752,7 +752,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     redirector[20] = 0xFF;
     redirector[21] = 0xe3;
     
-    printf("Created redirector for %p at %p, wrapper = %p, %x\n", fcnPtr, redirector, wrapper, wrapper_);
+    printf("Created redirector for %p at %p, wrapper = %p,\n", fcnPtr, redirector, wrapper_);
 }
 #endif
 
