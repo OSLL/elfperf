@@ -46,6 +46,7 @@
 #include <stdbool.h>
 #include "../timers/global_stats.h"
 #include "libelfperf.h"
+#include "errno.h"
 
 extern void testFunc(char * a);
 
@@ -698,7 +699,7 @@ void initWrapperRedirectors(struct RedirectorContext *context)
 {
     initFunctionInfoStorage();
 
-    printf("Starting initWrapperRedirectors %p\n", context);
+    printf("Starting initWrapperRedirectors %p, %d \n", context, getpagesize());
 
     // Memory allocation
     size_t allocSize =  REDIRECTOR_SIZE * context->count + getpagesize() - 1;
@@ -709,14 +710,15 @@ void initWrapperRedirectors(struct RedirectorContext *context)
 
     // Aligning by page border
     printf("Before aligment %x, %x\n", context->redirectors, REDIRECTOR_SIZE*context->count + getpagesize()-1);
-    context->redirectors = (void *)(((int) context->redirectors + getpagesize()-1) & ~(getpagesize()-1));
+    context->redirectors = (void *)(((uint64_t) context->redirectors + getpagesize()-1) & ~(getpagesize()-1));
+    printf("After aligment %x\n", context->redirectors);
     int pagesNum = allocSize/getpagesize() ;
     printf("Number of memory pages %x\n", pagesNum);
 
     for (i = 0; i < pagesNum; i++) {
         printf("Going to do mprotect\n");
         if (mprotect(context->redirectors + getpagesize()*i, getpagesize(), PROT_READ | PROT_WRITE | PROT_EXEC)) {
-            printf("Couldn't mprotect");
+            printf("\t\tCouldn't mprotect, errno = %d\n", errno);
             //exit(errno);
             return;
         }
