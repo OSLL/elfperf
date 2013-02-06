@@ -464,32 +464,31 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     // mov $wrapper+4, %rbx
     // Skip stack frame construction - because we pass some extra params throw stack
     // and esp will not be good addr for new stack frame
-/*    unsigned int wrapper_;
+    uint64_t wrapper_;
 
     // Check first 3 bytes of function and choose appropriate wrapper.
     printf("First 3 bytes of function: \n");
-    printf("\t%x %x %x\n",
-        ((unsigned int)((void**)fcnPtr)[0]) & 0xFF,
-        (((unsigned int)((void**)fcnPtr)[0]) >> 8) & 0xFF,
-        (((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF
+    printf("\t%x %x %x %x\n",
+        ((uint64_t)((void**)fcnPtr)[0]) & 0xFF,
+        (((uint64_t)((void**)fcnPtr)[0]) >> 8) & 0xFF,
+        (((uint64_t)((void**)fcnPtr)[0]) >> 16) & 0xFF,
+        (((uint64_t)((void**)fcnPtr)[0]) >> 24) & 0xFF       
     );
 
-    if ( (((unsigned int)((void**)fcnPtr)[0]) & 0xFF) == 0x55           // 1st byte
+    if ( (((uint64_t)((void**)fcnPtr)[0]) & 0xFF) == 0x55           // 1st byte
          &&
-         ((((unsigned int)((void**)fcnPtr)[0]) >> 8) & 0xFF) == 0x89    // 2nd byte
+         ((((uint64_t)((void**)fcnPtr)[0]) >> 8) & 0xFF) == 0x48    // 2nd byte
          &&
-         ((((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF) == 0xe5 ) // 3rd byte
+         ((((uint64_t)((void**)fcnPtr)[0]) >> 16) & 0xFF) == 0x89   // 3rd byte
+          &&
+         ((((uint64_t)((void**)fcnPtr)[0]) >> 24) & 0xFF) == 0xe5 ) // 4th byte
     {
-        printf("ELFPERF_DEBUG: Chosen 1st wrapper for redirector\n");
-        wrapper_ = (unsigned int)&wrapper + 3;
+        printf("ELFPERF_DEBUG: Chosen normal wrapper for redirector\n");
+        wrapper_ = (uint64_t)&wrapper + 4;
     } else {
-        wrapper_ = (unsigned int)&wrapper2 + 3;
-        printf("ELFPERF_DEBUG: Chosen 2nd wrapper for redirector\n");
+        wrapper_ = (uint64_t)&wrapper_no_stack_frame + 4;
+        printf("ELFPERF_DEBUG: Chosen wrapper_no_stack_frame for redirector\n");
     }
-*/
-    /////
-    uint64_t wrapper_ = (uint64_t)&wrapper_no_stack_frame+4;
-    /////
 
     // mov wrapper, %edx     48 bb ...
     redirector[10] = 0x48;

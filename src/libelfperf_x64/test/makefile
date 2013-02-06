@@ -1,6 +1,6 @@
 all: clean libelfperf bin
 
-bin: test_no_frame
+bin: test
 
 libelfperf:
 	make -C ..
