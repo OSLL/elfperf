@@ -113,87 +113,6 @@ static struct WrappingContext * getNewContext_()
 //void record_end_time(void*) __attribute__((visibility("hidden")));
 
 
-
-/* 
- * Code of wrapper for optimized functions which doesn't create new stack frame.
- */
-/*void wrapper2()
-{
-    /* Stack structure
-     * /////top/////
-     *    old_ebx
-     *    old_edx
-     *    old_ecx
-     *	  old_ebp
-     */
-    // In this wrapper we don't need to create new stack frame
-
-    // Allocating memory for new context and filling it.
-/*    asm volatile (
-      	"pushl  %edx\n"    
-        "call   getNewContext_\n"       // %eax = getNewContext()
-        "popl   %edx\n"
-        "movl   %eax, %ebx\n"           // %ebx = &context
-        "movl   %edx, 20(%ebx)\n"       // context.functionPointer = wrapperFunction_addr
-        "popl   24(%ebx)\n"             // context.old_ebx = old_ebx
-        "popl   28(%ebx)\n"             // context.old_edx = old_edx
-        "popl   32(%ebx)\n"             // context.old_ecx = old_ecx
-        "popl   4(%ebx)\n"              // context.oldEbpLocVar = old_ebp
-    );
-
-    // Saving real return address in memory and changing it with fake address inside of wrapper.
-    // Address of %ebp will be stored inside of context.
-    // And address of context will be inserted instead of %ebp.
-    asm volatile (  // Calculate address of WrappingContext
-        "movl   %ebp, 4(%ebx)\n"        // context.oldEbpLocVar = %ebp
-        "movl   %ebx, %ebp\n"           // %ebp = &context
-        "popl   (%ebx)\n"               // pop (return value) >> context.realReturnAddr 
-
-        "pushl  %ebx\n"                 // pushing context address into stack
-        "call   record_start_time\n"    // calculating of start time and storing it inside of context
-        "popl   %ebx\n"                 // restoring %ebx value
- 
-        "pushl  $wrapper2_ret_point\n"  // adding new return value for wrapped function 
-        "movl   20(%ebx), %edx\n"       // %edx = functionPointer
-        "subl   $3, %edx\n"             // %edx = %edx - 3 -- because wrapped function don't create stack frame
-                                        // and we don't need pass 3 first bytes of function
-        "jmp    %edx\n"                 // jumping to wrapper function
-    );
-
-    // Restoring of %ebp state and saving return values inside of context.
-    asm volatile (
-        "wrapper2_ret_point:\n"
-      
-        // Restoring %ebp value
-        "movl   %ebp, %ebx\n"           // %ebx = %context from %ebp
-        "movl   4(%ebx), %ebp\n"        // %ebp = context.oldEbpLocVar
-        "movl   %eax, 8(%ebx)\n"        // context->eax = %eax
-        "fstpl  0xc(%ebx)\n"            // context->doubleResult = ST0
-        
-        // Measuring time of function execution
-        "pushl  %ebx\n"                 // pushing context address to stack
-        "call   record_end_time\n"      // calling record_end_time
-        "popl   %ebx\n"                 // restoring %ebx value 
-    );
-
-    // Restoring value of %eax and st0.
-    // Restoring real return address and returning to caller
-    asm volatile (
-        "movl   8(%ebx), %eax\n"	// restoring eax
-        "fldl   0xc(%ebx)\n"        // restoring ST0
-        // Restoring registers
-        "movl   28(%ebx), %edx\n"   // restoring edx
-        "movl   32(%ebx), %ecx\n"   // restoring ecx    
-        "pushl  (%ebx)\n"           // returning to caller - pushing return address to stack
-        // Marking context as free and restoring %ebx
-        "pushl  24(%ebx)\n" 	    // old_ebx to stack
-        "movl   $0, (%ebx)\n"       // context.realReturnAddr = 0
-        "popl   %ebx\n"             // %ebx = old_ebx
-        "ret\n"
-    );
-}
-*/
-
 /*
  * Wrapper for functions which creates stack frame.
  */
@@ -201,7 +120,6 @@ void wrapper()
 {
     /* Stack structure
      * /////top/////
-     *    old_rbp
      *  return_addr
      *   arg n - 1
      *      ...
@@ -209,6 +127,9 @@ void wrapper()
      */
     // arguments from 0 to 5 are in %rdi, %rsi, %rdx, %rcx, %r8 and %r9
     asm volatile (
+        // Create new stack frame
+        "push   %rbp\n"
+        "mov    %rsp, %rbp\n"
         // Save value of old_ebp
         "mov    (%rbp), %rbx\n"
         // Save values of needed registers
@@ -355,10 +276,168 @@ void wrapper()
 
 
 /*
+ * Code of wrapper for optimized function which doesn't create stack frame
+ */
+void wrapper_no_stack_frame()
+{
+    /* Stack structure
+     * /////top/////
+     *    old_rbp
+     *  return_addr
+     *   arg n - 1
+     *      ...
+     *     arg 6
+     */
+    // arguments from 0 to 5 are in %rdi, %rsi, %rdx, %rcx, %r8 and %r9
+    
+    // In this wrapper we don't need to create new stack fram
+    asm volatile (
+        // Subtract 4 from %rax (functionPointer+4) because 
+        // we don't need to skip stack frame creation
+        "sub $4, %rax\n"
+        // Save values of needed registers
+        "push   %rax\n"
+        "push   %rbx\n"
+        "push   %rsi\n"
+        "push   %rdi\n"
+        "push   %rcx\n"
+        "push   %rdx\n"
+        "push   %r8\n"
+        "push   %r9\n"
+        // push xmm0-7 on stack
+        "sub    $16, %rsp\n"
+        "movdqu %xmm0, (%rsp)\n"
+        "sub    $16, %rsp\n"
+        "movdqu %xmm1, (%rsp)\n"
+        "sub    $16, %rsp\n"
+        "movdqu %xmm2, (%rsp)\n"
+        "sub    $16, %rsp\n"
+        "movdqu %xmm3, (%rsp)\n"
+        "sub    $16, %rsp\n"
+        "movdqu %xmm4, (%rsp)\n"
+        "sub    $16, %rsp\n"
+        "movdqu %xmm5, (%rsp)\n"
+        "sub    $16, %rsp\n"
+        "movdqu %xmm6, (%rsp)\n"
+        "sub    $16, %rsp\n"
+        "movdqu %xmm7, (%rsp)\n"
+        // Get new context for call
+        "call   getNewContext_\n"    // rax = getNewContext
+        "mov    %rax, %r15\n"        // r15 = &context
+        // pop xmm7-0 from stack
+        "movdqu (%rsp), %xmm7\n"
+        "add    $16, %rsp\n"
+        "movdqu (%rsp), %xmm6\n"
+        "add    $16, %rsp\n"
+        "movdqu (%rsp), %xmm5\n"
+        "add    $16, %rsp\n"
+        "movdqu (%rsp), %xmm4\n"
+        "add    $16, %rsp\n"
+        "movdqu (%rsp), %xmm3\n"
+        "add    $16, %rsp\n"
+        "movdqu (%rsp), %xmm2\n"
+        "add    $16, %rsp\n"
+        "movdqu (%rsp), %xmm1\n"
+        "add    $16, %rsp\n"
+        "movdqu (%rsp), %xmm0\n"
+        "add    $16, %rsp\n"
+        // Restore registers state
+        "pop    %r9\n"
+        "pop    %r8\n"
+        "pop    %rdx\n"
+        "pop    %rcx\n"
+        "pop    %rdi\n"
+        "pop    %rsi\n"
+        "pop    %rbx\n"
+        "pop    %rax\n"
+        // Extract context content from stack and registers
+        "mov    (%rsp), %r11\n"     // r11 = return address
+        "mov    %r11, (%r15)\n"     // context->realReturnAddress = r11
+        "mov    %rax, 8(%r15)\n"    // context->functionPointer = rax
+        "mov    %rbx, 32(%r15)\n"   // context->callerLocVar = rbx
+        // Save XMM registers
+        "movdqu %xmm0, 112(%r15)\n" // context->xmm0 = xmm0;
+        "movdqu %xmm1, 128(%r15)\n" // context->xmm0 = xmm0;
+        "movdqu %xmm2, 144(%r15)\n" // context->xmm0 = xmm0;
+        "movdqu %xmm3, 160(%r15)\n" // context->xmm0 = xmm0;
+        "movdqu %xmm4, 176(%r15)\n" // context->xmm0 = xmm0;
+        "movdqu %xmm5, 192(%r15)\n" // context->xmm0 = xmm0;
+        "movdqu %xmm6, 208(%r15)\n" // context->xmm0 = xmm0;
+        "movdqu %xmm7, 224(%r15)\n" // context->xmm0 = xmm0;
+        // Change real return address on label inside of wrapper
+        "leaq   wrapper_no_frame_ret_point(%rip), %rax\n"
+        "mov   %rax, (%rsp)\n"
+    );
+
+    asm volatile (
+        "push   %rax\n"
+        "push   %rsi\n"
+        "push   %rdi\n"
+        "push   %rcx\n"
+        "push   %rdx\n"
+        "push   %r8\n"
+        "push   %r9\n"
+        "push   %r15\n"
+        // Call record_start_time
+        "mov    %r15, %rdi\n"       // arg0 for record_start_time in rdi
+        "call   record_start_time\n"
+        // Restore registers state
+        "pop    %r15\n"
+        "pop    %r9\n"
+        "pop    %r8\n"
+        "pop    %rdx\n"
+        "pop    %rcx\n"
+        "pop    %rdi\n"
+        "pop    %rsi\n"
+        "pop    %rax\n"
+        // Restore XMM registers
+        "movdqu 112(%r15), %xmm0\n"
+        "movdqu 128(%r15), %xmm1\n"
+        "movdqu 144(%r15), %xmm2\n"
+        "movdqu 160(%r15), %xmm3\n"
+        "movdqu 176(%r15), %xmm4\n"
+        "movdqu 192(%r15), %xmm5\n"
+        "movdqu 208(%r15), %xmm6\n"
+        "movdqu 224(%r15), %xmm7\n"
+        // Save context address in %rbp and %rbp value inside of context
+        "mov    %rbp, 40(%r15)\n"   // context->rbp = %rbp
+        "mov    %r15, %rbp\n"       // %rbp = %r15
+        // Jump to wrapped function
+        "jmp    8(%r15)\n"          // jmp context->functionPointer
+    );
+
+    asm volatile (
+        "wrapper_no_frame_ret_point:\n"
+        // Here we return after execution of wrapping function.
+        // Restore context address from %rbp value
+        "mov    %rbp, %r15\n"       // %r15 = %rbp (&context)
+        "mov    40(%r15), %rbp\n"   // %rbp = context->rbp
+        // Save return values of wrapped function
+        "mov    %rax, 16(%r15)\n"   // context->integerResult = %rax
+        "movsd  %xmm0, 24(%r15)\n"  // context->floatingPointResult = %xmm0
+        // Save registers before record_end_time call
+        "push   %r15\n"
+        // Call record_end_time
+        "mov    %r15, %rdi\n"       // %rdi = &context (arg0 for record_end_time)
+        "call   record_end_time\n"
+        // Restore registers state
+        "pop    %r15\n"
+        // Preparing to exit from wrapper
+        "mov    16(%r15), %rax\n"   // %rax = context->integerResult
+        "push   (%r15)\n"           // restore real return address, i.e. push context->realReturnAddr
+        "movq   $0, (%r15)\n"       // context->realReturnAddr = 0
+        "movsd  24(%r15), %xmm0\n"  // %xmm0 = context->floatingPointResult
+        "ret\n"
+    );
+}
+
+
+
+/*
  * Creates set of machine instructions
  * ///////////////////////////////////
  *  mov fcnPtr+4, %rax
- *  mov wrapper_addr, %ebx
+ *  mov wrapper_addr+4, %ebx
  *  jmp %rbx
  * ///////////////////////////////////
  * and writes them to @destination@
@@ -409,7 +488,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     }
 */
     /////
-    uint64_t wrapper_ = (uint64_t)&wrapper;
+    uint64_t wrapper_ = (uint64_t)&wrapper_no_stack_frame+4;
     /////
 
     // mov wrapper, %edx     48 bb ...
