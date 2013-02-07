@@ -237,7 +237,7 @@ static char* our_getenv_(const char* name)
  */
 static bool isElfPerfEnabled()
 {
-	_dl_debug_printf("\t\t ENV %s %s\n", getenv(ELFPERF_ENABLE_VARIABLE), getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE));
+	//_dl_debug_printf("\t\t ENV %s %s\n", getenv(ELFPERF_ENABLE_VARIABLE), getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE));
     return getenv(ELFPERF_ENABLE_VARIABLE) != NULL 
            && 
            getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE) != NULL;
