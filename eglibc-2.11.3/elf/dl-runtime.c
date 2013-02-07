@@ -363,7 +363,7 @@ _dl_fixup (
   // if unsuccess - elfperf routines will be skipped
   if (elfperfFuncs == NULL) {
       // Getting pointers to all needed functions
-      _dl_error_printf("Recieving functoins pointers from libelfperf.so\n");
+      _dl_error_printf("Recieving functions pointers from libelfperf.so\n");
       elfperfFuncs = getElfperfFunctions(l, flags);
       // skip elfperf part 
       if (elfperfFuncs == NULL){
@@ -384,7 +384,7 @@ _dl_fixup (
       // skip initialization
       if (initialized) {
         elfperfInitSpinlock = 0; 
-	goto do_elfperf_routines;
+        goto do_elfperf_routines;
       }
 
       _dl_error_printf("Redirectors are not initialized.\n");

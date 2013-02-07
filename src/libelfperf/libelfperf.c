@@ -44,7 +44,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <stdbool.h>
-#include "../timers/global_stats.h"
+#include "global_stats.h"
 #include "libelfperf.h"
 #include "errno.h"
 
@@ -88,7 +88,7 @@ static struct WrappingContext * getNewContext_()
     
     // No free contexts - terminating app
     if (!isFreeContextFound) {
-        printf("Context buffer is full!!! Exiting\n");
+        printf("LIBELFPERF_LOG: Context buffer is full!!! Exiting\n");
         exit(1);
     }
 
@@ -617,8 +617,9 @@ void wrapper_no_cdecl()
  */
 void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
 {
-    unsigned int functionPointer = (unsigned int )(fcnPtr)+FCN_PTR_OFFSET;
+    printf("LIBELFPERF_LOG: Writing redirection code for function %x: \n", fcnPtr);
 
+    unsigned int functionPointer = (unsigned int )(fcnPtr)+FCN_PTR_OFFSET;
     // push %ebp
     // push %ecx
     // push %edx
@@ -643,7 +644,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     unsigned int wrapper_;
 
     // Check first 3 bytes of function and choose appropriate wrapper.
-    printf("First 3 bytes of function: \n");
+    printf("LIBELFPERF_LOG: First 3 bytes of function: \n");
     printf("\t%x %x %x\n",
         ((unsigned int)((void**)fcnPtr)[0]) & 0xFF,
         (((unsigned int)((void**)fcnPtr)[0]) >> 8) & 0xFF,
@@ -656,11 +657,11 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
          &&
          ((((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF) == 0xe5 ) // 3rd byte
     {
-        printf("ELFPERF_DEBUG: Chosen 1st wrapper for redirector\n");
+        printf("LIBELFPERF_LOG: Chosen 1st wrapper for redirector\n");
         wrapper_ = (unsigned int)&wrapper_cdecl + FCN_PTR_OFFSET;
     } else {
         wrapper_ = (unsigned int)&wrapper_no_cdecl + FCN_PTR_OFFSET;
-        printf("ELFPERF_DEBUG: Chosen 2nd wrapper for redirector\n");
+        printf("LIBELFPERF_LOG: Chosen 2nd wrapper for redirector\n");
     }
 
     redirector[9] = 0xbb;
@@ -673,7 +674,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     redirector[14] = 0xFF;
     redirector[15] = 0xE3; //0x23;
     
-    printf("Created redirector for %p at %p, wrapper =  %x\n", fcnPtr, redirector, wrapper_);
+    printf("LIBELFPERF_LOG: Created redirector for %p at %p, wrapper =  %x\n", fcnPtr, redirector, wrapper_);
 }
 
 #elif defined ELFPERF_ARCH_64
@@ -689,7 +690,8 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
  */
 void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
 {
-    
+    printf("LIBELFPERF_LOG: Writing redirection code for function %x: \n", fcnPtr);
+  
     uint64_t functionPointer = (uint64_t)(fcnPtr)+4;
 
     // mov fcnPtr+4, %eax     48 b8 ...
@@ -712,7 +714,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     uint64_t wrapper_;
 
     // Check first 3 bytes of function and choose appropriate wrapper.
-    printf("First 3 bytes of function: \n");
+    printf("LIBELFPERF_LOG: First 3 bytes of function: \n");
     printf("\t%x %x %x %x\n",
         ((uint64_t)((void**)fcnPtr)[0]) & 0xFF,
         (((uint64_t)((void**)fcnPtr)[0]) >> 8) & 0xFF,
@@ -728,11 +730,11 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
           &&
          ((((uint64_t)((void**)fcnPtr)[0]) >> 24) & 0xFF) == 0xe5 ) // 4th byte
     {
-        printf("ELFPERF_DEBUG: Chosen normal wrapper for redirector\n");
+        printf("LIBELFPERF_LOG: Chosen normal wrapper for redirector\n");
         wrapper_ = (uint64_t)&wrapper_cdecl + 4;
     } else {
         wrapper_ = (uint64_t)&wrapper_no_cdecl + 4;
-        printf("ELFPERF_DEBUG: Chosen wrapper_no_stack_frame for redirector\n");
+        printf("LIBELFPERF_LOG: Chosen wrapper_no_stack_frame for redirector\n");
     }
 
     // mov wrapper, %edx     48 bb ...
@@ -752,7 +754,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     redirector[20] = 0xFF;
     redirector[21] = 0xe3;
     
-    printf("Created redirector for %p at %p, wrapper = %p,\n", fcnPtr, redirector, wrapper_);
+    printf("LIBELFPERF_LOG: Created redirector for %p at %p, wrapper = %p,\n", fcnPtr, redirector, wrapper_);
 }
 #endif
 
@@ -763,13 +765,13 @@ unsigned int getFunctionIndex(char* name, struct RedirectorContext context)
 {
     unsigned int i;
     for (i = 0; i < context.count; i++) {
-        printf("Testing %s for %s\n", context.names[i], name);
+        printf("LIBELFPERF_LOG: Testing %s for %s\n", context.names[i], name);
         if (!strcmp(name, context.names[i])) {
-            printf("Index of %s is %x\n", name, i);
+            printf("LIBELFPERF_LOG: Index of %s is %x\n", name, i);
             return i;
         }
     }
-    printf("Returning invalid index in getFunctionIndex for %s\n", name);
+    printf("LIBELFPERF_LOG: Returning invalid index in getFunctionIndex for %s\n", name);
     return context.count + 1;
 }
 
@@ -779,7 +781,7 @@ unsigned int getFunctionIndex(char* name, struct RedirectorContext context)
  */
 bool isFunctionInFunctionList(char* name, struct RedirectorContext context)
 {
-    printf("Doing isFunctionInFunctionList\n");
+    printf("LIBELFPERF_LOG: Doing isFunctionInFunctionList\n");
     unsigned int index = getFunctionIndex(name, context);
     return (index != (context.count + 1));
 }
@@ -796,7 +798,7 @@ void* getRedirectorAddressForName(char* name, struct RedirectorContext context)
 //    #ifdef ELFPERF_ARCH_32     
     
 
-    printf("getRedirectorAddressForName\n");
+    printf("LIBELFPERF_LOG: getRedirectorAddressForName\n");
     return (void*)addr;
 }
 
@@ -810,11 +812,11 @@ bool isFunctionRedirectorRegistered(char* name, struct RedirectorContext context
     // check is it 0 or not
     // 0 - code for the first byte of each unregisterred redirector
     void * redirectorAddress = getRedirectorAddressForName(name, context);
-    printf("isFunctionRedirectorRegistered\n");
+    printf("LIBELFPERF_LOG: isFunctionRedirectorRegistered\n");
     if (*((unsigned int *)redirectorAddress) != 0) {
-        printf("%s is registered\n", name);
+        printf("LIBELFPERF_LOG: %s is registered\n", name);
     } else {
-        printf("%s is not registered\n", name);
+        printf("LIBELFPERF_LOG: %s is not registered\n", name);
     }
 
     return ((*((unsigned int *)redirectorAddress)) != 0);
@@ -825,7 +827,7 @@ bool isFunctionRedirectorRegistered(char* name, struct RedirectorContext context
  * Adds new function to the redirectors list
  */
 void addNewFunction(char* name, void * functionAddr, struct RedirectorContext context){
-    printf("addNewFunction %s\n", name);
+    printf("LIBELFPERF_LOG: addNewFunction %s\n", name);
     writeRedirectionCode(getRedirectorAddressForName(name, context), functionAddr);
 }
 
@@ -837,7 +839,7 @@ void initWrapperRedirectors(struct RedirectorContext *context)
 {
     initFunctionInfoStorage();
 
-    printf("Starting initWrapperRedirectors %p, %d \n", context, getpagesize());
+    printf("LIBELFPERF_LOG: Starting initWrapperRedirectors %p, %d \n", context, getpagesize());
 
     // Memory allocation
     size_t allocSize =  REDIRECTOR_SIZE * context->count + getpagesize() - 1;
@@ -847,16 +849,16 @@ void initWrapperRedirectors(struct RedirectorContext *context)
 	//(void *)malloc(allocSize);
 
     // Aligning by page border
-    printf("Before aligment %x, %x\n", context->redirectors, REDIRECTOR_SIZE*context->count + getpagesize()-1);
+    printf("LIBELFPERF_LOG: Before aligment %x, %x\n", context->redirectors, REDIRECTOR_SIZE*context->count + getpagesize()-1);
     context->redirectors = (void *)(((uint64_t) context->redirectors + getpagesize()-1) & ~(getpagesize()-1));
-    printf("After aligment %x\n", context->redirectors);
+    printf("LIBELFPERF_LOG: After aligment %x\n", context->redirectors);
     int pagesNum = allocSize/getpagesize() ;
-    printf("Number of memory pages %x\n", pagesNum);
+    printf("LIBELFPERF_LOG: Number of memory pages %x\n", pagesNum);
 
     for (i = 0; i < pagesNum; i++) {
-        printf("Going to do mprotect\n");
+        printf("LIBELFPERF_LOG: Going to do mprotect\n");
         if (mprotect(context->redirectors + getpagesize()*i, getpagesize(), PROT_READ | PROT_WRITE | PROT_EXEC)) {
-            printf("\t\tCouldn't mprotect, errno = %d\n", errno);
+            printf("LIBELFPERF_LOG: Couldn't mprotect, errno = %d\n", errno);
             //exit(errno);
             return;
         }
@@ -864,7 +866,7 @@ void initWrapperRedirectors(struct RedirectorContext *context)
 
     // Set 0 into each redirector first byte
     // This will allow to determine wich one is inited
-    printf("Zeroing\n");
+    printf("LIBELFPERF_LOG: Zeroing\n");
     for (i = 0 ; i < sizeof(void*) * REDIRECTOR_WORDS_SIZE * context->count; i += REDIRECTOR_SIZE) {
         *((unsigned int*)(context->redirectors+i)) = 0;
     }
