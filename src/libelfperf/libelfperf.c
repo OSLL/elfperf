@@ -798,7 +798,7 @@ void* getRedirectorAddressForName(char* name, struct RedirectorContext context)
 //    #ifdef ELFPERF_ARCH_32     
     
 
-    printf("LIBELFPERF_LOG: getRedirectorAddressForName\n");
+//    printf("LIBELFPERF_LOG: getRedirectorAddressForName\n");
     return (void*)addr;
 }
 

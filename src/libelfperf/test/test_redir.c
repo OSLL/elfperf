@@ -9,7 +9,7 @@
 #define _dl_debug_printf printf
 
 #include "../ld-routines.h"
-
+#include "../libelfperf.h"
 
 //#define PAGESIZE 4096
 //#define REDIRECTOR_WORDS_SIZE 4
@@ -47,7 +47,7 @@ int main()
 
     printf("\nTest #1:\n");
     i = 0;
-    void(*func1)() = getRedirector(context.names[i], context);
+    void(*func1)() = getRedirectorAddressForName(context.names[i], context);
     (*func1)();
     printf("\nTest #1 is successfull!!!\n");
 

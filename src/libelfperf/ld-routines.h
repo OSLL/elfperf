@@ -442,6 +442,7 @@ static struct FunctionStatistic*** initFunctionStatisticsStorage()
     *shm = NULL;
 		
     _dl_debug_printf("Shared memory inited successfuly: shm = %x\n", *shm );
+    return shm;
 }
 
 /*
