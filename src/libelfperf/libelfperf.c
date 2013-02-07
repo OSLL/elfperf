@@ -105,6 +105,9 @@ void wrapper_cdecl()
 {
     /* Stack structure
      * /////top/////
+     *      rax
+     *      rbx
+     *    old_rbp
      *  return_addr
      *   arg n - 1
      *      ...
@@ -112,18 +115,23 @@ void wrapper_cdecl()
      */
     // arguments from 0 to 5 are in %rdi, %rsi, %rdx, %rcx, %r8 and %r9
     asm volatile (
+        // TODO support two different redirector types - one for cdecl (do  "push   %rbp\n" inside redirector)
+        // one for nocdecl
+
         // Create new stack frame
-        "pop    %rbx\n"
+        "pop    %r11\n"         // r11 = rax
+        "pop    %rbx\n"         // restoring rbx value
         "push   %rbp\n"
         "mov    %rsp, %rbp\n"
-        "push   %rbx\n"
+        "push   %rbx\n"         // saving to the stack - rbx
+        "push   %r11\n"         // saving to the stack - rax value
         // Save value of old_ebp
 //        "mov    (%rbp), %rbx\n"
         // Save values of needed registers
         "push   %r14\n"
         "push   %r13\n"
         "push   %r12\n"
-        "push   %rax\n"
+        "push   %rax\n"         // function address
         "push   %rsi\n"
         "push   %rdi\n"
         "push   %rcx\n"
@@ -150,7 +158,7 @@ void wrapper_cdecl()
         // Get new context for call
         "push   %r15\n"
         "call   getNewContext_\n"   // rax = getNewContext
-        "pop    280(%r15)\n"
+        "pop    280(%rax)\n"        // context->r15 = %r15
         "mov    %rax, %r15\n"        // r15 = &context
         // pop xmm7-0 from stack
         "movdqu (%rsp), %xmm7\n"
@@ -180,6 +188,7 @@ void wrapper_cdecl()
         "pop    256(%r15)\n"             // context->r12 = r12 
         "pop    264(%r15)\n"             // context->r13 = r13
         "pop    272(%r15)\n"             // context->r14 = r14
+        "pop    48(%r15)\n"              // context->rax = rax_old_value 
         "pop    56(%r15)\n"             // context->rbx = rbx
         // Extract context content from stack and registers
         "mov    8(%rbp), %r11\n"    // r11 = return address
@@ -207,7 +216,6 @@ void wrapper_cdecl()
 
     asm volatile (
         // Save registers before record_start_time call
-        "push   %rax\n"   
         "push   %rsi\n"
         "push   %rdi\n"
         "push   %rcx\n"
@@ -226,7 +234,8 @@ void wrapper_cdecl()
         "pop    %rcx\n"
         "pop    %rdi\n"
         "pop    %rsi\n"
-        "pop    %rax\n"
+        // Restoring previous value of rax
+        "mov    48(%r15), %rax\n"
         // Restore XMM registers
         "movdqu 112(%r15), %xmm0\n"
         "movdqu 128(%r15), %xmm1\n"
