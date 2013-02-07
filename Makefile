@@ -20,12 +20,14 @@ set_arch_32:
 set_arch_64:
 	sed -i "s/Architecture/#define ELFPERF_ARCH_64/g" src/libelfperf/config.h
 
-
 libelfperf_32: set_arch_32
 	make -C src/libelfperf/ lib_32
 
 libelfperf_64: set_arch_64
 	make -C src/libelfperf/ lib_64 
+
+test:
+	cd src/libelfperf/test && ./run_all_tests.sh
 
 glibc_patch:
 	cd build/ && ./build_glibc.sh && make -j5 install

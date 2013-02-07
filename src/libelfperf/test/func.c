@@ -41,7 +41,7 @@ float testFunction5(double arg0)
 
 double testFunction6() 
 {
-    printf("TET_LOG: Inside of testFunction6(void)\n");
+    printf("TEST_LOG: Inside of testFunction6(void)\n");
     return (double)TEST6_RESULT;
 }
 
