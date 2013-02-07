@@ -113,6 +113,7 @@ void wrapper_cdecl()
     // arguments from 0 to 5 are in %rdi, %rsi, %rdx, %rcx, %r8 and %r9
     asm volatile (
         // Create new stack frame
+        "pop    %rbx\n"
         "push   %rbp\n"
         "mov    %rsp, %rbp\n"
         // Save value of old_ebp
@@ -267,6 +268,7 @@ void wrapper_no_cdecl()
 {
     /* Stack structure
      * /////top/////
+     *     %rbx
      *    old_rbp
      *  return_addr
      *   arg n - 1
@@ -281,8 +283,12 @@ void wrapper_no_cdecl()
         // we don't need to skip stack frame creation
         "sub $4, %rax\n"
         // Save values of needed registers
+        "push   %r12\n"
+        "push   %r13\n"
+        "push   %r14\n"
+        "push   %rbp\n"
         "push   %rax\n"
-        "push   %rbx\n"
+        //"push   %rbx\n" //<- was saved at redirector
         "push   %rsi\n"
         "push   %rdi\n"
         "push   %rcx\n"
@@ -306,8 +312,11 @@ void wrapper_no_cdecl()
         "movdqu %xmm6, (%rsp)\n"
         "sub    $16, %rsp\n"
         "movdqu %xmm7, (%rsp)\n"
+        // Need to save r15 also
+        "push   %r15\n"
         // Get new context for call
         "call   getNewContext_\n"    // rax = getNewContext
+        "pop    280(%rax)\n"         // context->r15 = r15
         "mov    %rax, %r15\n"        // r15 = &context
         // pop xmm7-0 from stack
         "movdqu (%rsp), %xmm7\n"
@@ -333,13 +342,22 @@ void wrapper_no_cdecl()
         "pop    %rcx\n"
         "pop    %rdi\n"
         "pop    %rsi\n"
-        "pop    %rbx\n"
         "pop    %rax\n"
+        "pop    %rbp\n"
+        "pop    %r14\n"
+        "pop    %r13\n"
+        "pop    %r12\n"
+        "pop    %rbx\n"
         // Extract context content from stack and registers
         "mov    (%rsp), %r11\n"     // r11 = return address
         "mov    %r11, (%r15)\n"     // context->realReturnAddress = r11
         "mov    %rax, 8(%r15)\n"    // context->functionPointer = rax
-        "mov    %rbx, 32(%r15)\n"   // context->callerLocVar = rbx
+        // Saving registers to context
+        "mov    %rbx, 56(%r15)\n"   // context->rbx = rbx
+        "mov    %rbp, 40(%r15)\n"   // context->rbp = rbp
+        "mov    %r12, 256(%r15)\n"   // context->r12 = r12
+        "mov    %r13, 264(%r15)\n"   // context->r13 = r13
+        "mov    %r14, 272(%r15)\n"   // context->r14 = r14
         // Save XMM registers
         "movdqu %xmm0, 112(%r15)\n" // context->xmm0 = xmm0;
         "movdqu %xmm1, 128(%r15)\n" // context->xmm0 = xmm0;
@@ -385,7 +403,7 @@ void wrapper_no_cdecl()
         "movdqu 208(%r15), %xmm6\n"
         "movdqu 224(%r15), %xmm7\n"
         // Save context address in %rbp and %rbp value inside of context
-        "mov    %rbp, 40(%r15)\n"   // context->rbp = %rbp
+        //"mov    %rbp, 40(%r15)\n"   // context->rbp = %rbp
         "mov    %r15, %rbp\n"       // %rbp = %r15
         // Jump to wrapped function
         "jmp    8(%r15)\n"          // jmp context->functionPointer
@@ -396,7 +414,6 @@ void wrapper_no_cdecl()
         // Here we return after execution of wrapping function.
         // Restore context address from %rbp value
         "mov    %rbp, %r15\n"       // %r15 = %rbp (&context)
-        "mov    40(%r15), %rbp\n"   // %rbp = context->rbp
         // Save return values of wrapped function
         "mov    %rax, 16(%r15)\n"   // context->integerResult = %rax
         "movsd  %xmm0, 24(%r15)\n"  // context->floatingPointResult = %xmm0
@@ -408,12 +425,21 @@ void wrapper_no_cdecl()
         // Restore registers state
         "pop    %r15\n"
         // Restoring registers which are not used for arguments passing
-        "mov 32(%r15), %rbx\n"
+        "mov    56(%r15), %rbx\n"
+        "mov    40(%r15), %rbp\n"
+        "mov    256(%r15), %r12\n"
+        "mov    264(%r15), %r13\n"
+        "mov    272(%r15), %r14\n"
+        //"mov    280(%r15), %r15\n"
         // Preparing to exit from wrapper
         "mov    16(%r15), %rax\n"   // %rax = context->integerResult
         "push   (%r15)\n"           // restore real return address, i.e. push context->realReturnAddr
-        "movq   $0, (%r15)\n"       // context->realReturnAddr = 0
         "movsd  24(%r15), %xmm0\n"  // %xmm0 = context->floatingPointResult
+        // Restoring r15
+        "push   280(%r15)\n"
+        // After THIS instruction should not be any other context usages
+        "movq   $0, (%r15)\n"       // context->realReturnAddr = 0
+        "pop    %r15\n"
         "ret\n"
     );
 }
@@ -684,8 +710,9 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
 /*
  * Creates set of machine instructions
  * ///////////////////////////////////
+ *  push rbx                    ; If not memorize it register content will be lost
  *  mov fcnPtr+4, %rax
- *  mov wrapper_addr+4, %ebx
+ *  mov wrapper_addr+4, %rbx
  *  jmp %rbx
  * ///////////////////////////////////
  * and writes them to @destination@
@@ -696,19 +723,22 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
   
     uint64_t functionPointer = (uint64_t)(fcnPtr)+4;
 
-    // mov fcnPtr+4, %eax     48 b8 ...
-    redirector[0] = 0x48;
-    redirector[1] = 0xb8;
+    // push %rbx
+    redirector[0] = 0x53;
+
+    // mov fcnPtr+4, %rax     48 b8 ...
+    redirector[1] = 0x48;
+    redirector[2] = 0xb8;
     
     // writing function pointer bytes in reversed order
-    redirector[9] = (functionPointer >> 56) & 0xFF;
-    redirector[8] = (functionPointer >> 48) & 0xFF;
-    redirector[7] = (functionPointer >> 40) & 0xFF;
-    redirector[6] = (functionPointer >> 32) & 0xFF;
-    redirector[5] = (functionPointer >> 24) & 0xFF;
-    redirector[4] = (functionPointer >> 16) & 0xFF;
-    redirector[3] = (functionPointer >>  8) & 0xFF;
-    redirector[2] =  functionPointer        & 0xFF;
+    redirector[10] = (functionPointer >> 56) & 0xFF;
+    redirector[9] = (functionPointer >> 48) & 0xFF;
+    redirector[8] = (functionPointer >> 40) & 0xFF;
+    redirector[7] = (functionPointer >> 32) & 0xFF;
+    redirector[6] = (functionPointer >> 24) & 0xFF;
+    redirector[5] = (functionPointer >> 16) & 0xFF;
+    redirector[4] = (functionPointer >>  8) & 0xFF;
+    redirector[3] =  functionPointer        & 0xFF;
 
     // mov $wrapper+4, %rbx
     // Skip stack frame construction - because we pass some extra params throw stack
@@ -740,21 +770,21 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     }
 
     // mov wrapper, %edx     48 bb ...
-    redirector[10] = 0x48;
-    redirector[11] = 0xbb;
+    redirector[11] = 0x48;
+    redirector[12] = 0xbb;
 
-    redirector[19] = (wrapper_ >> 56) & 0xFF;
-    redirector[18] = (wrapper_ >> 48) & 0xFF;
-    redirector[17] = (wrapper_ >> 40) & 0xFF;
-    redirector[16] = (wrapper_ >> 32) & 0xFF;
-    redirector[15] = (wrapper_ >> 24) & 0xFF;
-    redirector[14] = (wrapper_ >> 16) & 0xFF;
-    redirector[13] = (wrapper_ >>  8) & 0xFF;
-    redirector[12] =  wrapper_        & 0xFF;
+    redirector[20] = (wrapper_ >> 56) & 0xFF;
+    redirector[19] = (wrapper_ >> 48) & 0xFF;
+    redirector[18] = (wrapper_ >> 40) & 0xFF;
+    redirector[17] = (wrapper_ >> 32) & 0xFF;
+    redirector[16] = (wrapper_ >> 24) & 0xFF;
+    redirector[15] = (wrapper_ >> 16) & 0xFF;
+    redirector[14] = (wrapper_ >>  8) & 0xFF;
+    redirector[13] =  wrapper_        & 0xFF;
 
     // jmp %rbx     ff e3
-    redirector[20] = 0xFF;
-    redirector[21] = 0xe3;
+    redirector[21] = 0xFF;
+    redirector[22] = 0xe3;
     
     printf("LIBELFPERF_LOG: Created redirector for %p at %p, wrapper = %p,\n", fcnPtr, redirector, wrapper_);
 }
@@ -869,7 +899,7 @@ void initWrapperRedirectors(struct RedirectorContext *context)
     // Set 0 into each redirector first byte
     // This will allow to determine wich one is inited
     printf("LIBELFPERF_LOG: Zeroing\n");
-    for (i = 0 ; i < sizeof(void*) * REDIRECTOR_WORDS_SIZE * context->count; i += REDIRECTOR_SIZE) {
+    for (i = 0 ; i < REDIRECTOR_SIZE * context->count; i += REDIRECTOR_SIZE) {
         *((unsigned int*)(context->redirectors+i)) = 0;
     }
 }

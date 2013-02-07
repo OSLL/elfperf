@@ -161,6 +161,11 @@ struct WrappingContext          // Size     | Offset
     uint64_t startTime;         // 8bytes   | 240
     // Function end time
     uint64_t endTime;           // 8bytes   | 248
+    // Saved regs
+    uint64_t r12;               // 8bytes   | 256
+    uint64_t r13;               // 8bytes   | 264
+    uint64_t r14;               // 8bytes   | 272
+    uint64_t r15;               // 8bytes   | 280
 };
 
 #endif
