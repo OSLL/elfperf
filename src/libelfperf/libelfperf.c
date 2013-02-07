@@ -407,6 +407,8 @@ void wrapper_no_cdecl()
         "call   record_end_time\n"
         // Restore registers state
         "pop    %r15\n"
+        // Restoring registers which are not used for arguments passing
+        "mov 32(%r15), %rbx\n"
         // Preparing to exit from wrapper
         "mov    16(%r15), %rax\n"   // %rax = context->integerResult
         "push   (%r15)\n"           // restore real return address, i.e. push context->realReturnAddr
