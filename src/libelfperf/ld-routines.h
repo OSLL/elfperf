@@ -210,17 +210,17 @@ extern char **environ;
 /*
  * Our realization of getenv. For some reasons getenv doesnt work for x64
  */
-static char* our_getenv_(char* name){
-
+static char* our_getenv_(char* name)
+{
     char** env = environ;
-    for (; *env; ++env){
+    for (; *env; ++env) {
         // Find variable which starts with @name@ str
-        if (strstr(*env, name) == *env ){
+        if (strstr(*env, name) == *env ) {
             // Locate position of '=' in the string
             char * dataPosition = strchr(*env, '=');
-            if ( dataPosition != NULL ){
+            if ( dataPosition != NULL ) {
                 return dataPosition+1;
-            }else{
+            } else {
                 // No '=' occurs in the *env - return NULL
                 return NULL;
             }
@@ -285,7 +285,7 @@ static char** get_fn_list(const char* env_name, int* count)
  */ 
 static bool isFunctionProfiled(char * name)
 {
-    static unsigned int count =0;
+    static unsigned int count = 0;
     static char** functions = NULL;
     if (functions == NULL) {
         functions = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
