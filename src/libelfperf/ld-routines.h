@@ -210,7 +210,7 @@ extern char **environ;
 /*
  * Our realization of getenv. For some reasons getenv doesnt work for x64
  */
-static char* our_getenv_(char* name)
+static char* our_getenv_(const char* name)
 {
     char** env = environ;
     for (; *env; ++env) {
@@ -331,7 +331,7 @@ static struct FunctionInfo* initFunctionInfoStorage()
     // Shared memory successfully allocated
     // Allocating memory on heap
     struct FunctionInfo* infos = 
-	(struct FunctionStatistic*)mmap(0, sizeof(struct FunctionInfo)*count, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	(struct FunctionInfo*)mmap(0, sizeof(struct FunctionInfo)*count, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 	//(struct FunctionInfo*)malloc(sizeof(struct FunctionInfo)*count);
     int i = 0;
     for (i = 0; i < count; i++) {
