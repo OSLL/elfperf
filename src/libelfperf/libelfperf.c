@@ -116,11 +116,14 @@ void wrapper_cdecl()
         "pop    %rbx\n"
         "push   %rbp\n"
         "mov    %rsp, %rbp\n"
-        // Save value of old_ebp
-        "mov    (%rbp), %rbx\n"
-        // Save values of needed registers
-        "push   %rax\n"
         "push   %rbx\n"
+        // Save value of old_ebp
+//        "mov    (%rbp), %rbx\n"
+        // Save values of needed registers
+        "push   %r14\n"
+        "push   %r13\n"
+        "push   %r12\n"
+        "push   %rax\n"
         "push   %rsi\n"
         "push   %rdi\n"
         "push   %rcx\n"
@@ -145,7 +148,9 @@ void wrapper_cdecl()
         "sub    $16, %rsp\n"
         "movdqu %xmm7, (%rsp)\n"
         // Get new context for call
+        "push   %r15\n"
         "call   getNewContext_\n"   // rax = getNewContext
+        "pop    280(%r15)\n"
         "mov    %rax, %r15\n"        // r15 = &context
         // pop xmm7-0 from stack
         "movdqu (%rsp), %xmm7\n"
@@ -171,12 +176,16 @@ void wrapper_cdecl()
         "pop    %rcx\n"
         "pop    %rdi\n"
         "pop    %rsi\n"
-        "pop    %rbx\n"
-        "pop    %rax\n" 
+        "pop    %rax\n"
+        "pop    256(%r15)\n"             // context->r12 = r12 
+        "pop    264(%r15)\n"             // context->r13 = r13
+        "pop    272(%r15)\n"             // context->r14 = r14
+        "pop    56(%r15)\n"             // context->rbx = rbx
         // Extract context content from stack and registers
         "mov    8(%rbp), %r11\n"    // r11 = return address
         "mov    %r11, (%r15)\n"     // context->realReturnAddress = r11
         "mov    %rax, 8(%r15)\n"    // context->functionPointer = rbx
+        "mov    (%rbp), %rbx\n"
         "mov    %rbx, 32(%r15)\n"   // context->callerLocVar = rbx
         // Save address of context as local variable in caller
         "mov    -8(%rbx), %rax\n"   // caller 1st local var = rax
@@ -193,7 +202,7 @@ void wrapper_cdecl()
         "movdqu %xmm7, 224(%r15)\n" // context->xmm0 = xmm0;
         // Change real return address on label inside of wrapper
         "leaq   wrapper_ret_point(%rip), %rax\n"
-        "mov   %rax, 0x8(%rbp)\n"       
+        "mov    %rax, 0x8(%rbp)\n"       
     );
 
     asm volatile (
@@ -251,11 +260,18 @@ void wrapper_cdecl()
         // Restore registers state
         "pop    %r15\n"
         "pop    %rdx\n"
+        // Restoring of non-argument registers
+        "mov    56(%r15), %rbx\n"
+        "mov    256(%r15), %r12\n"
+        "mov    264(%r15), %r13\n"
+        "mov    272(%r15), %r14\n"
         // Preparing to exit from wrapper
         "mov    16(%r15), %rax\n"   // %rax = context->integerResult
         "push   (%r15)\n"           // restore real return address, i.e. push context->realReturnAddr
-        "movq   $0, (%r15)\n"       // context->realReturnAddr = 0
         "movsd  24(%r15), %xmm0\n"  // %xmm0 = context->floatingPointResult
+        "push   280(%r15)\n"        // push old r15 value to stack
+        "movq   $0, (%r15)\n"       // context->realReturnAddr = 0
+        "pop    %r15\n"             // restore old r15 value
         "ret\n"
     );
 }
@@ -295,6 +311,8 @@ void wrapper_no_cdecl()
         "push   %rdx\n"
         "push   %r8\n"
         "push   %r9\n"
+        // Need to save r15 also
+        "push   %r15\n"
         // push xmm0-7 on stack
         "sub    $16, %rsp\n"
         "movdqu %xmm0, (%rsp)\n"
@@ -312,11 +330,8 @@ void wrapper_no_cdecl()
         "movdqu %xmm6, (%rsp)\n"
         "sub    $16, %rsp\n"
         "movdqu %xmm7, (%rsp)\n"
-        // Need to save r15 also
-        "push   %r15\n"
         // Get new context for call
         "call   getNewContext_\n"    // rax = getNewContext
-        "pop    280(%rax)\n"         // context->r15 = r15
         "mov    %rax, %r15\n"        // r15 = &context
         // pop xmm7-0 from stack
         "movdqu (%rsp), %xmm7\n"
@@ -336,22 +351,28 @@ void wrapper_no_cdecl()
         "movdqu (%rsp), %xmm0\n"
         "add    $16, %rsp\n"
         // Restore registers state
+        "pop    280(%rax)\n"         // context->r15 = r15
+
         "pop    %r9\n"
         "pop    %r8\n"
         "pop    %rdx\n"
+
         "pop    %rcx\n"
         "pop    %rdi\n"
         "pop    %rsi\n"
-        "pop    %rax\n"
+
+        "pop    8(%r15)\n"             // context->functionPointer = function address
         "pop    %rbp\n"
         "pop    %r14\n"
+
         "pop    %r13\n"
         "pop    %r12\n"
+        "pop    %rax\n"
         "pop    %rbx\n"
         // Extract context content from stack and registers
         "mov    (%rsp), %r11\n"     // r11 = return address
         "mov    %r11, (%r15)\n"     // context->realReturnAddress = r11
-        "mov    %rax, 8(%r15)\n"    // context->functionPointer = rax
+//        "mov    %rax, 8(%r15)\n"    // context->functionPointer = rax
         // Saving registers to context
         "mov    %rbx, 56(%r15)\n"   // context->rbx = rbx
         "mov    %rbp, 40(%r15)\n"   // context->rbp = rbp
@@ -368,8 +389,8 @@ void wrapper_no_cdecl()
         "movdqu %xmm6, 208(%r15)\n" // context->xmm0 = xmm0;
         "movdqu %xmm7, 224(%r15)\n" // context->xmm0 = xmm0;
         // Change real return address on label inside of wrapper
-        "leaq   wrapper_no_frame_ret_point(%rip), %rax\n"
-        "mov   %rax, (%rsp)\n"
+        "leaq   wrapper_no_frame_ret_point(%rip), %r11\n"
+        "mov   %r11, (%rsp)\n"
     );
 
     asm volatile (
@@ -711,6 +732,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
  * Creates set of machine instructions
  * ///////////////////////////////////
  *  push rbx                    ; If not memorize it register content will be lost
+ *  push rax
  *  mov fcnPtr+4, %rax
  *  mov wrapper_addr+4, %rbx
  *  jmp %rbx
@@ -725,20 +747,22 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
 
     // push %rbx
     redirector[0] = 0x53;
+    // push rax
+    redirector[1] = 0x50;
 
     // mov fcnPtr+4, %rax     48 b8 ...
-    redirector[1] = 0x48;
-    redirector[2] = 0xb8;
+    redirector[2] = 0x48;
+    redirector[3] = 0xb8;
     
     // writing function pointer bytes in reversed order
-    redirector[10] = (functionPointer >> 56) & 0xFF;
-    redirector[9] = (functionPointer >> 48) & 0xFF;
-    redirector[8] = (functionPointer >> 40) & 0xFF;
-    redirector[7] = (functionPointer >> 32) & 0xFF;
-    redirector[6] = (functionPointer >> 24) & 0xFF;
-    redirector[5] = (functionPointer >> 16) & 0xFF;
-    redirector[4] = (functionPointer >>  8) & 0xFF;
-    redirector[3] =  functionPointer        & 0xFF;
+    redirector[11] = (functionPointer >> 56) & 0xFF;
+    redirector[10] = (functionPointer >> 48) & 0xFF;
+    redirector[9] = (functionPointer >> 40) & 0xFF;
+    redirector[8] = (functionPointer >> 32) & 0xFF;
+    redirector[7] = (functionPointer >> 24) & 0xFF;
+    redirector[6] = (functionPointer >> 16) & 0xFF;
+    redirector[5] = (functionPointer >>  8) & 0xFF;
+    redirector[4] =  functionPointer        & 0xFF;
 
     // mov $wrapper+4, %rbx
     // Skip stack frame construction - because we pass some extra params throw stack
@@ -770,21 +794,21 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
     }
 
     // mov wrapper, %edx     48 bb ...
-    redirector[11] = 0x48;
-    redirector[12] = 0xbb;
+    redirector[12] = 0x48;
+    redirector[13] = 0xbb;
 
-    redirector[20] = (wrapper_ >> 56) & 0xFF;
-    redirector[19] = (wrapper_ >> 48) & 0xFF;
-    redirector[18] = (wrapper_ >> 40) & 0xFF;
-    redirector[17] = (wrapper_ >> 32) & 0xFF;
-    redirector[16] = (wrapper_ >> 24) & 0xFF;
-    redirector[15] = (wrapper_ >> 16) & 0xFF;
-    redirector[14] = (wrapper_ >>  8) & 0xFF;
-    redirector[13] =  wrapper_        & 0xFF;
+    redirector[21] = (wrapper_ >> 56) & 0xFF;
+    redirector[20] = (wrapper_ >> 48) & 0xFF;
+    redirector[19] = (wrapper_ >> 40) & 0xFF;
+    redirector[18] = (wrapper_ >> 32) & 0xFF;
+    redirector[17] = (wrapper_ >> 24) & 0xFF;
+    redirector[16] = (wrapper_ >> 16) & 0xFF;
+    redirector[15] = (wrapper_ >>  8) & 0xFF;
+    redirector[14] =  wrapper_        & 0xFF;
 
     // jmp %rbx     ff e3
-    redirector[21] = 0xFF;
-    redirector[22] = 0xe3;
+    redirector[22] = 0xFF;
+    redirector[23] = 0xe3;
     
     printf("LIBELFPERF_LOG: Created redirector for %p at %p, wrapper = %p,\n", fcnPtr, redirector, wrapper_);
 }

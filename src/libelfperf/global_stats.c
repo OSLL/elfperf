@@ -50,7 +50,7 @@
 // Global array of functions statistics
 static struct FunctionStatistic** s_stats=NULL;
 // Number of statistics
-static int s_statsCount = 0;
+static unsigned int s_statsCount = 0;
 
 
 // Record function start time into context->startTime
@@ -109,6 +109,7 @@ void updateStat(void* funcAddr, uint64_t diffTime)
 			   stat->realFuncAddr, diffTime, stat->totalDiffTime,
 			   stat->totalCallsNumber);
     } else {
+        printf("Adding new stat\n");
         addNewStat(funcAddr, diffTime);
     }
 
@@ -186,6 +187,8 @@ struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime)
     stat->totalDiffTime = diffTime;
     stat->totalCallsNumber = 1;
     s_stats[ __sync_fetch_and_add(&s_statsCount, 1)] = stat;
+
+    printf("finished addNewStat\n");
 
     return stat;
 }
