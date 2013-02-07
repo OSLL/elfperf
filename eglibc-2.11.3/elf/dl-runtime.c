@@ -329,7 +329,7 @@ _dl_fixup (
 
 
 /// Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
-  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
+//  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
 
   static struct ElfperfFunctions * elfperfFuncs = NULL;
   static bool errorDuringElfperfFunctionLoad = 0;
@@ -363,7 +363,7 @@ _dl_fixup (
   // if unsuccess - elfperf routines will be skipped
   if (elfperfFuncs == NULL) {
       // Getting pointers to all needed functions
-      _dl_error_printf("Recieving functoins pointers from libelfperf.so\n");
+      _dl_error_printf("Recieving functions pointers from libelfperf.so\n");
       elfperfFuncs = getElfperfFunctions(l, flags);
       // skip elfperf part 
       if (elfperfFuncs == NULL){
@@ -384,7 +384,7 @@ _dl_fixup (
       // skip initialization
       if (initialized) {
         elfperfInitSpinlock = 0; 
-	goto do_elfperf_routines;
+        goto do_elfperf_routines;
       }
 
       _dl_error_printf("Redirectors are not initialized.\n");

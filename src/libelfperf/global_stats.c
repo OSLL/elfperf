@@ -36,7 +36,6 @@
  * ---------------------------------------------------------------- */
 
 #include "global_stats.h"
-//#include "hpet_cntrs.h"
 #include "rdtsc_cntrs.h"
 
 #include <stdlib.h>
