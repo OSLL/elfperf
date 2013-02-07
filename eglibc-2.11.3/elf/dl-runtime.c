@@ -329,7 +329,7 @@ _dl_fixup (
 
 
 /// Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
-  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
+//  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
 
   static struct ElfperfFunctions * elfperfFuncs = NULL;
   static bool errorDuringElfperfFunctionLoad = 0;

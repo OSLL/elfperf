@@ -125,7 +125,7 @@ static bool isSharedMemoryInited = 0;
 static int sharedMemoryInitSpinlock=0;
 
 static void initStats(){
-	int count;
+	unsigned int count;
 	get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
 	s_stats = (struct FunctionStatistic**)mmap(0, sizeof(struct FunctionStatistic*)*count, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 	//(struct FunctionStatistic**)malloc(sizeof(struct FunctionStatistic*)*count);

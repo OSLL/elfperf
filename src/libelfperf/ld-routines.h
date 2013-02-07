@@ -248,7 +248,7 @@ static bool isElfPerfEnabled()
  * Returns list of function names separted by ":" passed from @env_name@ envoironment variable
  * storing number of them into @count@
  */
-static char** get_fn_list(const char* env_name, int* count)
+static char** get_fn_list(const char* env_name, unsigned int* count)
 {
     char* env_value = getenv(env_name);
 
@@ -258,9 +258,9 @@ static char** get_fn_list(const char* env_name, int* count)
     }
 
     char** result = NULL;
-    int word_count = 0;
+    unsigned int word_count = 0;
 
-    int i;
+    unsigned int i;
     int k = 0;
     for (i = 0; i < strlen(env_value); i++) {
         char c = env_value[i + 1];
@@ -309,7 +309,7 @@ static struct FunctionInfo* initFunctionInfoStorage()
 {
 	// Get function list from env variables	
     char ** names;
-    int count;
+    unsigned int count;
     names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
 
 	// Shared memory variables
@@ -333,7 +333,7 @@ static struct FunctionInfo* initFunctionInfoStorage()
     struct FunctionInfo* infos = 
 	(struct FunctionInfo*)mmap(0, sizeof(struct FunctionInfo)*count, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 	//(struct FunctionInfo*)malloc(sizeof(struct FunctionInfo)*count);
-    int i = 0;
+    unsigned int i = 0;
     for (i = 0; i < count; i++) {
         (infos[i]).name = names[i];
     }
@@ -352,9 +352,9 @@ static struct FunctionInfo* initFunctionInfoStorage()
 static struct FunctionInfo* getFunctionInfoStorage()
 {
     // Get function list from env variables	
-    char ** names;
-    int count;
-    names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+//    char ** names;
+//    unsigned int count;
+//    names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
     
     // Shared memory variables
     int shmid;
@@ -402,13 +402,14 @@ static struct FunctionInfo* getInfoByAddr(void* addr, struct FunctionInfo* stora
 {
     if (storage == NULL) return NULL;
 
-    static int count = -1;
+    static unsigned int count = 0;
+    static bool isFunctionListFetched = 0;
 
-    if (count < 0) {
+    if (count == 0 || isFunctionListFetched == 0) {
         get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
     }
 
-    int i;
+    unsigned int i;
 	for (i = 0; i < count ; i++) {
     //	_dl_debug_printf("\tChecking match for pair %u %u\n",storage[i].addr, addr);
         if (  storage[i].addr == addr ) {
