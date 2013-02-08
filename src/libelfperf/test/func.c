@@ -78,3 +78,20 @@ int testFunction8(int arg0, int arg1, int arg2, int arg3, int arg4, int arg5, in
 
     return TEST8_RESULT;
 }
+
+struct testStruct testFunction9(struct testStruct2 arg0)
+{
+    printf("TEST_LOG: Inside of testFunction9(testStruct2(%d, %d, %lu, %f, %lu))\n", arg0.a, arg0.b, arg0.c, arg0.d, arg0.e);
+    assert(arg0.a = TEST9_ARG0_A);
+    assert(arg0.b = TEST9_ARG0_B);
+    assert(arg0.c = TEST9_ARG0_C);
+    assert(abs(arg0.d - TEST9_ARG0_D) <= EPS);
+    assert(arg0.e = TEST9_ARG0_E);
+
+    struct testStruct result;
+    result.a = TEST9_RESULT_A;
+    result.b = TEST9_RESULT_B;
+    result.c = TEST9_RESULT_C;
+
+    return result;
+}

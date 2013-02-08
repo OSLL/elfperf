@@ -18,7 +18,8 @@
 
 void* symbols[] = {
                     testFunction1, testFunction2, testFunction3, testFunction4, 
-                    testFunction5, testFunction6, testFunction7, testFunction8
+                    testFunction5, testFunction6, testFunction7, testFunction8,
+                    testFunction9
                   };
 
 int main()
@@ -88,7 +89,7 @@ int main()
     assert(resultFn7.c == TEST7_RESULT_C);
     assert(abs(resultFn7.a - (double)TEST7_RESULT_A) <= EPS);
     assert(resultFn7.a == TEST7_RESULT_A);
-    fprintf(stdout, "Test #7 is successfull. Result = testStruct(%d, %d, %lu, %f, %lu)\n", resultFn7.a, resultFn7.b, resultFn7.c, resultFn7.d, resultFn7.e);
+    fprintf(stdout, "Test #7 is successfull. Result = testStruct2(%d, %d, %lu, %f, %lu)\n", resultFn7.a, resultFn7.b, resultFn7.c, resultFn7.d, resultFn7.e);
 
     fprintf(stdout, "\nTest #8:\n");
     i = 7;
@@ -96,6 +97,21 @@ int main()
     int resultFn8 = (*func8)(TEST8_ARG0, TEST8_ARG1, TEST8_ARG2, TEST8_ARG3, TEST8_ARG4, TEST8_ARG5, TEST8_ARG6, TEST8_ARG7, TEST8_ARG8, TEST8_ARG9);
     assert(resultFn8 == TEST8_RESULT);
     fprintf(stdout, "Test #8 is successfull. Result = %d\n", resultFn8);
+
+    fprintf(stdout, "\nTest #9:\n");
+    i = 8;
+    struct testStruct(*func9)(struct testStruct2 arg0) = getRedirectorAddressForName(context.names[i], context);
+    struct testStruct2 arg0_test9;
+    arg0_test9.a = TEST9_ARG0_A;
+    arg0_test9.b = TEST9_ARG0_B;
+    arg0_test9.c = TEST9_ARG0_C;
+    arg0_test9.d = TEST9_ARG0_D;
+    arg0_test9.e = TEST9_ARG0_E;
+    struct testStruct resultFn9 = (*func9)(arg0_test9);
+    assert(resultFn9.a == TEST9_RESULT_A);
+    assert(resultFn9.b == TEST9_RESULT_B);
+    assert(resultFn9.c == TEST9_RESULT_C);
+    fprintf(stdout, "Test #8 is successfull. Result = testStruct(%d, %d, %d)\n", resultFn9.a, resultFn9.b, resultFn9.c);
 
     return 0;
 }
