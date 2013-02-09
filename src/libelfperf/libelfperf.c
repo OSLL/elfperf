@@ -131,6 +131,7 @@ void wrapper_cdecl()
         "push   %r14\n"
         "push   %r13\n"
         "push   %r12\n"
+        "push   %r10\n"
         "push   %rax\n"         // function address
         "push   %rsi\n"
         "push   %rdi\n"
@@ -185,6 +186,7 @@ void wrapper_cdecl()
         "pop    %rdi\n"
         "pop    %rsi\n"
         "pop    %rax\n"
+        "pop    288(%r15)\n"             // context->r10 = r10
         "pop    256(%r15)\n"             // context->r12 = r12 
         "pop    264(%r15)\n"             // context->r13 = r13
         "pop    272(%r15)\n"             // context->r14 = r14
@@ -236,6 +238,7 @@ void wrapper_cdecl()
         "pop    %rsi\n"
         // Restoring previous value of rax
         "mov    48(%r15), %rax\n"
+        "mov    288(%r15), %r10\n"
         // Restore XMM registers
         "movdqu 112(%r15), %xmm0\n"
         "movdqu 128(%r15), %xmm1\n"
@@ -259,6 +262,7 @@ void wrapper_cdecl()
         "mov    %rbx, -8(%rbp)\n"   // 1st local var of caller = old value
         // Save return values of wrapped function
         "mov    %rax, 16(%r15)\n"   // context->integerResult = %rax
+        "mov    %rdx, 72(%r15)\n"   // context->rdx = %rdx
         "movsd  %xmm0, 24(%r15)\n"  // context->floatingPointResult = %xmm0
         // Save registers before record_end_time call
         "push   %rdx\n"
@@ -276,6 +280,7 @@ void wrapper_cdecl()
         "mov    272(%r15), %r14\n"
         // Preparing to exit from wrapper
         "mov    16(%r15), %rax\n"   // %rax = context->integerResult
+        "mov    72(%r15), %rdx\n"   // %rdx = context->rdx
         "push   (%r15)\n"           // restore real return address, i.e. push context->realReturnAddr
         "movsd  24(%r15), %xmm0\n"  // %xmm0 = context->floatingPointResult
         "push   280(%r15)\n"        // push old r15 value to stack
@@ -294,7 +299,7 @@ void wrapper_no_cdecl()
     /* Stack structure
      * /////top/////
      *     %rbx
-     *    old_rbp
+     *     %rax
      *  return_addr
      *   arg n - 1
      *      ...
@@ -311,6 +316,7 @@ void wrapper_no_cdecl()
         "push   %r12\n"
         "push   %r13\n"
         "push   %r14\n"
+        "push   %r10\n"
         "push   %rbp\n"
         "push   %rax\n"
         //"push   %rbx\n" //<- was saved at redirector
@@ -372,6 +378,7 @@ void wrapper_no_cdecl()
 
         "pop    8(%r15)\n"             // context->functionPointer = function address
         "pop    %rbp\n"
+        "pop    %r10\n"
         "pop    %r14\n"
 
         "pop    %r13\n"
@@ -388,6 +395,7 @@ void wrapper_no_cdecl()
         "mov    %r12, 256(%r15)\n"   // context->r12 = r12
         "mov    %r13, 264(%r15)\n"   // context->r13 = r13
         "mov    %r14, 272(%r15)\n"   // context->r14 = r14
+        "mov    %r10, 288(%r15)\n"   // context->r10 = r10
         // Save XMM registers
         "movdqu %xmm0, 112(%r15)\n" // context->xmm0 = xmm0;
         "movdqu %xmm1, 128(%r15)\n" // context->xmm0 = xmm0;
@@ -435,6 +443,7 @@ void wrapper_no_cdecl()
         // Save context address in %rbp and %rbp value inside of context
         //"mov    %rbp, 40(%r15)\n"   // context->rbp = %rbp
         "mov    %r15, %rbp\n"       // %rbp = %r15
+        "mov    288(%r15), %r10\n"  // %r10 = context->r10
         // Jump to wrapped function
         "jmp    8(%r15)\n"          // jmp context->functionPointer
     );
@@ -446,6 +455,7 @@ void wrapper_no_cdecl()
         "mov    %rbp, %r15\n"       // %r15 = %rbp (&context)
         // Save return values of wrapped function
         "mov    %rax, 16(%r15)\n"   // context->integerResult = %rax
+        "mov    %rdx, 72(%r15)\n"   // context->rdx = %rdx
         "movsd  %xmm0, 24(%r15)\n"  // context->floatingPointResult = %xmm0
         // Save registers before record_end_time call
         "push   %r15\n"
@@ -463,6 +473,7 @@ void wrapper_no_cdecl()
         //"mov    280(%r15), %r15\n"
         // Preparing to exit from wrapper
         "mov    16(%r15), %rax\n"   // %rax = context->integerResult
+        "mov    72(%r15), %rdx\n"
         "push   (%r15)\n"           // restore real return address, i.e. push context->realReturnAddr
         "movsd  24(%r15), %xmm0\n"  // %xmm0 = context->floatingPointResult
         // Restoring r15

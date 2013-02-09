@@ -111,7 +111,7 @@ int main()
     assert(resultFn9.a == TEST9_RESULT_A);
     assert(resultFn9.b == TEST9_RESULT_B);
     assert(resultFn9.c == TEST9_RESULT_C);
-    fprintf(stdout, "Test #8 is successfull. Result = testStruct(%d, %d, %d)\n", resultFn9.a, resultFn9.b, resultFn9.c);
+    fprintf(stdout, "Test #9 is successfull. Result = testStruct(%d, %d, %d)\n", resultFn9.a, resultFn9.b, resultFn9.c);
 
     return 0;
 }

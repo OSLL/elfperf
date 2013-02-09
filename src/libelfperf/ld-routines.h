@@ -166,6 +166,7 @@ struct WrappingContext          // Size     | Offset
     uint64_t r13;               // 8bytes   | 264
     uint64_t r14;               // 8bytes   | 272
     uint64_t r15;               // 8bytes   | 280
+    uint64_t r10;               // 8bytes   | 288
 };
 
 #endif
