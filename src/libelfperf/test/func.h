@@ -47,6 +47,16 @@
 #define TEST8_ARG8 -4
 #define TEST8_ARG9 -5
 
+// Test 9
+#define TEST9_ARG0_A -25
+#define TEST9_ARG0_B 25
+#define TEST9_ARG0_C 9999
+#define TEST9_ARG0_D 0.45
+#define TEST9_ARG0_E 10000
+#define TEST9_RESULT_A 1000
+#define TEST9_RESULT_B -150
+#define TEST9_RESULT_C 0
+
 
 struct testStruct
 {
@@ -72,3 +82,4 @@ float testFunction5(double arg0);
 double testFunction6();
 struct testStruct2 testFunction7(struct testStruct arg0);
 int testFunction8(int arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, int arg7, int arg8, int arg9);
+struct testStruct testFunction9(struct testStruct2 arg0);
