@@ -160,7 +160,7 @@ void wrapper_cdecl()
         "push   %r15\n"
         "call   getNewContext_\n"   // rax = getNewContext
         "pop    280(%rax)\n"        // context->r15 = %r15
-        "mov    %rax, %r15\n"        // r15 = &context
+        "mov    %rax, %r15\n"       // r15 = &context
         // pop xmm7-0 from stack
         "movdqu (%rsp), %xmm7\n"
         "add    $16, %rsp\n"
@@ -186,12 +186,12 @@ void wrapper_cdecl()
         "pop    %rdi\n"
         "pop    %rsi\n"
         "pop    %rax\n"
-        "pop    288(%r15)\n"             // context->r10 = r10
-        "pop    256(%r15)\n"             // context->r12 = r12 
-        "pop    264(%r15)\n"             // context->r13 = r13
-        "pop    272(%r15)\n"             // context->r14 = r14
-        "pop    48(%r15)\n"              // context->rax = rax_old_value 
-        "pop    56(%r15)\n"             // context->rbx = rbx
+        "pop    288(%r15)\n"        // context->r10 = r10
+        "pop    256(%r15)\n"        // context->r12 = r12 
+        "pop    264(%r15)\n"        // context->r13 = r13
+        "pop    272(%r15)\n"        // context->r14 = r14
+        "pop    48(%r15)\n"         // context->rax = rax_old_value 
+        "pop    56(%r15)\n"         // context->rbx = rbx
         // Extract context content from stack and registers
         "mov    8(%rbp), %r11\n"    // r11 = return address
         "mov    %r11, (%r15)\n"     // context->realReturnAddress = r11
@@ -311,7 +311,7 @@ void wrapper_no_cdecl()
     asm volatile (
         // Subtract 4 from %rax (functionPointer+4) because 
         // we don't need to skip stack frame creation
-        "sub $4, %rax\n"
+        //"sub $4, %rax\n"
         // Save values of needed registers
         "push   %r12\n"
         "push   %r13\n"
@@ -366,21 +366,17 @@ void wrapper_no_cdecl()
         "movdqu (%rsp), %xmm0\n"
         "add    $16, %rsp\n"
         // Restore registers state
-        "pop    280(%rax)\n"         // context->r15 = r15
-
+        "pop    280(%rax)\n"        // context->r15 = r15
         "pop    %r9\n"
         "pop    %r8\n"
         "pop    %rdx\n"
-
         "pop    %rcx\n"
         "pop    %rdi\n"
         "pop    %rsi\n"
-
-        "pop    8(%r15)\n"             // context->functionPointer = function address
+        "pop    8(%r15)\n"          // context->functionPointer = function address
         "pop    %rbp\n"
         "pop    %r10\n"
         "pop    %r14\n"
-
         "pop    %r13\n"
         "pop    %r12\n"
         "pop    %rax\n"
@@ -388,14 +384,14 @@ void wrapper_no_cdecl()
         // Extract context content from stack and registers
         "mov    (%rsp), %r11\n"     // r11 = return address
         "mov    %r11, (%r15)\n"     // context->realReturnAddress = r11
-//        "mov    %rax, 8(%r15)\n"    // context->functionPointer = rax
+        //"mov    %rax, 8(%r15)\n"    // context->functionPointer = rax
         // Saving registers to context
         "mov    %rbx, 56(%r15)\n"   // context->rbx = rbx
         "mov    %rbp, 40(%r15)\n"   // context->rbp = rbp
-        "mov    %r12, 256(%r15)\n"   // context->r12 = r12
-        "mov    %r13, 264(%r15)\n"   // context->r13 = r13
-        "mov    %r14, 272(%r15)\n"   // context->r14 = r14
-        "mov    %r10, 288(%r15)\n"   // context->r10 = r10
+        "mov    %r12, 256(%r15)\n"  // context->r12 = r12
+        "mov    %r13, 264(%r15)\n"  // context->r13 = r13
+        "mov    %r14, 272(%r15)\n"  // context->r14 = r14
+        "mov    %r10, 288(%r15)\n"  // context->r10 = r10
         // Save XMM registers
         "movdqu %xmm0, 112(%r15)\n" // context->xmm0 = xmm0;
         "movdqu %xmm1, 128(%r15)\n" // context->xmm0 = xmm0;
@@ -445,7 +441,9 @@ void wrapper_no_cdecl()
         "mov    %r15, %rbp\n"       // %rbp = %r15
         "mov    288(%r15), %r10\n"  // %r10 = context->r10
         // Jump to wrapped function
-        "jmp    8(%r15)\n"          // jmp context->functionPointer
+        "mov    8(%r15), %r15\n"
+        "sub    $4, %r15\n"
+        "jmp    %r15\n"          // jmp context->functionPointer
     );
 
     asm volatile (

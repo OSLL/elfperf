@@ -11,7 +11,7 @@ int main(int argc, char** argv){
 	printf(" hello = %x\n", ptr);
 
 
-	for (i=0; i<10; i++){
+//	for (i=0; i<10; i++){
 		char buf[100];
 		sprintf(buf, "caller %d\n", i);	
 		printf("Calling hello(buf):\t");
@@ -22,7 +22,7 @@ int main(int argc, char** argv){
         hello4();
         hello5();
 		testFunc();
-	}
+//	}
 
 	printf("PID == %d\n", getpid());
 

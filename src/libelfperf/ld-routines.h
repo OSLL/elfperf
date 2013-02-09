@@ -280,7 +280,7 @@ static char** get_fn_list(const char* env_name, unsigned int* count)
     }
 
     *count = word_count;
-    _dl_debug_printf("Got %u functions at get_fn_list\n", word_count);
+    _dl_debug_printf("LD_ROUTINES_LOG: Got %u functions at get_fn_list\n", word_count);
 
     return result;
 }
@@ -324,13 +324,13 @@ static struct FunctionInfo* initFunctionInfoStorage()
 
     shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo**), IPC_CREAT | 0666);
     if (shmid < 0) {
-        _dl_debug_printf("Failed to create shared memory segment for FunctionInfo!(%u)\n", errno);
+        _dl_debug_printf("LD_ROUTINES_LOG: Failed to create shared memory segment for FunctionInfo!(%u)\n", errno);
         return NULL;
     }
 
     shm = shmat(shmid, NULL, 0);
     if (shm == (struct FunctionInfo**) -1) {
-        _dl_debug_printf("Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
+        _dl_debug_printf("LD_ROUTINES_LOG: Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
         return NULL;
     }
 
@@ -345,7 +345,7 @@ static struct FunctionInfo* initFunctionInfoStorage()
     }
 
     *shm = infos;
-    _dl_debug_printf("Success creation of FunctionInfo shared memory segment!\n");	
+    _dl_debug_printf("LD_ROUTINES_LOG: Success creation of FunctionInfo shared memory segment!\n");	
 	
     return *shm;
 }
@@ -368,16 +368,16 @@ static struct FunctionInfo* getFunctionInfoStorage()
 
     shmid = shmget(ELFPERF_SHARED_MEMORY_ID_INFO, sizeof(struct FunctionInfo**), IPC_CREAT | 0666);
     if (shmid < 0) {
-        _dl_debug_printf("Failed to get shared memory segment for FunctionInfo!(%u)\n", errno);
+        _dl_debug_printf("LD_ROUTINES_LOG: Failed to get shared memory segment for FunctionInfo!(%u)\n", errno);
         return NULL;
     }
 
     shm = shmat(shmid, NULL, 0);
     if (shm == (struct FunctionInfo**) -1) {
-        _dl_debug_printf("Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
+        _dl_debug_printf("LD_ROUTINES_LOG: Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
         return NULL;
     }
-    _dl_debug_printf("Successfuly got address of info storage %x \n", shm);	
+    _dl_debug_printf("LD_ROUTINES_LOG: Successfuly got address of info storage %x \n", shm);	
 
     return *shm;
 }
@@ -406,7 +406,10 @@ static struct FunctionInfo* getInfoByName(char* name, struct FunctionInfo* stora
  */
 static struct FunctionInfo* getInfoByAddr(void* addr, struct FunctionInfo* storage)
 {
-    if (storage == NULL) return NULL;
+    if (storage == NULL) {
+        _dl_debug_printf("LD_ROUTINES_LOG: Storage is NULL. Returning NULL info.\n"); 
+        return NULL;
+    }
 
     static unsigned int count = 0;
     static bool isFunctionListFetched = 0;
@@ -417,11 +420,15 @@ static struct FunctionInfo* getInfoByAddr(void* addr, struct FunctionInfo* stora
 
     unsigned int i;
 	for (i = 0; i < count ; i++) {
-    //	_dl_debug_printf("\tChecking match for pair %u %u\n",storage[i].addr, addr);
+    	_dl_debug_printf("LD_ROUTINES_LOG: Checking match for pair %x %x\n",storage[i].addr, addr);
+     	_dl_debug_printf("LD_ROUTINES_LOG:                         %s\n",storage[i].name);
         if (  storage[i].addr == addr ) {
+            _dl_debug_printf("LD_ROUTINES_LOG: Found match\n");
             return storage+i;
         }
     }
+
+    _dl_debug_printf("LD_ROUTINES_LOG: No matches. Returning NULL.\n");
     return NULL;
 }
 
@@ -437,18 +444,18 @@ static struct FunctionStatistic*** initFunctionStatisticsStorage()
     struct FunctionStatistic *** shm;
 	
     if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
-        _dl_debug_printf("initFunctionStatisticsStorage: Error during shmget");
+        _dl_debug_printf("LD_ROUTINES_LOG: initFunctionStatisticsStorage: Error during shmget");
         return NULL;
     }
 
     if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic ***) -1) {
-        _dl_debug_printf("initFunctionStatisticsStorage: Error during shmat\n");
+        _dl_debug_printf("LD_ROUTINES_LOG: initFunctionStatisticsStorage: Error during shmat\n");
         return NULL;
     }
 	
     *shm = NULL;
 		
-    _dl_debug_printf("Shared memory inited successfuly: shm = %x\n", *shm );
+    _dl_debug_printf("LD_ROUTINES_LOG: Shared memory inited successfuly: shm = %x\n", *shm );
     return shm;
 }
 
@@ -462,10 +469,10 @@ static struct FunctionStatistic*** getFunctionStatisticsStorage()
     struct FunctionStatistic*** shm;
 
     if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), 0666)) < 0 ) {
-        _dl_debug_printf("getFunctionStatisticsStorage: Erorr during shmget");
+        _dl_debug_printf("LD_ROUTINES_LOG: getFunctionStatisticsStorage: Erorr during shmget");
         return NULL;
 	} else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
-        _dl_debug_printf("getFunctionStatisticsStorage: Error during shmat\n");
+        _dl_debug_printf("LD_ROUTINES_LOG: getFunctionStatisticsStorage: Error during shmat\n");
         return NULL;
     }
     return shm;
@@ -482,18 +489,18 @@ static bool initElfperfContextStorage(struct ElfperfContext context)
     struct ElfperfContext* shm;
 	
     if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext* ), IPC_CREAT | 0666)) < 0) {
-        _dl_debug_printf("initElfperfContextStorage: Erorr during shmget");
+        _dl_debug_printf("LD_ROUTINES_LOG: initElfperfContextStorage: Erorr during shmget");
         return false;
     }
 
     if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext*) -1) {
-        _dl_debug_printf("initElfperfContextStorage: Error during shmat\n");
+        _dl_debug_printf("LD_ROUTINES_LOG: initElfperfContextStorage: Error during shmat\n");
         return false;
 	}
 	
     *shm = context;
 		
-    _dl_debug_printf("initElfperfContextStorage: Shared memory inited successfuly: shm = %x\n", *shm );
+    _dl_debug_printf("LD_ROUTINES_LOG: initElfperfContextStorage: Shared memory inited successfuly: shm = %x\n", *shm );
 
     return true;
 }
@@ -508,10 +515,10 @@ static struct ElfperfContext* getElfperfContextStorage()
     struct ElfperfContext* shm;
 
     if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext*), 0666)) < 0 ) {
-        _dl_debug_printf("getElfperfContextStorage: Erorr during shmget");
+        _dl_debug_printf("LD_ROUTINES_LOG: getElfperfContextStorage: Error during shmget");
         return NULL;
     } else if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext* ) -1) {
-        _dl_debug_printf("getElfperfContextStorage: Error during shmat\n");
+        _dl_debug_printf("LD_ROUTINES_LOG: getElfperfContextStorage: Error during shmat\n");
         return NULL;
     }
     return shm;

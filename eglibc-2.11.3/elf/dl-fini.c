@@ -167,16 +167,18 @@ static void printElfperfResults()
   struct FunctionStatistic*** shm;
   // Going inside shared memory
 
+  _dl_debug_printf("LD_LOG: printElfperfResults\n");
+
   if(isElfPerfEnabled()) {
-    _dl_debug_printf("Granted normal access to shared memory\n");
+    _dl_debug_printf("LD_LOG: Granted normal access to shared memory\n");
 
     int * pFile;
         
     if ((pFile = open(getFileNameWithPid(), O_WRONLY | O_CREAT | O_TRUNC,
          S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1) {
-      _dl_debug_printf("Errors during open!\n");
+      _dl_debug_printf("LD_LOG: Errors during open!\n");
     } else {
-      _dl_debug_printf("Result file opened successfully\n");
+      _dl_debug_printf("LD_LOG: Result file opened successfully\n");
     }
 
     // File header  
@@ -190,14 +192,14 @@ static void printElfperfResults()
     struct ElfperfContext* elfperfContext = getElfperfContextStorage();
 
     if (list == NULL) {
-      _dl_debug_printf("Error - recieved null from getFunctionInfoStorage \n");
+      _dl_debug_printf("LD_LOG: Error - recieved null from getFunctionInfoStorage \n");
       _dl_dprintf(pFile,"Error - recieved null from getFunctionInfoStorage \n");
       close(pFile);
       return;
     }
 
     if (stat == NULL ) {
-      _dl_debug_printf("Statistic is empty, exiting!\n");
+      _dl_debug_printf("LD_LOG: Statistic is empty, exiting!\n");
       _dl_dprintf(pFile, "Statistic is empty, exiting!\n");
       close(pFile);
       return;
@@ -206,13 +208,13 @@ static void printElfperfResults()
     unsigned int count = elfperfContext->context.count;
     // Output of results
     for (i = 0; i < count && *(stat+i) != NULL; i++) {
-      _dl_debug_printf("Printing stats, iteration %u \n",i);
+      _dl_debug_printf("LD_LOG: Printing stats, iteration %u \n",i);
 			
-      _dl_debug_printf("Try to get FunctionInfo\n");
+      _dl_debug_printf("LD_LOG: Try to get FunctionInfo for address %x\n", stat[i]->realFuncAddr);
       struct FunctionInfo* currentInfo = getInfoByAddr((stat[i])->realFuncAddr, list);
 
       if (currentInfo == NULL) {
-        _dl_debug_printf("Failed at %x\n", (stat[i])->realFuncAddr);
+        _dl_debug_printf("LD_LOG: Failed at %x\n", (stat[i])->realFuncAddr);
         _dl_dprintf(pFile, "Failed at %x\n", (stat[i])->realFuncAddr);
         break;
       }
@@ -226,7 +228,7 @@ static void printElfperfResults()
       #ifdef ELFPERF_ARCH_32
       void ** timePtr = (void **)&totalTime;
      // Output to console 
-      _dl_debug_printf("Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
+      _dl_debug_printf("LD_LOG: Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
                         name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
 
       // Output to file if it is opened
@@ -236,7 +238,7 @@ static void printElfperfResults()
       }
       #elif defined ELFPERF_ARCH_64
       // Output to console 
-      _dl_debug_printf("Statistic for %s(%x) : total calls number = %u, total ticks number = %u \n",
+      _dl_debug_printf("LD_LOG: Statistic for %s(%x) : total calls number = %u, total ticks number = %u \n",
                         name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, totalTime );
 
       // Output to file if it is opened
@@ -271,7 +273,7 @@ _dl_fini (void)
      determining the order of the modules once again from the beginning.  */
 
 ///////////////////////////////////////////////////////////////////////////
-  _dl_debug_printf("Finishing work of ld.so!\n");
+  _dl_debug_printf("LD_LOG: Finishing work of ld.so!\n");
   printElfperfResults();
 ///////////////////////////////////////////////////////////////////////////
 

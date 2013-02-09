@@ -354,7 +354,7 @@ _dl_fixup (
   if (isElfPerfEnabled() &&  (isFunctionProfiled(name) || isDlopen )  
       && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad
 	&& isNotLibC && isNotLibelfperf && !isLibDl) {
-      _dl_error_printf("All conditions for %s profiling is fine\n", name);
+      _dl_error_printf("LD_LOG: All conditions for %s profiling is fine\n", name);
   } else {
       goto skip_elfperf;
   }
@@ -363,16 +363,16 @@ _dl_fixup (
   // if unsuccess - elfperf routines will be skipped
   if (elfperfFuncs == NULL) {
       // Getting pointers to all needed functions
-      _dl_error_printf("Recieving functions pointers from libelfperf.so\n");
+      _dl_error_printf("LD_LOG: Recieving functions pointers from libelfperf.so\n");
       elfperfFuncs = getElfperfFunctions(l, flags);
       // skip elfperf part 
       if (elfperfFuncs == NULL){
-          _dl_error_printf("Errors during getElfperfFunctions!\n");
+          _dl_error_printf("LD_LOG: Errors during getElfperfFunctions!\n");
           errorDuringElfperfFunctionLoad = 1;
           goto skip_elfperf;
       }
   }
-  _dl_error_printf("Recieved all pointers to functions from libelfperf.so\n");
+  _dl_error_printf("LD_LOG: Recieved all pointers to functions from libelfperf.so\n");
 
 
   // ELFPERF
@@ -387,18 +387,18 @@ _dl_fixup (
         goto do_elfperf_routines;
       }
 
-      _dl_error_printf("Redirectors are not initialized.\n");
+      _dl_error_printf("LD_LOG: Redirectors are not initialized.\n");
 
       context.names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &(context.count));
 
-      _dl_error_printf("Initializing redirectors for:\n");
+      _dl_error_printf("LD_LOG: Initializing redirectors for:\n");
       unsigned int i = 0;
       for (i = 0 ; i < context.count; i++) {
           _dl_error_printf("\t%s\n", context.names[i]);
       }
 //      void *wr = elfperfFuncs->wrapper;
 
-      _dl_error_printf("Going to initWrapperRedirectors\n");
+      _dl_error_printf("LD_LOG: Going to initWrapperRedirectors\n");
       ( * (elfperfFuncs->initWrapperRedirectors))(&context);
 
       infos = getFunctionInfoStorage();
@@ -413,7 +413,7 @@ _dl_fixup (
       initElfperfContextStorage(elfperfContext); 
 
       initialized = 1;
-      _dl_error_printf("After setting initialized , curr val = %u\n", initialized);
+      _dl_error_printf("LD_LOG: After setting initialized , curr val = %u\n", initialized);
 
       elfperfInitSpinlock = 0;
   }
@@ -421,33 +421,33 @@ _dl_fixup (
 do_elfperf_routines:  
 
   if ( isFunctionProfiled(name) == 0) {
-      _dl_error_printf("dlopen is not profiled, skipping\n");
+      _dl_error_printf("LD_LOG: dlopen is not profiled, skipping\n");
       goto skip_elfperf;
   }
 
-  _dl_error_printf("Doing routines for ELFPERF\n");
+  _dl_error_printf("LD_LOG: Doing routines for ELFPERF\n");
   if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name, context)){
       struct FunctionInfo* tmp = getInfoByName(name, infos, context.count);
 		
       if (tmp != NULL) {
         tmp->addr = value;
       } else {
-        _dl_error_printf("Error - not found function for name by getInfoByName\n");
+        _dl_error_printf("LD_LOG Error - not found function for name by getInfoByName\n");
       }
 
-      _dl_error_printf("Function %s (%u) not registered, adding\n", name, value);
+      _dl_error_printf("LD_LOG: Function %s (%u) not registered, adding\n", name, value);
       (*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
-      _dl_error_printf("Registration of %s successful.\n", name);
+      _dl_error_printf("LD_LOG: Registration of %s successful.\n", name);
   }
 
-  _dl_error_printf("Getting redirector address for %s \n", name);
+  _dl_error_printf("LD_LOG: Getting redirector address for %s \n", name);
   DL_FIXUP_VALUE_TYPE value1 = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
   value = value1;
 
   void ** ptr =  ((void*) value1);
   int j;
 
-  _dl_error_printf("Bytes of redirector:\n");
+  _dl_error_printf("LD_LOG: Bytes of redirector:\n");
   for (j = 0; j < 4; j++) {
       _dl_error_printf("\t%x %x %x %x \n", 
       (((unsigned int)ptr[j]) ) & 0xFF, (((unsigned int)ptr[j]) >> 8) & 0xFF,
