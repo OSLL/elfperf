@@ -18,9 +18,17 @@ extern "C" {
 void* symbols[] = {
                     (void*)testFunction1, (void*)testFunction2, (void*)testFunction3, (void*)testFunction4,
                     (void*)testFunction5, (void*)testFunction6, (void*)testFunction7, (void*)testFunction8,
-                    (void*)testFunction9
+                    (void*)testFunction9, (void*)(&TestClass1::getA), (void*)(&TestClass1::getB), (void*)(&TestClass1::getC),
+                    (void*)(&TestClass1::setA), (void*)(&TestClass1::setB), (void*)(&TestClass1::setC), (void*)(&TestClass1::function1)
                   };
 
+/*
+char* names[] = { 
+                  "_Z13testFunction1v", "_Z13testFunction2ii", "_Z13testFunction3v", "_Z13testFunction4ii",
+                  "_Z13testFunction5d", "_Z13testFunction6v", "_Z13testFunction710testSt", "_Z13testFunction8iiiiiiii",
+                  "_Z13testFunction911testSt", "_ZN10TestClass14getAEv", "_ZN10TestClass14getBEv", "_ZN10TestClass14getCEv"
+                };
+*/
 int main()
 {
     struct RedirectorContext context;
@@ -109,6 +117,43 @@ int main()
     assert(resultFn9.b == TEST9_RESULT_B);
     assert(resultFn9.c == TEST9_RESULT_C);
     cout << "Test #9 is successfull. Result = testStruct(" << resultFn9.a << ", " << resultFn9.b << ", " << resultFn9.c << ")" << endl;
-    
+   
+
+    TestClass1* obj1 = new TestClass1(TESTCLASS1_A, TESTCLASS1_B, (double)TESTCLASS1_C);
+
+    cout << "\nTest #10: Class Get-Methods" << endl;
+    i = 9;
+    int (*func10) (TestClass1*) = reinterpret_cast<int(*)(TestClass1*)>(getRedirectorAddressForName(context.names[i], context));
+    int resultTest10_a = func10(obj1);
+    assert(resultTest10_a == TESTCLASS1_A);
+    i = 10;
+    func10 = reinterpret_cast<int(*)(TestClass1*)>(getRedirectorAddressForName(context.names[i], context));
+    int resultTest10_b = func10(obj1);
+    assert(resultTest10_b == TESTCLASS1_B);
+    i = 11;
+    double(*func10_1)(TestClass1*) = reinterpret_cast<double(*)(TestClass1*)>(getRedirectorAddressForName(context.names[i], context));
+    double resultTest10_c = func10_1(obj1);
+    assert(fabs(resultTest10_c - TESTCLASS1_C) <= EPS);
+    cout << "Test #10 is successfull. Result: a = " << resultTest10_a << ", b = "<< resultTest10_b << ", c = "<< resultTest10_c << endl;
+
+    cout << "\nTest #11: Class Set-Methods" << endl;
+    i = 12;
+    void (*func11) (TestClass1*, const int&) = reinterpret_cast<void(*)(TestClass1*, const int&)>(getRedirectorAddressForName(context.names[i], context));
+    func11(obj1, TESTCLASS1_A);
+    i = 13;
+    func11 = reinterpret_cast<void(*)(TestClass1*, const int&)>(getRedirectorAddressForName(context.names[i], context));
+    func11(obj1, TESTCLASS1_B);
+    i = 14;
+    void (*func11_2) (TestClass1*, const double&) = reinterpret_cast<void(*)(TestClass1*, const double&)>(getRedirectorAddressForName(context.names[i], context));
+    func11_2(obj1, (double)TESTCLASS1_C);
+    cout << "Test #11 is successfull." << endl;
+
+    cout << "\nTest #12: Class static members" << endl;
+    i = 15;
+    double(*func12)(float, int) = (double(*)(float, int))getRedirectorAddressForName(context.names[i], context);
+    double resultFn12 = (*func12)(TESTCLASS1_STATIC_ARG0, TESTCLASS1_STATIC_ARG1);
+    assert(fabs(resultFn12 - TESTCLASS1_STATIC_RESULT) <= EPS);
+    cout << "Test #12 is successfull. Result = " << resultFn12 << endl;
+
     return 0;
 }
