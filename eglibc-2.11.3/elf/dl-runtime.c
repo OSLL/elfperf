@@ -356,6 +356,7 @@ _dl_fixup (
 	&& isNotLibC && isNotLibelfperf && !isLibDl) {
       _dl_error_printf("LD_LOG: All conditions for %s profiling is fine\n", name);
   } else {
+      //_dl_error_printf("LD_LOG: Skip Elfperf while %s profiling\n", name);
       goto skip_elfperf;
   }
 

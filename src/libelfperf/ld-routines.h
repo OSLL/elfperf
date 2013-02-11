@@ -328,7 +328,7 @@ static struct FunctionInfo* initFunctionInfoStorage()
         return NULL;
     }
 
-    shm = shmat(shmid, NULL, 0);
+    shm = (struct FunctionInfo**)shmat(shmid, NULL, 0);
     if (shm == (struct FunctionInfo**) -1) {
         _dl_debug_printf("LD_ROUTINES_LOG: Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
         return NULL;
@@ -372,7 +372,7 @@ static struct FunctionInfo* getFunctionInfoStorage()
         return NULL;
     }
 
-    shm = shmat(shmid, NULL, 0);
+    shm = (struct FunctionInfo**)shmat(shmid, NULL, 0);
     if (shm == (struct FunctionInfo**) -1) {
         _dl_debug_printf("LD_ROUTINES_LOG: Failed to attach at shared memory segment for FunctionInfo!(%u)\n", errno);
         return NULL;
@@ -441,14 +441,16 @@ static struct FunctionStatistic*** initFunctionStatisticsStorage()
 {
     // Shared memory variables
     int shmid;
-    struct FunctionStatistic *** shm;
-	
-    if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic *** ), IPC_CREAT | 0666)) < 0) {
+    struct FunctionStatistic*** shm;
+
+    shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), IPC_CREAT | 0666);	
+    if (shmid < 0) {
         _dl_debug_printf("LD_ROUTINES_LOG: initFunctionStatisticsStorage: Error during shmget");
         return NULL;
     }
 
-    if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic ***) -1) {
+    shm = (struct FunctionStatistic***)shmat(shmid, NULL, 0);
+    if (shm == (struct FunctionStatistic ***) -1) {
         _dl_debug_printf("LD_ROUTINES_LOG: initFunctionStatisticsStorage: Error during shmat\n");
         return NULL;
     }
@@ -468,10 +470,14 @@ static struct FunctionStatistic*** getFunctionStatisticsStorage()
     int shmid;
     struct FunctionStatistic*** shm;
 
-    if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), 0666)) < 0 ) {
+    shmid = shmget(ELFPERF_SHARED_MEMORY_ID_STAT, sizeof(struct FunctionStatistic***), 0666);
+    if (shmid < 0 ) {
         _dl_debug_printf("LD_ROUTINES_LOG: getFunctionStatisticsStorage: Erorr during shmget");
         return NULL;
-	} else if ((shm = shmat(shmid, NULL, 0)) == (struct FunctionStatistic*** ) -1) {
+	} 
+
+    shm = (struct FunctionStatistic***)shmat(shmid, NULL, 0);
+    if (shm == (struct FunctionStatistic*** ) -1) {
         _dl_debug_printf("LD_ROUTINES_LOG: getFunctionStatisticsStorage: Error during shmat\n");
         return NULL;
     }
@@ -487,13 +493,15 @@ static bool initElfperfContextStorage(struct ElfperfContext context)
     // Shared memory variables
     int shmid;
     struct ElfperfContext* shm;
-	
-    if ((shmid = shmget(ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext* ), IPC_CREAT | 0666)) < 0) {
+
+    shmid = shmget(ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext* ), IPC_CREAT | 0666);	
+    if (shmid < 0) {
         _dl_debug_printf("LD_ROUTINES_LOG: initElfperfContextStorage: Erorr during shmget");
         return false;
     }
 
-    if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext*) -1) {
+    shm = (struct ElfperfContext*)shmat(shmid, NULL, 0);
+    if (shm == (struct ElfperfContext*) -1) {
         _dl_debug_printf("LD_ROUTINES_LOG: initElfperfContextStorage: Error during shmat\n");
         return false;
 	}
@@ -513,11 +521,15 @@ static struct ElfperfContext* getElfperfContextStorage()
 {
     int shmid;
     struct ElfperfContext* shm;
-
-    if ((shmid = shmget( ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext*), 0666)) < 0 ) {
+    
+    shmid = shmget( ELFPERF_SHARED_MEMORY_ID_REDIRECTOR_CONTEXT, sizeof(struct ElfperfContext*), 0666);
+    if (shmid < 0) {
         _dl_debug_printf("LD_ROUTINES_LOG: getElfperfContextStorage: Error during shmget");
         return NULL;
-    } else if ((shm = shmat(shmid, NULL, 0)) == (struct ElfperfContext* ) -1) {
+    } 
+
+    shm = (struct ElfperfContext*)shmat(shmid, NULL, 0);
+    if (shm == (struct ElfperfContext* ) -1) {
         _dl_debug_printf("LD_ROUTINES_LOG: getElfperfContextStorage: Error during shmat\n");
         return NULL;
     }

@@ -11,10 +11,6 @@
 #include "../ld-routines.h"
 #include "../libelfperf.h"
 
-//#define PAGESIZE 4096
-//#define REDIRECTOR_WORDS_SIZE 4
-//#define REDIRECTOR_SIZE 16
-
 
 void* symbols[] = {
                     testFunction1, testFunction2, testFunction3, testFunction4, 
