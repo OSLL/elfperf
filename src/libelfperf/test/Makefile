@@ -1,10 +1,10 @@
-default: clean test_cpp
+default: clean test_functional
 
 all: clean libelfperf bin
 
 bin: test_redir_cdecl
 
-run: run_test_cpp
+run: run_test_functional
 
 libelfperf_32:
 	make -C .. disable_console_output
@@ -41,11 +41,20 @@ test_cpp_cdecl_64: libelfperf_64
 test_cpp_no_cdecl_64: libelfperf_64
 	g++ -m64 -g3 -fomit-frame-pointer test_cpp.cpp libtest_cpp.cpp func.c -o test_cpp -L.. -lelfperf
 
+lib_func:
+	gcc -m64 -g3 -fPIC func.c -shared -o libfunc.so
+
+test_functional: lib_func
+	gcc -m64 -g3 test_functional.c -o test_functional -lpthread -L. -lfunc
+
 run_test_redir:
 	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:.. ELFPERF_PROFILE_FUNCTION=testFunction1:testFunction2:testFunction3:testFunction4:testFunction5:testFunction6:testFunction7:testFunction8:testFunction9 ./test_redir'
 
 run_test_cpp:
 	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:/usr/lib64:.. ELFPERF_PROFILE_FUNCTION=_Z13testFunction1v:_Z13testFunction2ii:_Z13testFunction3v:_Z13testFunction4ii:_Z13testFunction5d:_Z13testFunction6v:_Z13testFunction710testSt:_Z13testFunction8iiiiiiii:_Z13testFunction911testSt:_ZN10TestClass14getAEv:_ZN10TestClass14getBEv:_ZN10TestClass14getCEv:_ZN10TestClass14setAERKi:ZN10TestClass14setBERKi:_ZN10TestClass14setCERKd:_ZN10TestClass19function1  ./test_cpp'
+
+run_test_functional:
+	./test_functional.sh
 
 test_cpp_program: lib_cpp
 	g++ -m64 -g3 test_cpp_program.cpp -o test_cpp_program -L. -ltest_cpp
@@ -68,4 +77,6 @@ clean:
 	rm -f ./test_redir
 	rm -f ./test_cpp
 	rm -f ./libtest_cpp.so
+	rm -f ./libfunc.so
+	rm -f ./test_functional
 	rm -f ./elfperf_results_*
