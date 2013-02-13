@@ -35,5 +35,15 @@ fclose\
 :_ZThn16_NK7QWidget6metricEN12QPaintDevice17PaintDeviceMetricE\
 :_ZThn16_NK7QWidget7devTypeEv\
 :_ZThn16_NK9QGLWidget11paintEngineEv\
-:fwrite /tools/lib/ld-2.11.3.so ./affine'
+:_ZThn16_NK9QGLWidget11paintEngineEv\
+:_ZdlPv\
+:_Znwm\
+:__cxa_atexit\
+:__cxa_begin_catch\
+:__cxa_end_catch\
+:__cxa_rethrow\
+:__gxx_personality_v0\
+:__libc_start_main\
+:memcpy\
+:memmove  /tools/lib/ld-2.11.3.so ./affine'
 
