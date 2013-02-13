@@ -69,7 +69,7 @@ run_test_cpp_program:
 	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:/usr/lib64:. LD_PRELOAD=../libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true ELFPERF_PROFILE_FUNCTION=_Z14testFunction12id /tools/lib/ld-2.11.3.so ./test_cpp_program'
 
 run_test_c_program:
-	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:. LD_PRELOAD=../libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true ELFPERF_PROFILE_FUNCTION=testFunction2 /tools/lib/ld-2.11.3.so ./test_c_program'
+	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:. LD_PRELOAD=../libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true ELFPERF_PROFILE_FUNCTION=testFunction1 /tools/lib/ld-2.11.3.so ./test_c_program'
 
 test_all:
 	make test_redir_cdecl_32

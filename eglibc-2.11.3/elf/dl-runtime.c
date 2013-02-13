@@ -331,6 +331,8 @@ _dl_fixup (
   // Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
   //  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
 
+#ifdef ELFPERF_ARCH_64
+
   // Save state of XMM registers because elfperf code corrupts them
   uint64_t xmm0[2] = {0, 0};
   uint64_t xmm1[2] = {0, 0};
@@ -349,6 +351,8 @@ _dl_fixup (
   asm volatile ("mov %0, %%rax; movdqu %%xmm5, (%%rax);" : :"r"(&xmm5) :"%rax");
   asm volatile ("mov %0, %%rax; movdqu %%xmm6, (%%rax);" : :"r"(&xmm6) :"%rax");
   asm volatile ("mov %0, %%rax; movdqu %%xmm7, (%%rax);" : :"r"(&xmm7) :"%rax");
+
+#endif
 
   static struct ElfperfFunctions * elfperfFuncs = NULL;
   static bool errorDuringElfperfFunctionLoad = 0;
@@ -479,6 +483,8 @@ do_elfperf_routines:
 
 skip_elfperf:
 
+#ifdef ELFPERF_ARCH_64
+
   asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm0;" : :"r"(&xmm0) :"%rax");
   asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm1;" : :"r"(&xmm1) :"%rax");
   asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm2;" : :"r"(&xmm2) :"%rax");
@@ -487,6 +493,8 @@ skip_elfperf:
   asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm5;" : :"r"(&xmm5) :"%rax");
   asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm6;" : :"r"(&xmm6) :"%rax");
   asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm7;" : :"r"(&xmm7) :"%rax");
+
+#endif
  
   return elf_machine_fixup_plt (l, result, reloc, rel_addr, value);
 }
