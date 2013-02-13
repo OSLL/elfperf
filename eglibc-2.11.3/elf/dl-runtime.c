@@ -328,8 +328,27 @@ _dl_fixup (
     return value;
 
 
-/// Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
-//  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
+  // Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
+  //  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
+
+  // Save state of XMM registers because elfperf code corrupts them
+  uint64_t xmm0[2] = {0, 0};
+  uint64_t xmm1[2] = {0, 0};
+  uint64_t xmm2[2] = {0, 0};
+  uint64_t xmm3[2] = {0, 0};
+  uint64_t xmm4[2] = {0, 0};
+  uint64_t xmm5[2] = {0, 0};
+  uint64_t xmm6[2] = {0, 0};
+  uint64_t xmm7[2] = {0, 0};
+
+  asm volatile ("mov %0, %%rax; movdqu %%xmm0, (%%rax);" : :"r"(&xmm0) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm1, (%%rax);" : :"r"(&xmm1) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm2, (%%rax);" : :"r"(&xmm2) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm3, (%%rax);" : :"r"(&xmm3) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm4, (%%rax);" : :"r"(&xmm4) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm5, (%%rax);" : :"r"(&xmm5) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm6, (%%rax);" : :"r"(&xmm6) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm7, (%%rax);" : :"r"(&xmm7) :"%rax");
 
   static struct ElfperfFunctions * elfperfFuncs = NULL;
   static bool errorDuringElfperfFunctionLoad = 0;
@@ -459,6 +478,16 @@ do_elfperf_routines:
   //getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_ADD_NEW_FUNCTION_SYMBOL, l, flags);
 
 skip_elfperf:
+
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm0;" : :"r"(&xmm0) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm1;" : :"r"(&xmm1) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm2;" : :"r"(&xmm2) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm3;" : :"r"(&xmm3) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm4;" : :"r"(&xmm4) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm5;" : :"r"(&xmm5) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm6;" : :"r"(&xmm6) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm7;" : :"r"(&xmm7) :"%rax");
+ 
   return elf_machine_fixup_plt (l, result, reloc, rel_addr, value);
 }
 #endif

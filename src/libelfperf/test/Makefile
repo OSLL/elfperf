@@ -1,10 +1,10 @@
-default: clean test_functional
+default: clean test_c_program
 
 all: clean libelfperf bin
 
 bin: test_redir_cdecl
 
-run: run_test_functional
+run: run_test_c_program
 
 libelfperf_32:
 	make -C .. disable_console_output
@@ -28,6 +28,9 @@ test_redir_no_cdecl_64: libelfperf_64
 
 lib_cpp:
 	g++ -m64 -fPIC -g3 libtest_cpp.cpp -shared -o libtest_cpp.so 
+
+lib_c:
+	gcc -m64 -fPIC -g3 libtest_c.c -shared -o libtest_c.so
 
 test_cpp_cdecl_32: libelfperf_32
 	g++ -m32 -g3 test_cpp.cpp libtest_cpp.cpp func.c -o test_cpp -L.. -lelfperf
@@ -59,6 +62,15 @@ run_test_functional:
 test_cpp_program: lib_cpp
 	g++ -m64 -g3 test_cpp_program.cpp -o test_cpp_program -L. -ltest_cpp
 
+test_c_program: lib_c
+	gcc -m64 -g3 test_c_program.c -o test_c_program -L. -ltest_c
+
+run_test_cpp_program:
+	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:/usr/lib64:. LD_PRELOAD=../libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true ELFPERF_PROFILE_FUNCTION=_Z14testFunction12id /tools/lib/ld-2.11.3.so ./test_cpp_program'
+
+run_test_c_program:
+	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:. LD_PRELOAD=../libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true ELFPERF_PROFILE_FUNCTION=testFunction2 /tools/lib/ld-2.11.3.so ./test_c_program'
+
 test_all:
 	make test_redir_cdecl_32
 	make run
@@ -79,4 +91,6 @@ clean:
 	rm -f ./libtest_cpp.so
 	rm -f ./libfunc.so
 	rm -f ./test_functional
+	rm -f ./test_cpp_program
+	rm -f ./test_c_program
 	rm -f ./elfperf_results_*
