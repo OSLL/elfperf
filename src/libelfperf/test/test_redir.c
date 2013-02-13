@@ -15,7 +15,7 @@
 void* symbols[] = {
                     testFunction1, testFunction2, testFunction3, testFunction4, 
                     testFunction5, testFunction6, testFunction7, testFunction8,
-                    testFunction9
+                    testFunction9, testFunction10, testFunction11
                   };
 
 int main()
@@ -108,6 +108,20 @@ int main()
     assert(resultFn9.b == TEST9_RESULT_B);
     assert(resultFn9.c == TEST9_RESULT_C);
     fprintf(stdout, "Test #9 is successfull. Result = testStruct(%d, %d, %d)\n", resultFn9.a, resultFn9.b, resultFn9.c);
+
+    fprintf(stdout, "\nTest #10:\n");
+    i = 9;
+    int(*func10)(int, ...) = getRedirectorAddressForName(context.names[i], context);
+    int resultFn10 = (*func10)(TEST10_ARG0, TEST10_ARG1, TEST10_ARG2, TEST10_ARG3);
+    assert(resultFn10 == TEST10_RESULT);
+    fprintf(stdout, "Test #10 is successfull. Result = %d\n", resultFn10);
+
+    fprintf(stdout, "\nTest #11:\n");
+    i = 10;
+    double(*func11)(int, ...) = getRedirectorAddressForName(context.names[i], context);
+    double resultFn11 = (*func11)(TEST11_ARG0, TEST11_ARG1, TEST11_ARG2, TEST11_ARG3);
+    assert((resultFn11 - TEST11_RESULT) <= EPS);
+    fprintf(stdout, "Test #10 is successfull. Result = %f\n", resultFn11);
 
     return 0;
 }
