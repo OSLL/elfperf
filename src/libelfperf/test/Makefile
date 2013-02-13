@@ -51,7 +51,7 @@ test_functional: lib_func
 	gcc -m64 -g3 test_functional.c -o test_functional -lpthread -L. -lfunc
 
 run_test_redir:
-	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:.. ELFPERF_PROFILE_FUNCTION=testFunction1:testFunction2:testFunction3:testFunction4:testFunction5:testFunction6:testFunction7:testFunction8:testFunction9 ./test_redir'
+	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:.. ELFPERF_PROFILE_FUNCTION=testFunction1:testFunction2:testFunction3:testFunction4:testFunction5:testFunction6:testFunction7:testFunction8:testFunction9:testFunction10:testFunction11 ./test_redir'
 
 run_test_cpp:
 	bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:/usr/lib64:.. ELFPERF_PROFILE_FUNCTION=_Z13testFunction1v:_Z13testFunction2ii:_Z13testFunction3v:_Z13testFunction4ii:_Z13testFunction5d:_Z13testFunction6v:_Z13testFunction710testSt:_Z13testFunction8iiiiiiii:_Z13testFunction911testSt:_ZN10TestClass14getAEv:_ZN10TestClass14getBEv:_ZN10TestClass14getCEv:_ZN10TestClass14setAERKi:ZN10TestClass14setBERKi:_ZN10TestClass14setCERKd:_ZN10TestClass19function1  ./test_cpp'
