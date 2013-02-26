@@ -584,24 +584,29 @@ void wrapper_no_cdecl()
 {
     /* Stack structure
      * /////top/////
+     *    old_eax
      *    old_ebx
-     *    old_edx
-     *    old_ecx
-     *	  old_ebp
      */
     // In this wrapper we don't need to create new stack frame
-
-    // Allocating memory for new context and filling it.
-    asm volatile (
-      	"pushl  %edx\n"    
-        "call   getNewContext_\n"       // %eax = getNewContext()
-        "popl   %edx\n"
-        "movl   %eax, %ebx\n"           // %ebx = &context
-        "movl   %edx, 20(%ebx)\n"       // context.functionPointer = wrapperFunction_addr
-        "popl   24(%ebx)\n"             // context.old_ebx = old_ebx
-        "popl   28(%ebx)\n"             // context.old_edx = old_edx
-        "popl   32(%ebx)\n"             // context.old_ecx = old_ecx
-        "popl   4(%ebx)\n"              // context.oldEbpLocVar = old_ebp
+   asm volatile (
+     	// Storing all registers into stack
+        "pushl  %eax\n"
+        "pushl  %ecx\n"
+        "pushl  %edx\n"
+        "pushl  %edi\n"
+        "pushl  %esi\n"
+        // Allocating memory for new context and filling it.
+	    "call getNewContext_\n"     // eax = getNewContext()
+        // Now %eax contains context address
+        "movl %eax, %ebx\n"
+        // Saving old registers state into context
+        "popl 48(%ebx)\n"           // context->esi = old_esi
+        "popl 44(%ebx)\n"           // context->edi = old_edi
+        "popl 40(%ebx)\n"           // context->edx = old_edx
+        "popl 36(%ebx)\n"           // context->ecx = old_ecx
+        "popl 20(%ebx)\n"           // context->functionPointer = func_ptr
+        "popl 28(%ebx)\n"           // context->eax = old_eax
+        "popl 32(%ebx)\n"           // context->ebx = old_ebx
     );
 
     // Saving real return address in memory and changing it with fake address inside of wrapper.
@@ -645,13 +650,16 @@ void wrapper_no_cdecl()
         "movl   8(%ebx), %eax\n"	// restoring eax
         "fldl   0xc(%ebx)\n"        // restoring ST0
         // Restoring registers
-        "movl   28(%ebx), %edx\n"   // restoring edx
-        "movl   32(%ebx), %ecx\n"   // restoring ecx    
-        "pushl  (%ebx)\n"           // returning to caller - pushing return address to stack
-        // Marking context as free and restoring %ebx
-        "pushl  24(%ebx)\n" 	    // old_ebx to stack
-        "movl   $0, (%ebx)\n"       // context.realReturnAddr = 0
-        "popl   %ebx\n"             // %ebx = old_ebx
+        "movl 48(%ebx), %esi\n" // restoring esi
+        "movl 44(%ebx), %edi\n" // restoring edi
+        "movl 40(%ebx), %edx\n" // restoring edx
+        "movl 36(%ebx), %ecx\n" // restoring ecx
+        // Returning to caller
+        "pushl (%ebx)\n"        
+        // Marking context as free and Restoring %ebx
+        "pushl 32(%ebx)\n" 	    // old_ebx to stack
+        "movl $0, (%ebx)\n"     // context.realReturnAddr = 0
+    	"popl %ebx\n"           // %ebx = old_ebx
         "ret\n"
     );
 }
@@ -675,14 +683,14 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
 {
     printf("LIBELFPERF_LOG: Writing redirection code for function %x: \n", fcnPtr);
 
-    unsigned int functionPointer = (unsigned int )(fcnPtr)+FCN_PTR_OFFSET;
+    unsigned int functionPointer = (unsigned int )(fcnPtr) + FCN_PTR_OFFSET;
     // push %ebx
     // push %eax
     redirector[0] = 0x53; 
     redirector[1] = 0x50; 
 
     // mov fcnPtr+3, %eax
-    redirector[2]=0xb8; //0xb8;
+    redirector[2]=0xb8;
     
     // reversing byte order
     redirector[6] = (functionPointer >> 24) & 0xFF;
