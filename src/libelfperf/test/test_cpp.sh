@@ -1,6 +1,6 @@
 #!/bin/bash
 
-bash -c 'make test_cpp_cdecl_64 run_test_cpp clean' 2>/dev/null 1>/dev/null 
+bash -c 'make test_cpp_cdecl_32 run_test_cpp clean' 2>/dev/null 1>/dev/null 
 
 if [ $? -eq 0 ] 
 then

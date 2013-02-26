@@ -27,7 +27,7 @@ test_redir_no_cdecl_64: libelfperf_64
 	gcc -m64 -g3 -Wall -O0 -fomit-frame-pointer test_redir.c func.c -o test_redir -L.. -lelfperf
 
 lib_cpp:
-	g++ -m64 -fPIC -g3 libtest_cpp.cpp -shared -o libtest_cpp.so 
+	g++ -m32 -fPIC -g3 libtest_cpp.cpp -shared -o libtest_cpp.so 
 
 lib_c:
 	gcc -m64 -fPIC -g3 libtest_c.c -shared -o libtest_c.so
@@ -60,7 +60,7 @@ run_test_functional:
 	./test_functional.sh
 
 test_cpp_program: lib_cpp
-	g++ -m64 -g3 test_cpp_program.cpp -o test_cpp_program -L. -ltest_cpp
+	g++ -m32 -g3 test_cpp_program.cpp -o test_cpp_program -L. -ltest_cpp
 
 test_c_program: lib_c
 	gcc -m64 -g3 test_c_program.c -o test_c_program -L. -ltest_c -ldl
