@@ -196,12 +196,11 @@ void wrapper_cdecl()
         "mov    8(%rbp), %r11\n"    // r11 = return address
         "mov    %r11, (%r15)\n"     // context->realReturnAddress = r11
         "mov    %rax, 8(%r15)\n"    // context->functionPointer = rbx
-        "mov    (%rbp), %rbx\n"
-        "mov    %rbx, 32(%r15)\n"   // context->callerLocVar = rbx
+//        "mov    (%rbp), %rbx\n"
         // Save address of context as local variable in caller
-        "mov    -8(%rbx), %rax\n"   // caller 1st local var = rax
-        "mov    %rax, 32(%r15)\n"   // context->callerLocalVar = rax
-        "mov    %r15, -8(%rbx)\n"   // caller 1st local var = &context
+//        "mov    -8(%rbx), %rax\n"   // caller 1st local var = rax
+//        "mov    %rax, 32(%r15)\n"   // context->callerLocalVar = rax
+//        "mov    %r15, -8(%rbx)\n"   // caller 1st local var = &context
         // Save XMM registers
         "movdqu %xmm0, 112(%r15)\n" // context->xmm0 = xmm0;
         "movdqu %xmm1, 128(%r15)\n" // context->xmm0 = xmm0;
@@ -257,9 +256,10 @@ void wrapper_cdecl()
         // Here we return after execution of wrapping function.
         // After returning at this point %rbp contains value of old_rbp.
         // Restore context address from caller local variable        
-        "mov    -8(%rbp), %r15\n"   // %r15 = 1st local var of caller (&context)
-        "mov    32(%r15), %rbx\n"   // %rbx = saved value of 1st local var of caller
-        "mov    %rbx, -8(%rbp)\n"   // 1st local var of caller = old value
+//        "mov    %rbx, %r15\n"   // %r15 = context_addr
+//        "mov    -8(%rbp), %r15\n"   // %r15 = 1st local var of caller (&context)
+//        "mov    32(%r15), %rbx\n"   // %rbx = saved value of 1st local var of caller
+//        "mov    %rbx, -8(%rbp)\n"   // 1st local var of caller = old value
         // Save return values of wrapped function
         "mov    %rax, 16(%r15)\n"   // context->integerResult = %rax
         "mov    %rdx, 72(%r15)\n"   // context->rdx = %rdx
@@ -758,7 +758,7 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
 
     // push %rbx
     redirector[0] = 0x53;
-    // push rax
+    // push %rax
     redirector[1] = 0x50;
 
     // mov fcnPtr+4, %rax     48 b8 ...
