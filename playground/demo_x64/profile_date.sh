@@ -95,4 +95,5 @@ ELFPERF_PROFILE_FUNCTION=\
 :tcgetpgrp\
 :textdomain\
 :wcstombs\
-:wcwidth /tools/lib/ld-2.11.3.so /bin/date'
+:wcwidth\
+:setlocale /tools/lib/ld-2.11.3.so /bin/date'
