@@ -44,10 +44,16 @@ test_cpp_cdecl_64: libelfperf_64
 test_cpp_no_cdecl_64: libelfperf_64
 	g++ -m64 -g3 -fomit-frame-pointer test_cpp.cpp libtest_cpp.cpp func.c -o test_cpp -L.. -lelfperf
 
-lib_func:
+lib_func_32:
+	gcc -m32 -g3 -fPIC func.c -shared -o libfunc.so
+
+lib_func_64:
 	gcc -m64 -g3 -fPIC func.c -shared -o libfunc.so
 
-test_functional: lib_func
+test_functional_32: lib_func_32
+	gcc -m32 -g3 test_functional.c -o test_functional -lpthread -L. -lfunc
+
+test_functional_64: lib_func_64
 	gcc -m64 -g3 test_functional.c -o test_functional -lpthread -L. -lfunc
 
 run_test_redir:

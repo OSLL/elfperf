@@ -15,10 +15,10 @@ set_arch_64:
 	sed -i "s/Architecture/#define ELFPERF_ARCH_64/g" ./config.h
 
 lib_32: set_arch_32
-	gcc -DLIBELFPERF -m32 -g3 -O0 libelfperf.c rdtsc_cntrs.c global_stats.c -shared -o libelfperf.so
+	gcc -DLIBELFPERF -m32 -g3 -O0 libelfperf.c rdtsc_cntrs.c global_stats.c -shared -o libelfperf.so -lpthread
 
 lib_64: set_arch_64
-	gcc -DLIBELFPERF -m64 -fPIC -g3 -O0 libelfperf.c rdtsc_cntrs.c global_stats.c -shared -o libelfperf.so
+	gcc -DLIBELFPERF -m64 -fPIC -g3 -O0 libelfperf.c rdtsc_cntrs.c global_stats.c -shared -o libelfperf.so -lpthread
 
 clean:
 	rm -rf *.o *.so
