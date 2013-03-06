@@ -64,25 +64,19 @@ static int getNewContextSpinlock=0;
 
 
 // Context address storage variable
-#ifdef ELFPERF_ARCH_32
+static __thread void* contextStorage = 0;
 
-static __thread unsigned int contextStorage = 0;
-
-static void setContextStorage(unsigned int val)
+// This function allows to set value of context storage 
+void setContextStorage(void* val)
 {
     contextStorage = val;
 }
 
-static unsigned int getContextStorage()
+// This function allows to access to context storage 
+void* getContextStorage()
 {
     return contextStorage;
 }
-
-#elif defined ELFPERF_ARCH_64
-
-static __thread uint64_t contextStorage = 0;
-
-#endif
 
 
 // This function returns address of currently free context
@@ -115,8 +109,9 @@ static struct WrappingContext * getNewContext_()
         exit(1);
     }
 
-    return contextArray + i;
+    setContextStorage(contextArray + i);
 
+    return contextArray + i;
 }
 
 #ifdef ELFPERF_ARCH_64 
@@ -148,8 +143,6 @@ void wrapper_cdecl()
         "mov    %rsp, %rbp\n"
         "push   %rbx\n"         // saving to the stack - rbx
         "push   %r11\n"         // saving to the stack - rax value
-        // Save value of old_ebp
-//        "mov    (%rbp), %rbx\n"
         // Save values of needed registers
         "push   %r14\n"
         "push   %r13\n"
@@ -219,11 +212,6 @@ void wrapper_cdecl()
         "mov    8(%rbp), %r11\n"    // r11 = return address
         "mov    %r11, (%r15)\n"     // context->realReturnAddress = r11
         "mov    %rax, 8(%r15)\n"    // context->functionPointer = rbx
-//        "mov    (%rbp), %rbx\n"
-        // Save address of context as local variable in caller
-//        "mov    -8(%rbx), %rax\n"   // caller 1st local var = rax
-//        "mov    %rax, 32(%r15)\n"   // context->callerLocalVar = rax
-//        "mov    %r15, -8(%rbx)\n"   // caller 1st local var = &context
         // Save XMM registers
         "movdqu %xmm0, 112(%r15)\n" // context->xmm0 = xmm0;
         "movdqu %xmm1, 128(%r15)\n" // context->xmm0 = xmm0;
@@ -283,6 +271,8 @@ void wrapper_cdecl()
 //        "mov    -8(%rbp), %r15\n"   // %r15 = 1st local var of caller (&context)
 //        "mov    32(%r15), %rbx\n"   // %rbx = saved value of 1st local var of caller
 //        "mov    %rbx, -8(%rbp)\n"   // 1st local var of caller = old value
+//        "push   %rax\n"
+
         // Save return values of wrapped function
         "mov    %rax, 16(%r15)\n"   // context->integerResult = %rax
         "mov    %rdx, 72(%r15)\n"   // context->rdx = %rdx
@@ -291,7 +281,6 @@ void wrapper_cdecl()
         "push   %rdx\n"
         "push   %r15\n"
         // Call record_end_time
-        "mov    %r15, %rdi\n"       // %rdi = &context (arg0 for record_end_time)
         "call   record_end_time\n"
         // Restore registers state
         "pop    %r15\n"

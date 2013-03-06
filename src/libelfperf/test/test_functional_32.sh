@@ -2,6 +2,8 @@
 
 rm -f elfperf_results_*
 
+make -C .. disable_console_output 1>/dev/null 2>/dev/null
+make -C .. lib_32 1>/dev/null 2>/dev/null
 make test_functional_32
 
 bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:. LD_PRELOAD=../libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true \
@@ -11,7 +13,7 @@ testFunction1\
 :testFunction3\
 :testFunction4\
 :testFunction6\
-:testFunction8 /tools/lib/ld-2.11.3.so ./test_functional' #1>/dev/null 2>/dev/null
+:testFunction8 /tools/lib/ld-2.11.3.so ./test_functional' 1>/dev/null 2>/dev/null
 
 count=6
 testFunctions=(testFunction1 testFunction2 testFunction3 testFunction4 testFunction6 testFunction8)
@@ -40,4 +42,4 @@ do
     fi
 done
 
-echo "Functional test SUCCEEDED!"
+echo "Functional test for x86 SUCCEEDED!"

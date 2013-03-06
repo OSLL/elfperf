@@ -37,6 +37,7 @@
 
 #include "global_stats.h"
 #include "rdtsc_cntrs.h"
+#include "libelfperf.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -54,28 +55,27 @@ static unsigned int s_statsCount = 0;
 
 
 // Record function start time into context->startTime
-void record_start_time(void * context)
+void record_start_time()
 {
-    struct WrappingContext * cont = (struct WrappingContext *)context;
+    struct WrappingContext * context = (struct WrappingContext*)getContextStorage();
     printf("LIBELFPERF_LOG: record_start_time for context: %x\n", context);
-    cont->startTime = getRdtscTicks();
+    context->startTime = getRdtscTicks();
 }
 
 // Record function end time into context->endTime and
 // print the duration of function execution
-void record_end_time(void * context)
+void record_end_time()
 {
-    struct WrappingContext * cont = (struct WrappingContext *)context;
+    struct WrappingContext * context =  (struct WrappingContext*)getContextStorage();
     printf("LIBELFPERF_LOG: record_end_time for context: %x\n", context);
  
-    cont->endTime = getRdtscTicks();
+    context->endTime = getRdtscTicks();
 
-    uint64_t duration = cont->endTime - cont->startTime;
+    uint64_t duration = context->endTime - context->startTime;
     printf("LIBELFPERF_LOG: Function duration = %llu ticks\n", duration);
 
     // Updating statistic for function
-    updateStat(cont->functionPointer - FCN_PTR_OFFSET, duration);
-    //errno = 0;
+    updateStat(context->functionPointer - FCN_PTR_OFFSET, duration);
 }
 
 // Get statistic for given function

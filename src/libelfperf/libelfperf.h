@@ -52,6 +52,10 @@
 
 #define CONTEXT_PREALLOCATED_NUMBER 1000
 
+void setContextStorage(void* val) __attribute__((visibility("hidden")));
+
+void* getContextStorage() __attribute__((visibility("hidden")));
+
 static struct WrappingContext * getNewContext_();
 
 void wrapper() __attribute__((visibility("hidden")));
