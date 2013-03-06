@@ -526,10 +526,6 @@ void wrapper_cdecl()
         "popl   20(%ebx)\n"         // context->functionPointer = func_ptr
         "popl   28(%ebx)\n"         // context->eax = old_eax
         "popl   32(%ebx)\n"         // context->ebx = old_ebx
-        // Save context into thread local context storage
-        "pushl  %ebx\n"
-        "call   setContextStorage\n"
-        "popl   %ebx\n"
         // Creating new stack frame
         "pushl  %ebp\n"
         "movl   %esp, %ebp\n"
@@ -543,7 +539,7 @@ void wrapper_cdecl()
     asm volatile (
         // Start time recording
 	    // record_start_time(%ebx)
-        "pushl  %ebx\n"             // pushing parameter(context address into stack)
+        "pushl  %ebx\n"
         "call   record_start_time\n"
         "popl   %ebx\n"
         // Going to wrapped function (context->functionPointer)
@@ -566,7 +562,7 @@ void wrapper_cdecl()
         "fstpl  0xc(%ebx)\n"        // context->doubleResult = ST0
         // Measuring time of function execution
         /* Commented call of record_end_time_ */
-        "pushl  %ebx\n"             // pushing context address to stack
+        "pushl  %ebx\n"             // saving context value in stack
         "call   record_end_time\n"  // calling record_end_time
         "popl   %ebx\n"             // restoring context value
     );
@@ -623,10 +619,6 @@ void wrapper_no_cdecl()
 
     // Saving real return address in memory and changing it with fake address inside of wrapper.
    asm volatile (
-        // Saving address of context in thread local context storage
-        "pushl  %ebx\n"
-        "call   setContextStorage\n"
-        "popl   %ebx\n"
         //"movl   %ebx, contextStorage\n"
         "popl   (%ebx)\n"               // pop (return value) >> context.realReturnAddr 
 
