@@ -498,180 +498,51 @@ void wrapper_no_cdecl()
 
 #elif defined ELFPERF_ARCH_32
 
-/* 
+static __thread struct WrappingContext * g_wrapping_context;
+
+static void preTrace(void *ret, void *function)
+{
+	struct WrappingContext *context = getNewContext_();
+	context->old = g_wrapping_context;
+	g_wrapping_context = context;
+	context->realReturnAddr = ret;
+	context->functionPointer = function;
+	record_start_time(context);
+}
+
+static void *postTrace(void)
+{
+	struct WrappingContext *context = g_wrapping_context;
+	g_wrapping_context = context->old;
+	record_end_time(context);
+	return context->realReturnAddr;
+}
+
+/*
  * Code of wrapper for functions.
  * Wrapper calls selected function and measures its time.
  */
-void wrapper_cdecl()
+void wrapper(void)
 {
-    /* Stack structure
-     * /////top/////
-     *      eax
-     *      ebx
-     */
     asm volatile (
-        // Saving register state in stack
-        "pushl  %eax\n"
-        "pushl  %ecx\n"
-        "pushl  %edi\n"
-        "pushl  %esi\n"
-        // Storing context pointer into freed space (-4(%old_ebp))
-	    "call   getNewContext_\n"   // eax = getNewContext()
-        // Now %eax contains context address
-        "movl   %eax, %ebx\n"
-        // Saving old registers state into context
-        "popl   48(%ebx)\n"         // context->esi = old_esi
-        "popl   44(%ebx)\n"         // context->edi = old_edi
-        "popl   36(%ebx)\n"         // context->ecx = old_ecx
-        "popl   20(%ebx)\n"         // context->functionPointer = func_ptr
-        "popl   28(%ebx)\n"         // context->eax = old_eax
-        "popl   32(%ebx)\n"         // context->ebx = old_ebx
-        // Creating new stack frame
-        "pushl  %ebp\n"
-        "movl   %esp, %ebp\n"
-        // Changing return address to wrapper_return_point
-        "movl   4(%ebp), %ecx\n"	// Storing real return_address
-        "movl   %ecx, (%ebx) \n"
-        // changing return address for $wrapper_return_point
-        "movl   $wrapper_return_point, 4(%ebp)\n"    
-    );
+		    /* we're inside cdecl function, undo its prologue */
+		    "popl	%ebp\n"
+		    "pushal\n"
+		    "pushl	32(%esp)\n"
+		    "pushl	40(%esp)\n"
+		    "call	preTrace\n"
+		    "addl	$8, %esp\n"
+		    "movl	$wrapper_return_point, 36(%esp)\n"
+		    "popal\n"
+		    "retl\n"
 
-    asm volatile (
-        // Start time recording
-	    // record_start_time(%ebx)
-        "pushl  %ebx\n"
-        "call   record_start_time\n"
-        "popl   %ebx\n"
-        // Going to wrapped function (context->functionPointer)
-        "jmp    20(%ebx)\n"
-    );
-
-    asm volatile (
-        // Calculating address of WrappingContext and memorizing return values
-        "wrapper_return_point:\n"
-        // Restore context value from thread local context storage
-        "pushl  %eax\n"
-        "pushl  %edx\n"
-        "call   getContextStorage\n"
-        "movl   %eax, %ebx\n"
-        "popl   %edx\n"
-        "popl   %eax\n"
-        // Save return values into context
-        "movl   %eax, 8(%ebx)\n"    // context->eax = %eax
-        "movl   %edx, 40(%ebx)\n"   // context->edx = %edx
-        "fstpl  0xc(%ebx)\n"        // context->doubleResult = ST0
-        // Measuring time of function execution
-        /* Commented call of record_end_time_ */
-        "pushl  %ebx\n"             // saving context value in stack
-        "call   record_end_time\n"  // calling record_end_time
-        "popl   %ebx\n"             // restoring context value
-    );
-
-    // Restoring value of eax and st0
-    // Returning to caller
-    asm volatile (
-        "movl   8(%ebx), %eax\n"    // restoring eax
-        "movl   40(%ebx), %edx\n"   // restoring edx
-        "fldl   0xc(%ebx)\n"	    // restoring ST0
-        // Restoring registers
-        "movl   48(%ebx), %esi\n"   // restoring esi
-        "movl   44(%ebx), %edi\n"   // restoring edi
-        "movl   36(%ebx), %ecx\n"   // restoring ecx
-        // Returning to caller
-        "pushl  (%ebx)\n"        
-        // Marking context as free and Restoring %ebx
-        "pushl  32(%ebx)\n" 	    // old_ebx to stack
-        "movl   $0, (%ebx)\n"       // context.realReturnAddr = 0
-    	"popl   %ebx\n"             // %ebx = old_ebx
-        "ret\n"
-    );
-}
-
-/* 
- * Code of wrapper for optimized functions which doesn't create new stack frame.
- */
-void wrapper_no_cdecl()
-{
-    /* Stack structure
-     * /////top/////
-     *    old_eax
-     *    old_ebx
-     */
-    // In this wrapper we don't need to create new stack frame
-   asm volatile (
-     	// Storing all registers into stack
-        "pushl  %eax\n"
-        "pushl  %ecx\n"
-        "pushl  %edi\n"
-        "pushl  %esi\n"
-        // Allocating memory for new context and filling it.
-	    "call   getNewContext_\n"       // eax = getNewContext()
-        // Now %eax contains context address
-        "movl   %eax, %ebx\n"
-        // Saving old registers state into context
-        "popl   48(%ebx)\n"             // context->esi = old_esi
-        "popl   44(%ebx)\n"             // context->edi = old_edi
-        "popl   36(%ebx)\n"             // context->ecx = old_ecx
-        "popl   20(%ebx)\n"             // context->functionPointer = func_ptr
-        "popl   28(%ebx)\n"             // context->eax = old_eax
-        "popl   32(%ebx)\n"             // context->ebx = old_ebx
-    );
-
-    // Saving real return address in memory and changing it with fake address inside of wrapper.
-   asm volatile (
-        //"movl   %ebx, contextStorage\n"
-        "popl   (%ebx)\n"               // pop (return value) >> context.realReturnAddr 
-
-        "pushl  %ebx\n"                 // pushing context address into stack
-        "call   record_start_time\n"    // calculating of start time and storing it inside of context
-        "popl   %ebx\n"                 // restoring %ebx value
- 
-        "pushl  $wrapper2_ret_point\n"  // adding new return value for wrapped function 
-        "movl   20(%ebx), %edx\n"       // %edx = functionPointer
-        "subl   $3, %edx\n"             // %edx = %edx - 3 -- because wrapped function don't create stack frame
-                                        // and we don't need pass 3 first bytes of function
-        "jmp    %edx\n"                 // jumping to wrapper function
-    );
-
-    // Restoring of %ebp state and saving return values inside of context.
-    asm volatile (
-        "wrapper2_ret_point:\n"
-        // Restoring context from thread local context storage
-        "pushl  %eax\n"
-        "pushl  %edx\n"
-        "call   getContextStorage\n"
-        "movl   %eax, %ebx\n"
-        "popl   %edx\n"
-        "popl   %eax\n"
-        // Save return values into context
-        // Saving return values into context
-        "movl   %eax, 8(%ebx)\n"        // context->eax = %eax
-        "movl   %edx, 40(%ebx)\n"       // context->edx = %edx
-        "fstpl  0xc(%ebx)\n"            // context->doubleResult = ST0
-        
-        // Measuring time of function execution
-        "pushl  %ebx\n"                 // pushing context address to stack
-        "call   record_end_time\n"      // calling record_end_time
-        "popl   %ebx\n"                 // restoring %ebx value 
-    );
-
-    // Restoring value of %eax and st0.
-    // Restoring real return address and returning to caller
-    asm volatile (
-        "movl   8(%ebx), %eax\n"	    // restoring eax
-        "movl   40(%ebx), %edx\n"       // restoring edx
-        "fldl   0xc(%ebx)\n"            // restoring ST0
-        // Restoring registers
-        "movl   48(%ebx), %esi\n"       // restoring esi
-        "movl   44(%ebx), %edi\n"       // restoring edi
-        "movl   36(%ebx), %ecx\n"       // restoring ecx
-        // Returning to caller
-        "pushl  (%ebx)\n"        
-        // Marking context as free and Restoring %ebx
-        "pushl  32(%ebx)\n"             // old_ebx to stack
-        "movl   $0, (%ebx)\n"           // context.realReturnAddr = 0
-    	"popl   %ebx\n"                 // %ebx = old_ebx
-        "ret\n"
+		    "wrapper_return_point:\n"
+		    "pushl	$0\n"
+		    "pushal\n"
+		    "call	postTrace\n"
+		    "movl	%eax, 32(%esp)\n"
+		    "popal\n"
+		    "retl\n"
     );
 }
 #endif
@@ -694,58 +565,15 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
 {
     printf("LIBELFPERF_LOG: Writing redirection code for function %x: \n", fcnPtr);
 
-    unsigned int functionPointer = (unsigned int )(fcnPtr) + FCN_PTR_OFFSET;
-    // push %ebx
-    // push %eax
-    redirector[0] = 0x53; 
-    redirector[1] = 0x50; 
+    /* pushl $fcnPtr */
+    redirector[0] = 0x68;
+    *(uint32_t*)(redirector + 1) = (uint32_t)fcnPtr;
 
-    // mov fcnPtr+3, %eax
-    redirector[2]=0xb8;
-    
-    // reversing byte order
-    redirector[6] = (functionPointer >> 24) & 0xFF;
-    redirector[5] = (functionPointer >> 16) & 0xFF;
-    redirector[4] = (functionPointer >>  8) & 0xFF;
-    redirector[3] =  functionPointer        & 0xFF;
+    /* jmp wrapper */
+    redirector[5] = 0xe9;
+    *(uint32_t*)(redirector + 6) = ((uint32_t)wrapper) - (uint32_t)(redirector + 10);
 
-    // mov $wrapper+3, %ebx
-    // Skip stack frame construction - because we pass some extra params throw stack
-    // and esp will not be good addr for new stack frame
-    unsigned int wrapper_;
-
-    // Check first 3 bytes of function and choose appropriate wrapper.
-    printf("LIBELFPERF_LOG: First 3 bytes of function: \n");
-    printf("\t%x %x %x\n",
-        ((unsigned int)((void**)fcnPtr)[0]) & 0xFF,
-        (((unsigned int)((void**)fcnPtr)[0]) >> 8) & 0xFF,
-        (((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF
-    );
-
-    if ( (((unsigned int)((void**)fcnPtr)[0]) & 0xFF) == 0x55           // 1st byte
-         &&
-         ((((unsigned int)((void**)fcnPtr)[0]) >> 8) & 0xFF) == 0x89    // 2nd byte
-         &&
-         ((((unsigned int)((void**)fcnPtr)[0]) >> 16) & 0xFF) == 0xe5 ) // 3rd byte
-    {
-        printf("LIBELFPERF_LOG: Chosen 1st wrapper for redirector\n");
-        wrapper_ = (unsigned int)&wrapper_cdecl + FCN_PTR_OFFSET;
-    } else {
-        wrapper_ = (unsigned int)&wrapper_no_cdecl + FCN_PTR_OFFSET;
-        printf("LIBELFPERF_LOG: Chosen 2nd wrapper for redirector\n");
-    }
-
-    redirector[7] = 0xbb;
-    redirector[11] = (wrapper_ >> 24) & 0xFF;
-    redirector[10] = (wrapper_ >> 16) & 0xFF;
-    redirector[9] = (wrapper_ >>  8) & 0xFF;
-    redirector[8] =  wrapper_        & 0xFF;
-
-    // jmp *(%ebx)
-    redirector[12] = 0xFF;
-    redirector[13] = 0xE3; //0x23;
-    
-    printf("LIBELFPERF_LOG: Created redirector for %p at %p, wrapper =  %x\n", fcnPtr, redirector, wrapper_);
+    printf("LIBELFPERF_LOG: Created redirector for %p at %p\n", fcnPtr, redirector);
 }
 
 #elif defined ELFPERF_ARCH_64

@@ -75,7 +75,7 @@ void record_end_time()
     printf("LIBELFPERF_LOG: Function duration = %llu ticks\n", duration);
 
     // Updating statistic for function
-    updateStat(context->functionPointer - FCN_PTR_OFFSET, duration);
+    updateStat(context->functionPointer, duration);
 }
 
 // Get statistic for given function
