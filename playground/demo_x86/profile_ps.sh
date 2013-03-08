@@ -3,6 +3,11 @@
 bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:. LD_PRELOAD=../../src/libelfperf/libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true \
 ELFPERF_PROFILE_FUNCTION=\
 __libc_start_main\
+:__xstat\
+:_exit\
+:atoi\
+:bsearch\
+:close\
 :closeproc\
 :ctime\
 :dev_to_tty\
@@ -12,6 +17,7 @@ __libc_start_main\
 :escape_strlist\
 :exit\
 :fprintf\
+:free\
 :freesupgrp\
 :fwrite\
 :get_pid_digits\
@@ -27,9 +33,13 @@ __libc_start_main\
 :localtime\
 :look_up_our_self\
 :lookup_wchan\
+:malloc\
+:memcpy\
 :meminfo\
+:memset\
 :mmap\
 :mprotect\
+:open\
 :open_psdb\
 :openproc\
 :printf\
@@ -45,7 +55,9 @@ __libc_start_main\
 :signal_number_to_name\
 :snprintf\
 :strcasecmp\
+:strchr\
 :strcmp\
+:strcpy\
 :strcspn\
 :strdup\
 :strftime\
@@ -54,22 +66,8 @@ __libc_start_main\
 :strncpy\
 :strpbrk\
 :strspn\
+:strtol\
 :strtoul\
 :time\
 :uptime\
   /tools/lib/ld-2.11.3.so /bin/ps'
-
-#Empty results with
-# strtol
-# strcpy
-# malloc
-# memcpy
-# free
-# _exit
-# atoi
-# close
-# strchr
-# open
-# memset
-# __xstat
-# bsearch
