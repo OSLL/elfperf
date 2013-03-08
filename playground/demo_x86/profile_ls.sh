@@ -90,9 +90,10 @@ ELFPERF_PROFILE_FUNCTION=\
 :strncmp\
 :strncpy\
 :strrchr\
-:strstr\
 :strtoul\
 :tcgetpgrp\
 :textdomain\
 :wcstombs\
 :wcwidth  /tools/lib/ld-2.11.3.so /bin/ls'
+
+#:strstr\

@@ -100,28 +100,18 @@ struct FunctionStatistic
 
 #ifdef ELFPERF_ARCH_32
 
-struct WrappingContext          // Size     | Offset
+struct WrappingContext
 {
-    // real return address
-    void * realReturnAddr;      // 4bytes   | 0
-    // content of -4(%%old_ebp)
-    void * callerLocVar; 		// 4bytes   | 4
-    // function return value
-    void * integerResult;       // 4bytes   | 8
-    double doubleResult;        // 8bytes   | 12
-    void * functionPointer;     // 4bytes   | 20
-    // Registers storage
-    int ebp;                    // 4bytes   | 24
-    int eax;                    // 4bytes   | 28
-    int ebx;                    // 4bytes   | 32
-    int ecx;                    // 4bytes   | 36
-    int edx;                    // 4bytes   | 40
-    int edi;                    // 4bytes   | 44
-    int esi;                    // 4bytes   | 48
+    // Pointer on previous context in list
+    struct WrappingContext* old; 
+    // Real return address
+    void* realReturnAddr;
+    // Pointer on wrapped function
+    void* functionPtr;
     // Function start time
-    uint64_t startTime;         // 8bytes   | 56
+    uint64_t startTime;
     // Function end time
-    uint64_t endTime;           // 8bytes   | 64 
+    uint64_t endTime; 
 };
 
 #elif defined ELFPERF_ARCH_64

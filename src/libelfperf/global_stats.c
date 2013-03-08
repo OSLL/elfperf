@@ -55,27 +55,27 @@ static unsigned int s_statsCount = 0;
 
 
 // Record function start time into context->startTime
-void record_start_time()
+void record_start_time(void* context)
 {
-    struct WrappingContext * context = (struct WrappingContext*)getContextStorage();
-    printf("LIBELFPERF_LOG: record_start_time for context: %x\n", context);
-    context->startTime = getRdtscTicks();
+    struct WrappingContext* cont = (struct WrappingContext*)context;
+    printf("LIBELFPERF_LOG: record_start_time for context: %x\n", cont);
+    cont->startTime = getRdtscTicks();
 }
 
 // Record function end time into context->endTime and
 // print the duration of function execution
-void record_end_time()
+void record_end_time(void* context)
 {
-    struct WrappingContext * context =  (struct WrappingContext*)getContextStorage();
-    printf("LIBELFPERF_LOG: record_end_time for context: %x\n", context);
+    struct WrappingContext* cont =  (struct WrappingContext*)context;
+    printf("LIBELFPERF_LOG: record_end_time for context: %x\n", cont);
  
-    context->endTime = getRdtscTicks();
+    cont->endTime = getRdtscTicks();
 
-    uint64_t duration = context->endTime - context->startTime;
+    uint64_t duration = cont->endTime - cont->startTime;
     printf("LIBELFPERF_LOG: Function duration = %llu ticks\n", duration);
 
     // Updating statistic for function
-    updateStat(context->functionPointer - FCN_PTR_OFFSET, duration);
+    updateStat(cont->functionPtr, duration);
 }
 
 // Get statistic for given function
