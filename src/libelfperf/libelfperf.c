@@ -505,7 +505,7 @@ static __thread struct WrappingContext* s_wrappingContext = NULL;
 // Contains steps of preprofiling
 static void preProfile(void* returnAddr, void* functionPtr)
 {
-    struct WrappingContext* context = getNewContext();
+    struct WrappingContext* context = (struct WrappingContext*)mmap(0, sizeof(struct WrappingContext), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
     context->old = s_wrappingContext;
     s_wrappingContext = context;
     context->realReturnAddr = returnAddr;
@@ -520,7 +520,11 @@ static void* postProfile()
     struct WrappingContext* context = s_wrappingContext;
     s_wrappingContext = context->old;
     record_end_time(context);
-    return context->realReturnAddr;
+
+    void* returnAddr = context->realReturnAddr;
+    munmap(context, sizeof(struct WrappingContext));
+
+    return returnAddr;
 }
 
 

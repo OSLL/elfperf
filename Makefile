@@ -26,8 +26,11 @@ libelfperf_32: set_arch_32
 libelfperf_64: set_arch_64
 	make -C src/libelfperf/ lib_64 
 
-test:
-	cd src/libelfperf/test && ./run_all_tests.sh
+test_32:
+	cd src/libelfperf/test && ./run_all_tests_32.sh
+
+test_64:
+	cd src/libelfperf/test && ./run_all_tests_64.sh
 
 glibc_patch:
 	cd build/ && ./build_glibc.sh && make -j5 install

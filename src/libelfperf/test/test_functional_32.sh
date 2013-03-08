@@ -31,8 +31,6 @@ correct_stat=100
 
 for (( i=0; i<$count; i++))
 do
-    echo ${stats[$i]}
-
     if [ "${stats[$i]}" -eq $correct_stat ]
     then
         echo "Statistic for ${testFunctions[$i]} is CORRECT!"
