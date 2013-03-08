@@ -96,4 +96,5 @@ ELFPERF_PROFILE_FUNCTION=\
 :wcstombs\
 :wcwidth  /tools/lib/ld-2.11.3.so /bin/ls'
 
+# Problems with:
 #:strstr\
