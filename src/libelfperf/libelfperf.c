@@ -63,20 +63,8 @@ static int freeContextNumber = 0 ;
 static int getNewContextSpinlock=0;
 
 
-// Context address storage variable
-static __thread void* contextStorage = 0;
-
-// This function allows to set value of context storage 
-void setContextStorage(void* val)
-{
-    contextStorage = val;
-}
-
-// This function allows to access to context storage 
-void* getContextStorage()
-{
-    return contextStorage;
-}
+// Thread independent context storage
+static __thread struct WrappingContext* s_wrappingContext = NULL;
 
 
 // This function returns address of currently free context
@@ -115,13 +103,6 @@ static struct WrappingContext * getNewContext()
 }
 
 
-#ifdef ELFPERF_ARCH_32
-
-
-// Thread independent context storage
-static __thread struct WrappingContext* s_wrappingContext = NULL;
-
-
 // Contains steps of preprofiling
 static void preProfile(void* returnAddr, void* functionPtr)
 {
@@ -147,6 +128,8 @@ static void* postProfile()
     return returnAddr;
 }
 
+
+#ifdef ELFPERF_ARCH_32
 
 /*
  * Code of wrapper-function for x86
@@ -216,36 +199,6 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
 
 
 #elif defined ELFPERF_ARCH_64
-
-
-// Thread independent context storage
-static __thread struct WrappingContext* s_wrappingContext = NULL;
-
-
-// Contains steps of preprofiling
-static void preProfile(void* returnAddr, void* functionPtr)
-{
-    struct WrappingContext* context = (struct WrappingContext*)mmap(0, sizeof(struct WrappingContext), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-    context->old = s_wrappingContext;
-    s_wrappingContext = context;
-    context->realReturnAddr = returnAddr;
-    context->functionPtr = functionPtr;
-    record_start_time(context);
-}
-
-
-// Contains steps of postprofiling
-static void* postProfile()
-{
-    struct WrappingContext* context = s_wrappingContext;
-    s_wrappingContext = context->old;
-    record_end_time(context);
-
-    void* returnAddr = context->realReturnAddr;
-    munmap(context, sizeof(struct WrappingContext));
-
-    return returnAddr;
-}
 
 
 /*
@@ -458,7 +411,9 @@ void writeRedirectionCode(unsigned char * redirector, void * fcnPtr)
  
     printf("LIBELFPERF_LOG: Created redirector for %p at %p, wrapper = %p,\n", fcnPtr, redirector, wrapper);
 }
+
 #endif
+
 
 /*
  * Returns index of function with name @name@
