@@ -121,7 +121,7 @@ struct WrappingContext          // Size     | Offset
     // Real return address
     void * realReturnAddr;      // 8bytes   | 0
     // Wrapperd function pointer
-    void * functionPointer;     // 8bytes   | 8
+    void * functionPtr;     // 8bytes   | 8
     // Function return values
     void * integerResult;       // 8bytes   | 16
     double floatingPointResult; // 8bytes   | 24
@@ -164,6 +164,8 @@ struct WrappingContext          // Size     | Offset
     uint64_t r14;               // 8bytes   | 272
     uint64_t r15;               // 8bytes   | 280
     uint64_t r10;               // 8bytes   | 288
+    // 
+    struct WrappingContext* old;
 };
 
 #endif

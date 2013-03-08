@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-tests=`ls test*.sh | grep -v "64"`
+tests=`ls test*.sh | grep -v "32" | grep -v "64"`
 
 for i in $tests
 do

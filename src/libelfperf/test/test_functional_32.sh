@@ -4,7 +4,7 @@ rm -f elfperf_results_*
 
 make -C .. disable_console_output 1>/dev/null 2>/dev/null
 make -C .. lib_32 1>/dev/null 2>/dev/null
-make test_functional_32
+make test_functional_32 1>/dev/null 2>/dev/null
 
 bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:. LD_PRELOAD=../libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true \
 ELFPERF_PROFILE_FUNCTION=\
