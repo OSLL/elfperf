@@ -97,8 +97,6 @@ static struct WrappingContext * getNewContext()
         exit(1);
     }
 
-    setContextStorage(contextArray + i);
-
     return contextArray + i;
 }
 
