@@ -28,6 +28,14 @@
 #include <tls.h>
 #include <dl-irel.h>
 
+//////////////////////////////////////////////////////////////////////////////////////// 
+#include <sched.h>
+#include <time.h>
+#include <stdint.h>
+#include <limits.h>    /* for PAGESIZE */
+
+#include "../../src/libelfperf/ld-routines.h"
+//////////////////////////////////////////////////////////////////////////////////
 
 #if (!defined ELF_MACHINE_NO_RELA && !defined ELF_MACHINE_PLT_REL) \
     || ELF_MACHINE_NO_REL
@@ -47,7 +55,157 @@
 # define reloc_index  reloc_arg / sizeof (PLTREL)
 #endif
 
+#define ELFPERF_LIB_NAME "libelfperf.so"
+#define ELFPERF_LIBC_NAME "libc.so"
+#define ELFPERF_LIBDL_NAME "libdl.so"
 
+/*
+  Search for library @libname@'s link_map, and if it exists return pointer to it,
+  otherwise return NULL.
+*/
+static struct link_map* getLibMap(char * libname, struct link_map *l)
+{
+	struct link_map* lib_map = NULL;
+	struct link_map* tmp_map = NULL;
+
+	//_dl_error_printf("Doing search for %s linkmap\n", libname);
+	// Finding libhello link_map by string name
+	if (strstr(l->l_name,libname) == NULL){
+		// If l is not the needed lib search in the previous and next libs 
+
+		// Analyze previous libs
+		if (l->l_prev != NULL){
+			//_dl_error_printf("Doing search for %s linkmap in PREVIOUS libs\n", libname);
+
+			tmp_map = l;
+
+			while (tmp_map->l_prev != NULL) {
+				
+				if (strstr(tmp_map->l_name,libname) != NULL){
+					_dl_error_printf("Map for %s found: %s\n", libname, tmp_map->l_name);
+					lib_map = tmp_map;
+					break;
+				}
+
+				tmp_map = tmp_map->l_prev;
+			}
+
+		// Analyze next libs if they exists and we didnt found anything else
+		}else if (l->l_next != NULL && lib_map == NULL){
+			//_dl_error_printf("Doing search for %s linkmap in NEXT libs\n", libname);
+
+			tmp_map = l;
+
+			while (tmp_map->l_next != NULL) {
+				
+				if (strstr(tmp_map->l_name,libname) != NULL){
+					_dl_error_printf("Map for %s found: %s\n", libname, tmp_map->l_name);
+					lib_map = tmp_map;
+					break;
+				}
+
+				tmp_map = tmp_map->l_next;
+			}
+
+		}
+		
+
+	}else {
+		// l is needed lib
+		_dl_error_printf("%s found. l is %s\n", libname);
+		lib_map = l;
+	}
+	return lib_map;
+}
+
+
+/*
+  Search for library @libname@'s link_map, and if its exists try to get from it
+  symbol with name @symbol_name@.
+  @flags@ are domestic var resieved from dl_fixup
+  @l@ is link_map from which we start search.
+
+  If nothing found or something went wrong 0 is returned. 
+*/
+static DL_FIXUP_VALUE_TYPE getSymbolAddrFromLibrary(char * libname, char * symbol_name, 
+	struct link_map *l, int flags)
+{
+
+	ElfW(Sym) * sym1 = 
+	(ElfW(Sym) *)mmap(0, sizeof(ElfW(Sym) ), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	//(ElfW(Sym) *)malloc(sizeof(ElfW(Sym) ));
+	lookup_t result1;
+	DL_FIXUP_VALUE_TYPE value1 = 0;
+//	char* name1 = "hello";
+//	char* libname = "libhello.so";
+	struct link_map* lib_map = getLibMap(libname, l);
+
+	// If we found something
+	if (lib_map != NULL){
+	
+
+		//_dl_error_printf("Doing _dl_lookup_symbol_x for %s symbol\n", symbol_name);
+		result1 = _dl_lookup_symbol_x (symbol_name, lib_map, &sym1, lib_map->l_scope,
+					    NULL, ELF_RTYPE_CLASS_PLT, flags, NULL);
+		
+		if (sym1 !=NULL){
+		
+			_dl_error_printf("Found not NULL symbol for \"%s\"!\n", symbol_name);
+			value1 = DL_FIXUP_MAKE_VALUE (result1,
+						   sym1 ? (LOOKUP_VALUE_ADDRESS (result1)
+							  + sym1->st_value) : 0);
+
+			if (sym1 != NULL
+			    && __builtin_expect (ELFW(ST_TYPE) (sym1->st_info) == STT_GNU_IFUNC, 0))
+			  value1 = ((DL_FIXUP_VALUE_TYPE (*) (void)) DL_FIXUP_VALUE_ADDR (value1)) ();
+				
+		}else{
+			
+			_dl_error_printf("Error! Found NULL symbol for \"%s\"!\n", symbol_name);
+		}
+	}else {
+		_dl_error_printf("Library not found!\n");
+	}
+
+	//free(sym1);
+	return value1;
+}
+
+#define ELFPERF_WRAPPER_SYMBOL "wrapper"
+#define ELFPERF_GET_REDIRECTOR_ADDRESS_FOR_NAME_SYMBOL "getRedirectorAddressForName"
+#define ELFPERF_IS_FUNCTION_REDIRECTOR_REGISTERED_SYMBOL "isFunctionRedirectorRegistered"
+#define ELFPERF_IS_FUNCTION_IN_FUNCTION_LIST_SYMBOL "isFunctionInFunctionList"
+#define ELFPERF_ADD_NEW_FUNCTION_SYMBOL "addNewFunction"
+#define ELFPERF_INIT_WRAPPER_REDIRECTORS_SYMBOL "initWrapperRedirectors"
+
+/*
+  Return pointer to struct ElfperfFunctions with pointers to the all needed routines.
+  If something went wrong NULL returned.
+*/
+static struct ElfperfFunctions * getElfperfFunctions(struct link_map* l, int flags)
+{
+	struct ElfperfFunctions * result = 
+		(struct ElfperfFunctions *)mmap(0, sizeof(struct ElfperfFunctions), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+		//(struct ElfperfFunctions *)malloc(sizeof(struct ElfperfFunctions));
+	
+
+//	result->wrapper =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_WRAPPER_SYMBOL, l, flags);
+	result->initWrapperRedirectors =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_INIT_WRAPPER_REDIRECTORS_SYMBOL, l, flags);
+	result->addNewFunction =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_ADD_NEW_FUNCTION_SYMBOL, l, flags);
+	result->isFunctionInFunctionList = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_IS_FUNCTION_IN_FUNCTION_LIST_SYMBOL, l, flags);
+	result->isFunctionRedirectorRegistered =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_IS_FUNCTION_REDIRECTOR_REGISTERED_SYMBOL, l, flags);
+	result->getRedirectorAddressForName =  getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_GET_REDIRECTOR_ADDRESS_FOR_NAME_SYMBOL, l, flags);
+
+
+	// Something went wrong - symbol not found
+	if ( /*result->wrapper == NULL || */result->initWrapperRedirectors == NULL 
+		|| result->addNewFunction == NULL || result->isFunctionRedirectorRegistered == NULL 
+		|| result->getRedirectorAddressForName == NULL || result->isFunctionInFunctionList == NULL)
+	return NULL;
+
+	return result;
+
+}
 
 /* This function is called through a special trampoline from the PLT the
    first time each PLT entry is called.  We must perform the relocation
@@ -55,7 +213,6 @@
    function address to the trampoline, which will restart the original call
    to that address.  Future calls will bounce directly from the PLT to the
    function.  */
-
 DL_FIXUP_VALUE_TYPE
 __attribute ((noinline)) ARCH_FIXUP_ATTRIBUTE
 _dl_fixup (
@@ -76,6 +233,9 @@ _dl_fixup (
   void *const rel_addr = (void *)(l->l_addr + reloc->r_offset);
   lookup_t result;
   DL_FIXUP_VALUE_TYPE value;
+
+  char* name = 0;
+  int flags;
 
   /* Sanity check that we're really looking at a PLT relocation.  */
   assert (ELFW(R_TYPE)(reloc->r_info) == ELF_MACHINE_JMP_SLOT);
@@ -99,7 +259,7 @@ _dl_fixup (
       /* We need to keep the scope around so do some locking.  This is
 	 not necessary for objects which cannot be unloaded or when
 	 we are not using any threads (yet).  */
-      int flags = DL_LOOKUP_ADD_DEPENDENCY;
+      flags = DL_LOOKUP_ADD_DEPENDENCY;
       if (!RTLD_SINGLE_THREAD_P)
 	{
 	  THREAD_GSCOPE_SET_FLAG ();
@@ -109,6 +269,8 @@ _dl_fixup (
 #ifdef RTLD_ENABLE_FOREIGN_CALL
       RTLD_ENABLE_FOREIGN_CALL;
 #endif
+
+      name = strtab + sym->st_name;
 
       result = _dl_lookup_symbol_x (strtab + sym->st_name, l, &sym, l->l_scope,
 				    version, ELF_RTYPE_CLASS_PLT, flags, NULL);
@@ -146,6 +308,175 @@ _dl_fixup (
   /* Finally, fix up the plt itself.  */
   if (__builtin_expect (GLRO(dl_bind_not), 0))
     return value;
+
+
+  // Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
+  //  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
+
+#ifdef ELFPERF_ARCH_64
+
+  // Save state of XMM registers because elfperf code corrupts them
+  uint64_t xmm0[2] = {0, 0};
+  uint64_t xmm1[2] = {0, 0};
+  uint64_t xmm2[2] = {0, 0};
+  uint64_t xmm3[2] = {0, 0};
+  uint64_t xmm4[2] = {0, 0};
+  uint64_t xmm5[2] = {0, 0};
+  uint64_t xmm6[2] = {0, 0};
+  uint64_t xmm7[2] = {0, 0};
+
+  asm volatile ("mov %0, %%rax; movdqu %%xmm0, (%%rax);" : :"r"(&xmm0) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm1, (%%rax);" : :"r"(&xmm1) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm2, (%%rax);" : :"r"(&xmm2) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm3, (%%rax);" : :"r"(&xmm3) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm4, (%%rax);" : :"r"(&xmm4) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm5, (%%rax);" : :"r"(&xmm5) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm6, (%%rax);" : :"r"(&xmm6) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu %%xmm7, (%%rax);" : :"r"(&xmm7) :"%rax");
+
+#endif
+
+  static struct ElfperfFunctions * elfperfFuncs = NULL;
+  static bool errorDuringElfperfFunctionLoad = 0;
+  static struct RedirectorContext context;
+  static struct FunctionInfo * infos;
+  static bool initialized = 0;
+  static bool functionStorageInited = 0;
+  // Spinlock
+  static int elfperfInitSpinlock = 0; 
+
+
+  if (isElfPerfEnabled() && !(initialized || functionStorageInited) ) {
+      initFunctionStatisticsStorage();
+      functionStorageInited = 1;
+  }
+
+  bool isNotLibelfperf = (strstr(l->l_name, ELFPERF_LIB_NAME) == NULL);
+  bool isNotLibC = (strstr(l->l_name, ELFPERF_LIBC_NAME) == NULL);
+  bool isDlopen = (strcmp("dlopen", name)==0);
+  bool isLibDl = (strstr(l->l_name, ELFPERF_LIBDL_NAME) != NULL); 
+
+  if (isElfPerfEnabled() &&  (isFunctionProfiled(name) || isDlopen )  
+      && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad
+	&& isNotLibC && isNotLibelfperf && !isLibDl) {
+      _dl_error_printf("LD_LOG: All conditions for %s profiling is fine\n", name);
+  } else {
+      //_dl_error_printf("LD_LOG: Skip Elfperf while %s profiling\n", name);
+      goto skip_elfperf;
+  }
+
+  // Try to get structure with functions
+  // if unsuccess - elfperf routines will be skipped
+  if (elfperfFuncs == NULL) {
+      // Getting pointers to all needed functions
+      _dl_error_printf("LD_LOG: Recieving functions pointers from libelfperf.so\n");
+      elfperfFuncs = getElfperfFunctions(l, flags);
+      // skip elfperf part 
+      if (elfperfFuncs == NULL){
+          _dl_error_printf("LD_LOG: Errors during getElfperfFunctions!\n");
+          errorDuringElfperfFunctionLoad = 1;
+          goto skip_elfperf;
+      }
+  }
+  _dl_error_printf("LD_LOG: Recieved all pointers to functions from libelfperf.so\n");
+
+
+  // ELFPERF
+  if (initialized == 0) {
+
+      // Critical section - prevent miltiple initialization of elfperf 
+      while(  __sync_fetch_and_add(&elfperfInitSpinlock,1)!=0);
+      // If somebody already inited all stuff while we were at queue 
+      // skip initialization
+      if (initialized) {
+        elfperfInitSpinlock = 0; 
+        goto do_elfperf_routines;
+      }
+
+      _dl_error_printf("LD_LOG: Redirectors are not initialized.\n");
+
+      context.names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &(context.count));
+
+      _dl_error_printf("LD_LOG: Initializing redirectors for:\n");
+      unsigned int i = 0;
+      for (i = 0 ; i < context.count; i++) {
+          _dl_error_printf("\t%s\n", context.names[i]);
+      }
+//      void *wr = elfperfFuncs->wrapper;
+
+      _dl_error_printf("LD_LOG: Going to initWrapperRedirectors\n");
+      ( * (elfperfFuncs->initWrapperRedirectors))(&context);
+
+      infos = getFunctionInfoStorage();
+      
+      // Store ElfperfContext into shared memory
+      // This will allow libdl.so to use functions of libelfperf.so 
+      struct ElfperfContext elfperfContext;
+      elfperfContext.addresses = *elfperfFuncs;
+      elfperfContext.context = context;
+      elfperfContext.infos = infos;
+
+      initElfperfContextStorage(elfperfContext); 
+
+      initialized = 1;
+      _dl_error_printf("LD_LOG: After setting initialized , curr val = %u\n", initialized);
+
+      elfperfInitSpinlock = 0;
+  }
+
+do_elfperf_routines:  
+
+  if ( isFunctionProfiled(name) == 0) {
+      _dl_error_printf("LD_LOG: dlopen is not profiled, skipping\n");
+      goto skip_elfperf;
+  }
+
+  _dl_error_printf("LD_LOG: Doing routines for ELFPERF\n");
+  if (! (*(elfperfFuncs->isFunctionRedirectorRegistered))(name, context)){
+      struct FunctionInfo* tmp = getInfoByName(name, infos, context.count);
+		
+      if (tmp != NULL) {
+        tmp->addr = value;
+      } else {
+        _dl_error_printf("LD_LOG Error - not found function for name by getInfoByName\n");
+      }
+
+      _dl_error_printf("LD_LOG: Function %s (%u) not registered, adding\n", name, value);
+      (*(elfperfFuncs->addNewFunction))(name,(void*) value, context);
+      _dl_error_printf("LD_LOG: Registration of %s successful.\n", name);
+  }
+
+  _dl_error_printf("LD_LOG: Getting redirector address for %s \n", name);
+  DL_FIXUP_VALUE_TYPE value1 = (DL_FIXUP_VALUE_TYPE) (*(elfperfFuncs->getRedirectorAddressForName))( name,context);
+  value = value1;
+
+  void ** ptr =  ((void*) value1);
+  int j;
+
+  _dl_error_printf("LD_LOG: Bytes of redirector:\n");
+  for (j = 0; j < 4; j++) {
+      _dl_error_printf("\t%x %x %x %x \n", 
+      (((unsigned int)ptr[j]) ) & 0xFF, (((unsigned int)ptr[j]) >> 8) & 0xFF,
+      (((unsigned int)ptr[j]) >> 16) & 0xFF, (((unsigned int)ptr[j]) >> 24) & 0xFF);
+  }
+
+  //value = getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, "testFunc", l, flags); 
+  //getSymbolAddrFromLibrary(ELFPERF_LIB_NAME, ELFPERF_ADD_NEW_FUNCTION_SYMBOL, l, flags);
+
+skip_elfperf:
+
+#ifdef ELFPERF_ARCH_64
+
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm0;" : :"r"(&xmm0) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm1;" : :"r"(&xmm1) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm2;" : :"r"(&xmm2) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm3;" : :"r"(&xmm3) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm4;" : :"r"(&xmm4) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm5;" : :"r"(&xmm5) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm6;" : :"r"(&xmm6) :"%rax");
+  asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm7;" : :"r"(&xmm7) :"%rax");
+
+#endif
 
   return elf_machine_fixup_plt (l, result, reloc, rel_addr, value);
 }
