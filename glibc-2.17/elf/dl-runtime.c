@@ -313,7 +313,11 @@ _dl_fixup (
   // Check that profiling by ELFPERF is enabled and ELFPERF_LIB was found among LD_PRELOAD libs
   //  _dl_debug_printf("\t\tCurrent lib %s , function %s\n", l->l_name, name);
 
+  _dl_error_printf("LD_LOG: Starting ELFPERF code\n");
+
 #ifdef ELFPERF_ARCH_64
+
+  _dl_error_printf("LD_LOG: Start saving XMM registers for x64\n");
 
   // Save state of XMM registers because elfperf code corrupts them
   uint64_t xmm0[2] = {0, 0};
@@ -334,6 +338,8 @@ _dl_fixup (
   asm volatile ("mov %0, %%rax; movdqu %%xmm6, (%%rax);" : :"r"(&xmm6) :"%rax");
   asm volatile ("mov %0, %%rax; movdqu %%xmm7, (%%rax);" : :"r"(&xmm7) :"%rax");
 
+  _dl_error_printf("LD_LOG: Finished saving XMM registers for x64\n");
+
 #endif
 
   static struct ElfperfFunctions * elfperfFuncs = NULL;
@@ -345,17 +351,20 @@ _dl_fixup (
   // Spinlock
   static int elfperfInitSpinlock = 0; 
 
-
+  _dl_error_printf("LD_LOG: Checking of ELFPERF state for initializing of Function Statistics Storage\n");
   if (isElfPerfEnabled() && !(initialized || functionStorageInited) ) {
+      _dl_error_printf("LD_LOG: Function Statistics Storage is not initialized. Initializing ...\n");
       initFunctionStatisticsStorage();
       functionStorageInited = 1;
   }
+  _dl_error_printf("LD_LOG: Test LOG\n");
 
   bool isNotLibelfperf = (strstr(l->l_name, ELFPERF_LIB_NAME) == NULL);
   bool isNotLibC = (strstr(l->l_name, ELFPERF_LIBC_NAME) == NULL);
   bool isDlopen = (strcmp("dlopen", name)==0);
   bool isLibDl = (strstr(l->l_name, ELFPERF_LIBDL_NAME) != NULL); 
 
+  _dl_error_printf("LD_LOG: Checking of conditions for ELFPERF launching\n");
   if (isElfPerfEnabled() &&  (isFunctionProfiled(name) || isDlopen )  
       && getLibMap(ELFPERF_LIB_NAME, l) != NULL && !errorDuringElfperfFunctionLoad
 	&& isNotLibC && isNotLibelfperf && !isLibDl) {
@@ -367,6 +376,7 @@ _dl_fixup (
 
   // Try to get structure with functions
   // if unsuccess - elfperf routines will be skipped
+  _dl_error_printf("LD_LOG: Getting out of functions pointers from shared memory\n");
   if (elfperfFuncs == NULL) {
       // Getting pointers to all needed functions
       _dl_error_printf("LD_LOG: Recieving functions pointers from libelfperf.so\n");
@@ -380,8 +390,8 @@ _dl_fixup (
   }
   _dl_error_printf("LD_LOG: Recieved all pointers to functions from libelfperf.so\n");
 
-
   // ELFPERF
+  _dl_error_printf("LD_LOG: Checking of initialization of redirectors\n");
   if (initialized == 0) {
 
       // Critical section - prevent miltiple initialization of elfperf 
@@ -402,7 +412,6 @@ _dl_fixup (
       for (i = 0 ; i < context.count; i++) {
           _dl_error_printf("\t%s\n", context.names[i]);
       }
-//      void *wr = elfperfFuncs->wrapper;
 
       _dl_error_printf("LD_LOG: Going to initWrapperRedirectors\n");
       ( * (elfperfFuncs->initWrapperRedirectors))(&context);
@@ -466,6 +475,8 @@ do_elfperf_routines:
 skip_elfperf:
 
 #ifdef ELFPERF_ARCH_64
+
+  _dl_error_printf("LD_LOG: Restoring of XMM registers for x64\n");
 
   asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm0;" : :"r"(&xmm0) :"%rax");
   asm volatile ("mov %0, %%rax; movdqu (%%rax), %%xmm1;" : :"r"(&xmm1) :"%rax");
