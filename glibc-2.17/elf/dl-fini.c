@@ -22,6 +22,11 @@
 #include <string.h>
 #include <ldsodefs.h>
 
+#include "../../src/libelfperf/ld-routines.h"
+#include <sys/stat.h> 
+#include <sys/shm.h>
+#include <fcntl.h>
+#include <time.h>
 
 /* Type of the constructor functions.  */
 typedef void (*fini_t) (void);
@@ -125,6 +130,142 @@ _dl_sort_fini (struct link_map **maps, size_t nmaps, char *used, Lmid_t ns)
     }
 }
 
+#define FILENAME_TEMPLATE "elfperf_results_"
+#define PID_SIZE 10
+#define RESULT_NAME_SIZE PID_SIZE+strlen(FILENAME_TEMPLATE) 
+
+void reverse(char *s)
+{
+  int i, j;
+  char c;
+  for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
+    c = s[i];
+    s[i] = s[j];
+    s[j] = c;
+  }
+}
+
+
+// We use our realization because there is linking bugs with using built-in
+void itoa(int n, char *s)
+{
+  int i, sign;
+
+  i = 0;
+  do {      
+    s[i++] = n % 10 + '0'; 
+  } while ((n /= 10) > 0);     
+  s[i] = '\0';
+  reverse(s);
+}
+
+
+// Generates filename containing PID
+char* getFileNameWithPid()
+{
+  char * result = (char*)malloc(sizeof(char)*(RESULT_NAME_SIZE));
+  strcpy(result,FILENAME_TEMPLATE); 
+  itoa((int)getpid(), result+strlen(FILENAME_TEMPLATE));
+  return result;
+}
+
+
+// Output of profiling results
+// on console and to file if it can be opened
+static void printElfperfResults()
+{
+  unsigned int i;		
+  struct FunctionStatistic*** shm;
+  // Going inside shared memory
+
+  _dl_debug_printf("LD_LOG: printElfperfResults\n");
+
+  if(isElfPerfEnabled()) {
+    _dl_debug_printf("LD_LOG: Granted normal access to shared memory\n");
+
+    int * pFile;
+        
+    if ((pFile = open(getFileNameWithPid(), O_WRONLY | O_CREAT | O_TRUNC,
+         S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1) {
+      _dl_debug_printf("LD_LOG: Errors during open!\n");
+    } else {
+      _dl_debug_printf("LD_LOG: Result file opened successfully\n");
+    }
+
+    // File header  
+    _dl_dprintf(pFile, "Profiling results for pid=%u\n", getpid());
+    _dl_dprintf(pFile, "Functions: %s\n", getenv(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE));
+
+    struct FunctionStatistic **stat = *(getFunctionStatisticsStorage());
+
+    // Getting pointer to the function info list
+    struct FunctionInfo* list = getFunctionInfoStorage();
+    struct ElfperfContext* elfperfContext = getElfperfContextStorage();
+
+    if (list == NULL) {
+      _dl_debug_printf("LD_LOG: Error - recieved null from getFunctionInfoStorage \n");
+      _dl_dprintf(pFile,"Error - recieved null from getFunctionInfoStorage \n");
+      close(pFile);
+      return;
+    }
+
+    if (stat == NULL ) {
+      _dl_debug_printf("LD_LOG: Statistic is empty, exiting!\n");
+      _dl_dprintf(pFile, "Statistic is empty, exiting!\n");
+      close(pFile);
+      return;
+    }
+
+    unsigned int count = elfperfContext->context.count;
+    // Output of results
+    for (i = 0; i < count && *(stat+i) != NULL; i++) {
+      _dl_debug_printf("LD_LOG: Printing stats, iteration %u \n",i);
+			
+      _dl_debug_printf("LD_LOG: Try to get FunctionInfo for address %x\n", stat[i]->realFuncAddr);
+      struct FunctionInfo* currentInfo = getInfoByAddr((stat[i])->realFuncAddr, list);
+
+      if (currentInfo == NULL) {
+        _dl_debug_printf("LD_LOG: Failed at %x\n", (stat[i])->realFuncAddr);
+        _dl_dprintf(pFile, "Failed at %x\n", (stat[i])->realFuncAddr);
+        break;
+      }
+
+      char* name = currentInfo->name;
+
+      // Because _dl_debug_printf cant output 64byte numbers
+      // this hack performed
+      uint64_t totalTime = (stat[i])->totalDiffTime;
+
+      #ifdef ELFPERF_ARCH_32
+      void ** timePtr = (void **)&totalTime;
+     // Output to console 
+      _dl_debug_printf("LD_LOG: Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
+                        name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
+
+      // Output to file if it is opened
+      if ( pFile != NULL) {
+        _dl_dprintf(pFile,"Statistic for %s(%x) : total calls number = %u, total ticks number = %u %u\n",
+                    name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, timePtr[0], timePtr[1] );
+      }
+      #elif defined ELFPERF_ARCH_64
+      // Output to console 
+      _dl_debug_printf("LD_LOG: Statistic for %s(%x) : total calls number = %u, total ticks number = %u \n",
+                        name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, totalTime );
+
+      // Output to file if it is opened
+      if ( pFile != NULL) {
+        _dl_dprintf(pFile,"Statistic for %s(%x) : total calls number = %u, total ticks number = %u \n",
+                    name, (stat[i])->realFuncAddr, (stat[i])->totalCallsNumber, totalTime );
+      }
+      #endif
+
+    }
+    close (pFile);
+    shmdt(shm);
+    //shmctl( shmid, IPC_RMID,(struct shmid_ds *) NULL); 
+    //shmctl(shmid, IPC_RMID, (struct shmid_ds *) NULL);    
+  }
+}
 
 void
 internal_function
@@ -141,6 +282,12 @@ _dl_fini (void)
      using `dlopen' there are possibly several other modules with its
      dependencies to be taken into account.  Therefore we have to start
      determining the order of the modules once again from the beginning.  */
+
+///////////////////////////////////////////////////////////////////////////
+  _dl_debug_printf("LD_LOG: Finishing work of ld.so!\n");
+  printElfperfResults();
+///////////////////////////////////////////////////////////////////////////
+
   struct link_map **maps = NULL;
   size_t maps_size = 0;
 

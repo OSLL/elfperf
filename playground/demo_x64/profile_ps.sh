@@ -1,6 +1,6 @@
 #!/bin/bash
 
-bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:. LD_PRELOAD=../../src/libelfperf/libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true \
+bash -c 'LD_LIBRARY_PATH=/lib:/usr/lib:/lib64:/usr/lib64 LD_PRELOAD=../../src/libelfperf/libelfperf.so:/tools/lib/libdl.so.2 ELFPERF_ENABLE=true \
 ELFPERF_PROFILE_FUNCTION=\
 __libc_start_main\
 :__xstat\
@@ -69,4 +69,4 @@ __libc_start_main\
 :strtol\
 :strtoul\
 :time\
-:uptime  /tools/lib/ld-2.11.3.so /bin/ps'
+:uptime /tools/lib/ld-linux-x86-64.so.2 /bin/ps'
