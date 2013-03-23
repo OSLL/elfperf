@@ -21,6 +21,10 @@
 
 #include <ldsodefs.h>
 
+#define _dl_debug_printf printf
+//#define NO_CONSOLE_OUTPUT_LD_SO
+#include "../../src/libelfperf/ld-routines.h"
+
 #if !defined SHARED && defined IS_IN_libdl
 
 void *
@@ -70,6 +74,61 @@ __dlsym (void *handle, const char *name DL_CALLER_DECL)
   void *result = (_dlerror_run (dlsym_doit, &args) ? NULL : args.sym);
 
   __rtld_lock_unlock_recursive (GL(dl_load_lock));
+
+  // Do initialization
+  static struct ElfperfContext* elfperfContext = NULL;
+  static struct RedirectorContext context;
+  static struct ElfperfFunctions elfperfFuncs;
+  static bool errorDuringElfperfContextLoading = 0;
+  printf("libdl.so: doing routines for %s\n", name);
+  // If profiling is not enabled or function is not profiled or  
+  // there are problems during ElfperfContext loading
+  // do not do initialization and skip next code
+  if (!isElfPerfEnabled() || !isFunctionProfiled(name) || errorDuringElfperfContextLoading){
+    printf("libdl.so: profiling is not enabled, skipping.\n");
+    goto skip_elfperf_libdl;
+  }
+
+  // Recieve elfperfContext value
+  if (elfperfContext == NULL){
+    elfperfContext = getElfperfContextStorage();
+    // Skip other steps if something went wrong during 
+    // ElfperfContext loading
+    if (elfperfContext == NULL){
+      errorDuringElfperfContextLoading = 1;
+      printf("libdl.so: problems during getElfperfContextStorage(), skipping.\n");
+      goto skip_elfperf_libdl;
+    }
+    
+    context = elfperfContext->context;
+    elfperfFuncs = elfperfContext->addresses;
+  
+  }
+
+  printf("libdl.so: successful intialization\n");
+  // Do redirector generation if needed
+
+  if (! (*(elfperfFuncs.isFunctionRedirectorRegistered))(name, context)){
+
+    printf("libdl.so: searching function info\n");
+    struct FunctionInfo* tmp = getInfoByName(name, elfperfContext->infos, context.count);
+
+    if (tmp != NULL){
+      tmp->addr = result;
+    } else {
+      printf("libdl.so: error - not found function for name(%s) by getInfoByName\n", name);
+    }
+
+    printf("libdl.so: function is not registered, do addNewFunction()\n");
+    //_dl_error_printf("Function %s (%u) not registered, adding\n", name, value);
+    (*(elfperfFuncs.addNewFunction))(name, result, context);
+    //_dl_error_printf("Registration of %s successful.\n", name);
+  }else{
+    printf("libdl.so: function registred\n");
+  }	
+  result  =  (*(elfperfFuncs.getRedirectorAddressForName))( name,context);
+
+skip_elfperf_libdl:
 
   return result;
 }
