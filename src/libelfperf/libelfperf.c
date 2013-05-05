@@ -52,54 +52,8 @@ extern void testFunc(char * a);
 
 #define REAL_RETURN_ADDR_STUB 1
 
-// preallocated array of contexts
-static struct WrappingContext contextArray[CONTEXT_PREALLOCATED_NUMBER];
-// Number of first not used contexts
-static int freeContextNumber = 0 ;
-
-/*
- * Returns address of clean context for wrapper.
- */
-static int getNewContextSpinlock=0;
-
-
 // Thread independent context storage
 static __thread struct WrappingContext* s_wrappingContext = NULL;
-
-
-// This function returns address of currently free context
-static struct WrappingContext * getNewContext()
-{
-    struct WrappingContext * context;
-
-    unsigned int i = 0;
-    bool isFreeContextFound = 0;
-    /// Critical section start
-    while(  __sync_fetch_and_add(&getNewContextSpinlock,1)!=0);
-    // printf("Inside critical section\n");
-    // Search for not used Contexts - the ones which has contextArray[i].realReturnAddr == NULL
-    for (i = 0; i < CONTEXT_PREALLOCATED_NUMBER; i++) {
-        printf("%u : %p\n", i,  contextArray[i].realReturnAddr);
-        // Free context found - mark it as used
-        // i contains number of free context
-        if (contextArray[i].realReturnAddr == NULL) {
-            contextArray[i].realReturnAddr = (void*)REAL_RETURN_ADDR_STUB;
-            isFreeContextFound = 1;
-            break;
-        }
-    }
-    getNewContextSpinlock = 0;
-    // Critical section ends
-    
-    // No free contexts - terminating app
-    if (!isFreeContextFound) {
-        printf("LIBELFPERF_LOG: Context buffer is full!!! Exiting\n");
-        exit(1);
-    }
-
-    return contextArray + i;
-}
-
 
 // Contains steps of preprofiling
 static void preProfile(void* returnAddr, void* functionPtr)

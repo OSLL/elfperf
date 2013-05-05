@@ -281,7 +281,6 @@ static struct FunctionInfo* initFunctionInfoStorage()
     // Allocating memory on heap
     struct FunctionInfo* infos = 
 	(struct FunctionInfo*)mmap(0, sizeof(struct FunctionInfo)*count, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-	//(struct FunctionInfo*)malloc(sizeof(struct FunctionInfo)*count);
     unsigned int i = 0;
     for (i = 0; i < count; i++) {
         (infos[i]).name = names[i];
@@ -300,11 +299,6 @@ static struct FunctionInfo* initFunctionInfoStorage()
  */
 static struct FunctionInfo* getFunctionInfoStorage()
 {
-    // Get function list from env variables	
-//    char ** names;
-//    unsigned int count;
-//    names = get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
-    
     // Shared memory variables
     int shmid;
     struct FunctionInfo** shm;

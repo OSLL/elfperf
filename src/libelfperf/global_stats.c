@@ -49,10 +49,18 @@
 #include <errno.h>
 
 // Global array of functions statistics
-static struct FunctionStatistic** s_stats=NULL;
+static struct FunctionStatistic** s_stats = NULL;
 // Number of statistics
 static unsigned int s_statsCount = 0;
 
+// Flag of shared memory initialization
+static bool isSharedMemoryInited = 0;
+
+// Spinlock for updateStat
+static int updateStatSpinlock=0;
+
+// Spinlock for shared memory initialization
+static int sharedMemoryInitSpinlock=0;
 
 // Record function start time into context->startTime
 void record_start_time(void* context)
@@ -78,25 +86,61 @@ void record_end_time(void* context)
     updateStat(cont->functionPtr, duration);
 }
 
-// Get statistic for given function
-struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
+// Initialize statistics buffer
+static void initStats()
 {
-    int i;
-    for (i = 0; i < s_statsCount; i++) {
-        if (s_stats[i]->realFuncAddr == realFuncAddr)
-            return s_stats[i];
-    }
-
-    return NULL;
+    unsigned int count;
+    get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
+    s_stats = (struct FunctionStatistic**)mmap(0, sizeof(struct FunctionStatistic*)*count, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    printf("LIBELFPERF_LOG: Initializing shared memory for FunctionStatistic%p\n", s_stats);
 }
 
-// Spinlock for updateStat
-static int updateStatSpinlock=0;
+// Initialize shared memory for statistics storage
+static void initSharedMemory()
+{
+    if (isSharedMemoryInited) {
+        return;
+    }
 
+    initStats();
+    struct FunctionStatistic *** shm = getFunctionStatisticsStorage();
+	
+    // Storing s_stats into shared memory
+    *shm = s_stats;
+    isSharedMemoryInited = 1;	
+		
+    printf("LIBELFPERF_LOG: Shared memory for FunctionStorage inited successfuly: shm = %p ,s_stats = %p\n", *shm,  s_stats );
+}
+
+// Add new statistic into buffer
+struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime)
+{
+    // Do s_stats pointers writing into the shared memory if it is not performed before
+    if (!isSharedMemoryInited) initSharedMemory();
+
+    if (s_statsCount >= STATS_LIMIT) {
+        printf("LIBELFPERF_LOG: Statistics buffer is full! Exiting\n");
+        exit(1);
+    }
+
+    struct FunctionStatistic* stat = 
+        (struct FunctionStatistic*)mmap(0, sizeof(struct FunctionStatistic), 
+                                        PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+
+    stat->realFuncAddr = funcAddr;
+    stat->totalDiffTime = diffTime;
+    stat->totalCallsNumber = 1;
+    s_stats[ __sync_fetch_and_add(&s_statsCount, 1)] = stat;
+
+    printf("LIBELFPERF_LOG: finished addNewStat\n");
+    return stat;
+}
+
+// Update statistic for given function with new diffTime
 void updateStat(void* funcAddr, uint64_t diffTime)
 {
-        // Try to lock
-    while(  __sync_fetch_and_add(&updateStatSpinlock,1)!=0);
+    // Try to lock
+    while(__sync_fetch_and_add(&updateStatSpinlock, 1)!=0);
 
     struct FunctionStatistic* stat = getFunctionStatistic(funcAddr);
     if (stat != NULL) {
@@ -112,76 +156,22 @@ void updateStat(void* funcAddr, uint64_t diffTime)
 
     // Unlock
     updateStatSpinlock = 0;
-
 }
 
-
-static bool isSharedMemoryInited = 0;
-
-// Spinlock for shared memory initialization
-static int sharedMemoryInitSpinlock=0;
-
-static void initStats()
+// Get statistic for given function
+struct FunctionStatistic* getFunctionStatistic(void *realFuncAddr)
 {
-    unsigned int count;
-    get_fn_list(ELFPERF_PROFILE_FUNCTION_ENV_VARIABLE, &count);
-    s_stats = (struct FunctionStatistic**)mmap(0, sizeof(struct FunctionStatistic*)*count, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-    //(struct FunctionStatistic**)malloc(sizeof(struct FunctionStatistic*)*count);
-    printf("LIBELFPERF_LOG: Initializing shared memory for FunctionStatistic%p\n", s_stats);
-}
-
-static void initSharedMemory()
-{
-	if (isSharedMemoryInited) 
-        return;
-    ///// Critical section
-    // Try to lock
-        //while(  __sync_fetch_and_add(&sharedMemoryInitSpinlock,1)!=0);
-	
-    //if (isSharedMemoryInited) return;
-    initStats();
-    
-    // Shared memory variables
-    struct FunctionStatistic *** shm = getFunctionStatisticsStorage();
-	
-    // Storing s_stats into shared memory
-    *shm = s_stats;
-    // Set flag - shared memory is already inited
-    isSharedMemoryInited = 1;	
-		
-    printf("LIBELFPERF_LOG: Shared memory for FunctionStorage inited successfuly: shm = %p ,s_stats = %p\n", *shm,  s_stats );
-
-    // Unlock
-    //sharedMemoryInitSpinlock = 0;
-    ///// Critical section ends
-}
-
-struct FunctionStatistic* addNewStat(void *funcAddr, uint64_t diffTime)
-{
-    // Do s_stats pointers writing into the shared memory if it is not performed before
-    if (!isSharedMemoryInited) initSharedMemory();
-    //////
-    if (s_statsCount >= STATS_LIMIT) {
-        printf("LIBELFPERF_LOG: Statistics buffer is full! Exiting\n");
-        exit(1);
+    int i;
+    for (i = 0; i < s_statsCount; i++) {
+        if (s_stats[i]->realFuncAddr == realFuncAddr)
+            return s_stats[i];
     }
-
-    struct FunctionStatistic* stat = 
-	(struct FunctionStatistic*)mmap(0, sizeof(struct FunctionStatistic), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-	//(struct FunctionStatistic*)malloc(sizeof(struct FunctionStatistic));
-
-    stat->realFuncAddr = funcAddr;
-    stat->totalDiffTime = diffTime;
-    stat->totalCallsNumber = 1;
-    s_stats[ __sync_fetch_and_add(&s_statsCount, 1)] = stat;
-
-    printf("LIBELFPERF_LOG: finished addNewStat\n");
-
-    return stat;
+    return NULL;
 }
 
-// Print stats for all functions
-void printFunctionStatistics(){
+// Print statistics for all profiled functions
+void printFunctionStatistics()
+{
     int i;
     for (i = 0; i < s_statsCount; i++){
         struct FunctionStatistic *stat = s_stats[i];
